@@ -1,0 +1,29 @@
+# Env / secrets
+.env
+
+# Agent-team local logs (regenerated per tick; not needed in version control)
+logs/
+
+# Claude Code local settings
+.claude/settings.local.json
+
+# Node / Expo / React Native
+node_modules/
+.expo/
+.expo-shared/
+dist/
+web-build/
+*.jks
+*.p8
+*.p12
+*.key
+*.mobileprovision
+ios/Pods/
+ios/build/
+android/build/
+android/app/build/
+android/.gradle/
+*.hprof
+
+# OS
+.DS_Store
