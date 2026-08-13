@@ -1,0 +1,44 @@
+{
+  "expo": {
+    "name": "GritMap",
+    "slug": "gritmap",
+    "version": "0.1.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "light",
+    "splash": {
+      "image": "./assets/splash.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#ffffff"
+    },
+    "assetBundlePatterns": ["**/*"],
+    "ios": {
+      "supportsTabletMode": true,
+      "usesNonExemptEncryption": false
+    },
+    "android": {
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#ffffff"
+      }
+    },
+    "web": {
+      "favicon": "./assets/favicon.png"
+    },
+    "plugins": [
+      [
+        "expo-sqlite",
+        {}
+      ],
+      [
+        "@maplibre/maplibre-react-native",
+        {}
+      ]
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "gritmap"
+      }
+    }
+  }
+}
