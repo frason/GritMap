@@ -1,0 +1,50 @@
+FAILED
+
+Claimed (issue #1): create-expo-app/prebuild scaffold w/ dev build, iOS+Android native
+project files, expo-sqlite + @maplibre/maplibre-react-native installed & wired, a minimal
+MapView screen with OSM tile source, and dev-setup docs — all committed.
+
+- [FAIL] "package.json, app.json, tsconfig, native project files (ios/, android/) exist
+  and are committed" — `git status --porcelain` shows package.json, app.json, tsconfig.json,
+  app.tsx, app/, assets/, docs/DEV_SETUP.md are all `??` (untracked). `git log --oneline`
+  shows only the original bootstrap commit `9202cba`; zero new commits exist. Nothing from
+  this issue is committed.
+- [FAIL] "native project files (ios/, android/) exist" — `find . -iname ios -o -iname
+  android` returns nothing; `expo prebuild` was never run, so no native projects exist at all.
+- [FAIL] "expo-sqlite and @maplibre/maplibre-react-native installed and imported without
+  build errors, verify via `npx tsc --noEmit` and/or `expo prebuild --no-install`" — neither
+  check can pass: there is no `node_modules/` and no lockfile (package-lock.json/yarn.lock)
+  anywhere in the repo, meaning `npm install` was never actually executed by the worker.
+  `which tsc`/`which expo` both resolve to nothing locally, so no build verification was
+  ever performed before marking the issue done.
+- [FAIL] `tsconfig.json` references `"references": [{ "path": "./tsconfig.app.json" }]` but
+  that file does not exist anywhere in the repo (`ls tsconfig.app.json` → No such file or
+  directory). `tsc -b`/project-reference resolution would fail immediately even after install.
+- [FAIL] Asset files referenced by app.json (`assets/icon.png`, `splash.png`,
+  `adaptive-icon.png`, `favicon.png`) are not real images — `cat assets/icon.png` outputs the
+  literal text `placeholder` (11 bytes). `expo prebuild`/EAS build will fail parsing these as
+  PNGs, another blocker for the "prebuild succeeding" acceptance check.
+- [PASS] Minimal MapView code exists — `app/index.tsx` renders
+  `MapLibreGL.MapView` with `styleURL="https://demotiles.maplibre.org/style.json"` (an open
+  MapLibre demo style, no paid tiles), satisfying the code-level intent of the requirement,
+  though it has never been proven to actually build/run (see FAILs above).
+- [PASS] `docs/DEV_SETUP.md` content is reasonable and covers install/prebuild/run steps for
+  both platforms — but the file itself is uncommitted (see first FAIL).
+
+Process evidence: `logs/activity.log` shows the worker run hit
+`MAX-TURNS-EXHAUSTED: ran worker (haiku) cost=$0.11 subtype=error_max_turns — treating as
+complete (verify output before trusting this run...)` — the run was cut off mid-task, not
+completed, and the pipeline auto-marked it "complete" only because turns ran out. This
+matches what's on disk: plausible-looking source files were generated but the mechanical,
+required steps (npm install, tsc --noEmit, expo prebuild, git add/commit) were never run.
+
+## Gaps to close
+1. Run `npm install` and commit the resulting lockfile; fix `tsconfig.json` (remove the
+   dangling `tsconfig.app.json` reference or add that file) so `npx tsc --noEmit` passes.
+2. Replace the placeholder asset files with real PNGs (or remove them from app.json until
+   real assets exist) so `expo prebuild` doesn't choke on invalid images.
+3. Run `expo prebuild --no-install` (or `expo prebuild`) to generate `ios/` and `android/`
+   native projects, and confirm it completes without error.
+4. `git add` and commit package.json, app.json, tsconfig.json, app.tsx, app/, assets/,
+   docs/DEV_SETUP.md, and the generated ios/android project files — nothing is committed
+   right now, so a clean checkout has none of this scaffolding.
