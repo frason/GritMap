@@ -2,6 +2,16 @@ export interface RidePoint {
   lat: number;
   lng: number;
   timestampMs: number;
+  /**
+   * Identity of this point in its original source array — the parsed FIT record index,
+   * which is also the persisted `ride_points.point_index` once the ride is imported.
+   * Callers that remove non-GPS records before calling `matchSegment` MUST carry the
+   * original index forward here (see `toMatcherRidePoints`) so `MatchCandidate.startPointIndex`
+   * / `endPointIndex` keep identifying the correct database row even after filtering.
+   * Defaults to the point's position within the `ride` array when omitted, which is only
+   * correct if `ride` has not been filtered or reordered relative to its source.
+   */
+  sourcePointIndex?: number;
 }
 
 export interface ReferencePoint {
@@ -21,7 +31,9 @@ export type MatchDecision = "accept" | "borderline" | "reject";
 
 export interface MatchCandidate {
   decision: MatchDecision;
+  /** `RidePoint.sourcePointIndex` (or array position if omitted) of the first matched point. */
   startPointIndex: number;
+  /** `RidePoint.sourcePointIndex` (or array position if omitted) of the last matched point. */
   endPointIndex: number;
   coveragePct: number;
   maxBackwardMeters: number;
@@ -177,8 +189,8 @@ function evaluateForward(
     if (maximumBackward > MAX_BACKWARD_METERS) {
       return createCandidate({
         decision: "reject",
-        startPointIndex: startIndex,
-        endPointIndex: index,
+        startPointIndex: sourceIndexOf(ride, startIndex),
+        endPointIndex: sourceIndexOf(ride, index),
         coveragePct: totalLength > 0 ? Math.min(1, maximumProgress / totalLength) : 0,
         maxBackwardMeters: maximumBackward,
         maxGapMs: maximumGap,
@@ -200,8 +212,8 @@ function evaluateForward(
       if (significantDetour) {
         return createCandidate({
           decision: "reject",
-          startPointIndex: startIndex,
-          endPointIndex: index,
+          startPointIndex: sourceIndexOf(ride, startIndex),
+          endPointIndex: sourceIndexOf(ride, index),
           coveragePct,
           maxBackwardMeters: maximumBackward,
           maxGapMs: maximumGap,
@@ -219,8 +231,8 @@ function evaluateForward(
 
       return createCandidate({
         decision: reasons.length === 0 ? "accept" : "borderline",
-        startPointIndex: startIndex,
-        endPointIndex: index,
+        startPointIndex: sourceIndexOf(ride, startIndex),
+        endPointIndex: sourceIndexOf(ride, index),
         coveragePct,
         maxBackwardMeters: maximumBackward,
         maxGapMs: maximumGap,
@@ -270,8 +282,8 @@ function findReverseTraversals(
       const gapStats = timestampGapStats(ride, start, end);
       results.push(createCandidate({
         decision: "reject",
-        startPointIndex: start,
-        endPointIndex: end,
+        startPointIndex: sourceIndexOf(ride, start),
+        endPointIndex: sourceIndexOf(ride, end),
         coveragePct: calculateCoverage(points, referenceXY, segment.corridorMeters),
         maxBackwardMeters: totalLength,
         maxGapMs: gapStats.maxGapMs,
@@ -448,6 +460,11 @@ function roundScore(value: number): number {
   return Math.round(clamp01(value) * 1_000_000) / 1_000_000;
 }
 
+/** Resolves the original source-array identity for a ride index, per `RidePoint.sourcePointIndex`. */
+function sourceIndexOf(ride: readonly RidePoint[], index: number): number {
+  return ride[index].sourcePointIndex ?? index;
+}
+
 function toXY(point: { lat: number; lng: number }, origin: { lat: number; lng: number }): XY {
   const latitudeRadians = ((point.lat + origin.lat) / 2) * (Math.PI / 180);
   return {
@@ -470,6 +487,14 @@ function validateInputs(ride: readonly RidePoint[], segment: SegmentDefinition):
   for (const point of [...ride, ...segment.referencePolyline]) {
     if (!Number.isFinite(point.lat) || !Number.isFinite(point.lng)) {
       throw new Error("Coordinates must be finite");
+    }
+  }
+  for (const point of ride) {
+    if (
+      point.sourcePointIndex !== undefined &&
+      (!Number.isInteger(point.sourcePointIndex) || point.sourcePointIndex < 0)
+    ) {
+      throw new Error("sourcePointIndex must be a non-negative integer");
     }
   }
 }
