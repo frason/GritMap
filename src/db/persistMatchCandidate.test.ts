@@ -114,6 +114,9 @@ describe("persistMatchCandidate", () => {
     const candidate = matchCandidate("accept");
 
     persistMatchCandidate(database, candidate, context("attempt-first"));
+    const before = { ...database.prepare(
+      "SELECT * FROM segment_attempts WHERE id = 'attempt-first'",
+    ).get() };
     const duplicate = persistMatchCandidate(
       database,
       candidate,
@@ -122,6 +125,219 @@ describe("persistMatchCandidate", () => {
 
     assert.deepEqual(duplicate, { status: "duplicate", attemptId: "attempt-first" });
     assert.equal(count(database, "segment_attempts"), 1);
+    assert.equal(count(database, "match_diagnostics"), 1);
+    assert.deepEqual({ ...database.prepare(
+      "SELECT * FROM segment_attempts WHERE id = 'attempt-first'",
+    ).get() }, before);
+  });
+
+  it("treats more than 50% overlap as the same physical traversal", () => {
+    using database = createDatabase();
+    const first = matchCandidate("accept", {
+      startPointIndex: 10,
+      endPointIndex: 20,
+    });
+    const overlapping = matchCandidate("accept", {
+      startPointIndex: 15,
+      endPointIndex: 25,
+    });
+
+    persistMatchCandidate(database, first, contextFor("attempt-first", 10, 20));
+    const result = persistMatchCandidate(
+      database,
+      overlapping,
+      contextFor("attempt-overlap", 15, 25),
+    );
+
+    assert.deepEqual(result, { status: "duplicate", attemptId: "attempt-first" });
+    assert.equal(count(database, "segment_attempts"), 1);
+  });
+
+  it("treats exactly 50% overlap as separate traversals", () => {
+    using database = createDatabase();
+    const first = matchCandidate("accept", {
+      startPointIndex: 10,
+      endPointIndex: 19,
+    });
+    const halfOverlap = matchCandidate("accept", {
+      startPointIndex: 15,
+      endPointIndex: 24,
+    });
+
+    persistMatchCandidate(database, first, contextFor("attempt-first", 10, 19));
+    persistMatchCandidate(database, halfOverlap, contextFor("attempt-half", 15, 24));
+
+    assert.equal(count(database, "segment_attempts"), 2);
+  });
+
+  it("does not collapse traversals that share only one endpoint", () => {
+    using database = createDatabase();
+    persistMatchCandidate(
+      database,
+      matchCandidate("accept", { startPointIndex: 10, endPointIndex: 20 }),
+      contextFor("attempt-first", 10, 20),
+    );
+    persistMatchCandidate(
+      database,
+      matchCandidate("accept", { startPointIndex: 20, endPointIndex: 30 }),
+      contextFor("attempt-second", 20, 30),
+    );
+
+    assert.equal(count(database, "segment_attempts"), 2);
+  });
+
+  it("persists multiple back-to-back laps in the same ride", () => {
+    using database = createDatabase();
+    for (let lap = 0; lap < 3; lap += 1) {
+      const start = lap * 10;
+      const end = start + 10;
+      persistMatchCandidate(
+        database,
+        matchCandidate("accept", { startPointIndex: start, endPointIndex: end }),
+        contextFor(`lap-${lap}`, start, end),
+      );
+    }
+
+    assert.equal(count(database, "segment_attempts"), 3);
+  });
+
+  it("refreshes an overlapping automatic result from a newer matcher version", () => {
+    using database = createDatabase();
+    persistMatchCandidate(
+      database,
+      matchCandidate("accept", {
+        startPointIndex: 10,
+        endPointIndex: 20,
+        matcherVersion: 1,
+        confidenceScore: 0.7,
+      }),
+      contextFor("attempt-original", 10, 20),
+    );
+    const refreshed = matchCandidate("borderline", {
+      startPointIndex: 15,
+      endPointIndex: 25,
+      matcherVersion: 2,
+      confidenceScore: 0.55,
+      medianDeviationMeters: 12,
+      reasons: ["gps-gap"],
+    });
+
+    const result = persistMatchCandidate(
+      database,
+      refreshed,
+      contextFor("attempt-new-id", 15, 25),
+    );
+
+    assert.deepEqual(result, { status: "updated", attemptId: "attempt-original" });
+    assert.deepEqual({ ...database.prepare(`
+      SELECT id, start_point_index, end_point_index, start_timestamp_ms,
+             end_timestamp_ms, matcher_version, confidence_score, decision
+      FROM segment_attempts
+    `).get() }, {
+      id: "attempt-original",
+      start_point_index: 15,
+      end_point_index: 25,
+      start_timestamp_ms: NOW + 15_000,
+      end_timestamp_ms: NOW + 25_000,
+      matcher_version: 2,
+      confidence_score: 0.55,
+      decision: "borderline",
+    });
+    assert.deepEqual({ ...database.prepare(`
+      SELECT median_deviation_meters, confidence_score, reasons_json
+      FROM match_diagnostics WHERE attempt_id = 'attempt-original'
+    `).get() }, {
+      median_deviation_meters: 12,
+      confidence_score: 0.55,
+      reasons_json: '["gps-gap"]',
+    });
+  });
+
+  it("never changes a manually approved attempt during a newer rescan", () => {
+    using database = createDatabase();
+    persistMatchCandidate(
+      database,
+      matchCandidate("accept", {
+        startPointIndex: 10,
+        endPointIndex: 20,
+        matcherVersion: 1,
+      }),
+      contextFor("attempt-manual", 10, 20),
+    );
+    database.prepare(
+      "UPDATE segment_attempts SET manually_approved = 1 WHERE id = 'attempt-manual'",
+    ).run();
+    const beforeAttempt = { ...database.prepare(
+      "SELECT * FROM segment_attempts WHERE id = 'attempt-manual'",
+    ).get() };
+    const beforeDiagnostic = { ...database.prepare(
+      "SELECT * FROM match_diagnostics WHERE attempt_id = 'attempt-manual'",
+    ).get() };
+
+    const result = persistMatchCandidate(
+      database,
+      matchCandidate("borderline", {
+        startPointIndex: 15,
+        endPointIndex: 25,
+        matcherVersion: 2,
+        confidenceScore: 0.2,
+        reasons: ["gps-gap"],
+      }),
+      contextFor("attempt-new-id", 15, 25),
+    );
+
+    assert.deepEqual(result, { status: "duplicate", attemptId: "attempt-manual" });
+    assert.deepEqual({ ...database.prepare(
+      "SELECT * FROM segment_attempts WHERE id = 'attempt-manual'",
+    ).get() }, beforeAttempt);
+    assert.deepEqual({ ...database.prepare(
+      "SELECT * FROM match_diagnostics WHERE attempt_id = 'attempt-manual'",
+    ).get() }, beforeDiagnostic);
+  });
+
+  it("removes an automatic attempt when a newer matcher rejects it", () => {
+    using database = createDatabase();
+    persistMatchCandidate(
+      database,
+      matchCandidate("accept", { matcherVersion: 1 }),
+      context("attempt-automatic"),
+    );
+
+    const result = persistMatchCandidate(
+      database,
+      matchCandidate("reject", { matcherVersion: 2 }),
+      context("unused-new-id"),
+    );
+
+    assert.deepEqual(result, { status: "removed", attemptId: "attempt-automatic" });
+    assert.equal(count(database, "segment_attempts"), 0);
+    assert.equal(count(database, "match_diagnostics"), 0);
+  });
+
+  it("preserves a manually approved attempt when a newer matcher rejects it", () => {
+    using database = createDatabase();
+    persistMatchCandidate(
+      database,
+      matchCandidate("accept", { matcherVersion: 1 }),
+      context("attempt-manual"),
+    );
+    database.prepare(
+      "UPDATE segment_attempts SET manually_approved = 1 WHERE id = 'attempt-manual'",
+    ).run();
+    const before = { ...database.prepare(
+      "SELECT * FROM segment_attempts WHERE id = 'attempt-manual'",
+    ).get() };
+
+    const result = persistMatchCandidate(
+      database,
+      matchCandidate("reject", { matcherVersion: 2 }),
+      context("unused-new-id"),
+    );
+
+    assert.deepEqual(result, { status: "duplicate", attemptId: "attempt-manual" });
+    assert.deepEqual({ ...database.prepare(
+      "SELECT * FROM segment_attempts WHERE id = 'attempt-manual'",
+    ).get() }, before);
     assert.equal(count(database, "match_diagnostics"), 1);
   });
 
@@ -248,7 +464,7 @@ function createDatabase(): DatabaseSync {
     INSERT INTO ride_points (ride_id, point_index, timestamp_ms, latitude, longitude)
     VALUES ('ride-1', ?, ?, 0, ?)
   `);
-  for (let index = 0; index < 5; index += 1) {
+  for (let index = 0; index <= 100; index += 1) {
     insertPoint.run(index, NOW + index * 1_000, index / 100_000);
   }
   return database;
@@ -281,6 +497,17 @@ function context(attemptId: string) {
     segmentId: "segment-1",
     rideId: "ride-1",
     createdAtMs: NOW + 10_000,
+  };
+}
+
+function contextFor(attemptId: string, startPointIndex: number, endPointIndex: number) {
+  return {
+    attemptId,
+    segmentId: "segment-1",
+    rideId: "ride-1",
+    startTimestampMs: NOW + startPointIndex * 1_000,
+    endTimestampMs: NOW + endPointIndex * 1_000,
+    createdAtMs: NOW + 200_000,
   };
 }
 
