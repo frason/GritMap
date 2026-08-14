@@ -12,8 +12,6 @@ export interface PersistMatchContext {
   attemptId: string;
   segmentId: string;
   rideId: string;
-  startTimestampMs: number;
-  endTimestampMs: number;
   createdAtMs: number;
   manuallyApproved?: boolean;
 }
@@ -27,6 +25,11 @@ export type PersistMatchResult =
  * Persists a reviewable or accepted traversal and its one-to-one diagnostics atomically.
  * Rejects are intentionally ignored. An overlapping traversal for the same ride and
  * segment is treated as the same physical attempt and the existing row is kept unchanged.
+ *
+ * `candidate.startPointIndex` / `endPointIndex` are `ride_points.point_index` identities
+ * (see `matchSegment`'s `sourcePointIndex` contract). Boundary timestamps are always read
+ * directly from those `ride_points` rows rather than trusted from the caller, so a persisted
+ * attempt can never disagree with the row it is keyed to.
  */
 export function persistMatchCandidate(
   database: MatchPersistenceDatabase,
@@ -37,6 +40,17 @@ export function persistMatchCandidate(
 
   database.exec("BEGIN IMMEDIATE");
   try {
+    const startTimestampMs = readRidePointTimestampMs(
+      database,
+      context.rideId,
+      candidate.startPointIndex,
+    );
+    const endTimestampMs = readRidePointTimestampMs(
+      database,
+      context.rideId,
+      candidate.endPointIndex,
+    );
+
     const overlapping = database.prepare(`
       SELECT id
       FROM segment_attempts
@@ -79,8 +93,8 @@ export function persistMatchCandidate(
       context.rideId,
       candidate.startPointIndex,
       candidate.endPointIndex,
-      context.startTimestampMs,
-      context.endTimestampMs,
+      startTimestampMs,
+      endTimestampMs,
       candidate.matcherVersion,
       candidate.confidenceScore,
       candidate.decision,
@@ -120,4 +134,28 @@ export function persistMatchCandidate(
     database.exec("ROLLBACK");
     throw error;
   }
+}
+
+/**
+ * Reads the timestamp of the `ride_points` row identified by `pointIndex`, the same row the
+ * `segment_attempts` FK constraints require to exist. Throws (rolling back the caller's
+ * transaction) instead of persisting an attempt whose boundary cannot be verified.
+ */
+function readRidePointTimestampMs(
+  database: MatchPersistenceDatabase,
+  rideId: string,
+  pointIndex: number,
+): number {
+  const row = database.prepare(`
+    SELECT timestamp_ms
+    FROM ride_points
+    WHERE ride_id = ? AND point_index = ?
+  `).get(rideId, pointIndex) as { timestamp_ms?: number } | undefined;
+
+  if (row?.timestamp_ms === undefined) {
+    throw new Error(
+      `No ride_points row for ride ${rideId} at point_index ${pointIndex}; cannot persist match boundary`,
+    );
+  }
+  return row.timestamp_ms;
 }

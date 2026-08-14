@@ -5,9 +5,9 @@ import {
   matchSegment,
   type MatchCandidate,
   type ReferencePoint,
-  type RidePoint,
   type SegmentDefinition,
 } from "../src/matcher/matchSegment.ts";
+import { toMatcherRidePoints } from "../src/matcher/toMatcherRidePoints.ts";
 
 const DEFAULT_REFERENCE_FILE = "fixtures/fit/Karoo-Morning_Ride-2026-08-02-0837.fit";
 const DEFAULT_COMPARISON_FILE = "fixtures/fit/Karoo-Morning_Ride-2026-08-09-0844.fit";
@@ -28,8 +28,11 @@ const referenceGps = gpsPoints(referenceRide.points);
 const comparisonGps = gpsPoints(comparisonRide.points);
 const segment = buildSegment(referenceGps);
 
-const selfMatches = matchSegment(asRidePoints(referenceGps), segment);
-const crossRideMatches = matchSegment(asRidePoints(comparisonGps), segment);
+// Matcher input is built through the production mapping so the returned candidate
+// boundaries stay identified by original parsed-record index (== ride_points.point_index
+// once imported), even though records without GPS were removed before matching.
+const selfMatches = matchSegment(toMatcherRidePoints(referenceRide.points), segment);
+const crossRideMatches = matchSegment(toMatcherRidePoints(comparisonRide.points), segment);
 
 console.log(
   JSON.stringify(
@@ -128,10 +131,6 @@ function gpsPoints(points: ParsedPoint[]): GpsParsedPoint[] {
       point.lng !== undefined &&
       point.distanceMeters !== undefined,
   );
-}
-
-function asRidePoints(points: GpsParsedPoint[]): RidePoint[] {
-  return points.map(({ lat, lng, timestampMs }) => ({ lat, lng, timestampMs }));
 }
 
 function summarize(candidates: MatchCandidate[]): Record<string, unknown> {
