@@ -1,50 +1,56 @@
 FAILED
 
-Claimed (issue #1): create-expo-app/prebuild scaffold w/ dev build, iOS+Android native
-project files, expo-sqlite + @maplibre/maplibre-react-native installed & wired, a minimal
-MapView screen with OSM tile source, and dev-setup docs — all committed.
+Claimed (issue #1): minimal Expo TS scaffold — package.json, lockfile, app.json,
+tsconfig.json (no dangling tsconfig.app.json reference), real PNG assets, app entry file
+— installed, `tsc --noEmit` clean, all committed to the repo, `git status --porcelain`
+clean.
 
-- [FAIL] "package.json, app.json, tsconfig, native project files (ios/, android/) exist
-  and are committed" — `git status --porcelain` shows package.json, app.json, tsconfig.json,
-  app.tsx, app/, assets/, docs/DEV_SETUP.md are all `??` (untracked). `git log --oneline`
-  shows only the original bootstrap commit `9202cba`; zero new commits exist. Nothing from
-  this issue is committed.
-- [FAIL] "native project files (ios/, android/) exist" — `find . -iname ios -o -iname
-  android` returns nothing; `expo prebuild` was never run, so no native projects exist at all.
-- [FAIL] "expo-sqlite and @maplibre/maplibre-react-native installed and imported without
-  build errors, verify via `npx tsc --noEmit` and/or `expo prebuild --no-install`" — neither
-  check can pass: there is no `node_modules/` and no lockfile (package-lock.json/yarn.lock)
-  anywhere in the repo, meaning `npm install` was never actually executed by the worker.
-  `which tsc`/`which expo` both resolve to nothing locally, so no build verification was
-  ever performed before marking the issue done.
-- [FAIL] `tsconfig.json` references `"references": [{ "path": "./tsconfig.app.json" }]` but
-  that file does not exist anywhere in the repo (`ls tsconfig.app.json` → No such file or
-  directory). `tsc -b`/project-reference resolution would fail immediately even after install.
-- [FAIL] Asset files referenced by app.json (`assets/icon.png`, `splash.png`,
-  `adaptive-icon.png`, `favicon.png`) are not real images — `cat assets/icon.png` outputs the
-  literal text `placeholder` (11 bytes). `expo prebuild`/EAS build will fail parsing these as
-  PNGs, another blocker for the "prebuild succeeding" acceptance check.
-- [PASS] Minimal MapView code exists — `app/index.tsx` renders
-  `MapLibreGL.MapView` with `styleURL="https://demotiles.maplibre.org/style.json"` (an open
-  MapLibre demo style, no paid tiles), satisfying the code-level intent of the requirement,
-  though it has never been proven to actually build/run (see FAILs above).
-- [PASS] `docs/DEV_SETUP.md` content is reasonable and covers install/prebuild/run steps for
-  both platforms — but the file itself is uncommitted (see first FAIL).
-
-Process evidence: `logs/activity.log` shows the worker run hit
-`MAX-TURNS-EXHAUSTED: ran worker (haiku) cost=$0.11 subtype=error_max_turns — treating as
-complete (verify output before trusting this run...)` — the run was cut off mid-task, not
-completed, and the pipeline auto-marked it "complete" only because turns ran out. This
-matches what's on disk: plausible-looking source files were generated but the mechanical,
-required steps (npm install, tsc --noEmit, expo prebuild, git add/commit) were never run.
+- [FAIL] "new commit beyond bootstrap containing package.json/lockfile/app.json/
+  tsconfig.json/entry file/assets/" — On `main` (current branch, confirmed via
+  `git branch --show-current`), `git log --oneline -3` shows only
+  `fd65818 Raise soft budget cap...`, `b384eae Restore lead's inbox...`,
+  `82d64a8 Merge PR #16...` — no issue-#1 commit exists. `find . -maxdepth 2 -iname
+  app.json -o -iname tsconfig.json -o -iname package.json` returns nothing on main.
+  The scaffold does not exist on the branch that matters.
+- [FAIL] "git status --porcelain is clean, nothing untracked left over" — technically
+  true on main only because the work was never created there. The actual second-attempt
+  output (app.json, app.tsx, package.json, tsconfig.json, assets/*.png) was left
+  uncommitted and got swept into a `git stash` entry (`stash@{0}`, commit
+  927e4e7) that is sitting orphaned on unrelated branch
+  `agent/issue-8-directed-matcher`. It is not part of any real commit history a
+  clean checkout would see.
+- [FAIL] "npm install run, npx tsc --noEmit exits 0" — no `node_modules/` exists
+  anywhere in the working tree (`ls node_modules` → No such file or directory) and no
+  lockfile exists even inside the stashed untracked-files commit
+  (`git show --stat 927e4e7 | grep -i lock` → empty). `npm install` was never actually
+  executed by either worker attempt, so `tsc --noEmit` was never proven to pass.
+- [FAIL] "npx expo --version succeeds" — cannot succeed; no dependencies installed,
+  confirmed by absent node_modules and absent lockfile above.
+- [FAIL] tsconfig.json dangling reference — moot since tsconfig.json isn't committed
+  anywhere real, but even the stashed copy (`git show 927e4e7:tsconfig.json`) is fine
+  (no `references` array), so this specific sub-item would have passed if committed.
+- Prior WIP branch `agent/issue-1-scaffold-wip` (commit 487f358, pre-dates this rescoped
+  issue) still has the original bug flagged by the prior Karen verdict: `assets/icon.png`
+  is literal text `placeholder` (`git show agent/issue-1-scaffold-wip:assets/icon.png |
+  od -c` → `p l a c e h o l d e r`), not a real PNG — that branch was not what this run
+  produced and is also not merged to main.
+- Activity log evidence (`logs/activity.log`): second worker run for issue #1 shows
+  `MAX-TURNS-EXHAUSTED: ran worker (haiku) cost=$0.0722204 subtype=error_max_turns —
+  treating as complete`, then immediately `issue #1 complete — moved to agent-review`.
+  The pipeline auto-marked it done purely because turns ran out, matching the exact
+  failure mode called out in the issue's own Context section.
 
 ## Gaps to close
-1. Run `npm install` and commit the resulting lockfile; fix `tsconfig.json` (remove the
-   dangling `tsconfig.app.json` reference or add that file) so `npx tsc --noEmit` passes.
-2. Replace the placeholder asset files with real PNGs (or remove them from app.json until
-   real assets exist) so `expo prebuild` doesn't choke on invalid images.
-3. Run `expo prebuild --no-install` (or `expo prebuild`) to generate `ios/` and `android/`
-   native projects, and confirm it completes without error.
-4. `git add` and commit package.json, app.json, tsconfig.json, app.tsx, app/, assets/,
-   docs/DEV_SETUP.md, and the generated ios/android project files — nothing is committed
-   right now, so a clean checkout has none of this scaffolding.
+1. Materialize the stashed scaffold (or regenerate cleanly with
+   `npx create-expo-app@latest . --template blank-typescript`) directly on `main` (or a
+   PR branch merged to main) — not left as an untracked/stashed working-tree state.
+2. Run `npm install` and commit the resulting lockfile (package-lock.json or yarn.lock);
+   currently no lockfile exists anywhere, including the stash.
+3. Run `npx tsc --noEmit` and confirm exit code 0 before committing; currently
+   unverifiable since dependencies were never installed.
+4. `git add`/`git commit` package.json, the lockfile, app.json, tsconfig.json, the app
+   entry file, and assets/ (with real PNG bytes, not placeholder text) so a fresh
+   `git log --oneline` on main shows the new commit and `git status --porcelain` is
+   clean with the files present, not clean-because-absent.
+5. Recover or discard the orphaned `git stash@{0}` on `agent/issue-8-directed-matcher`
+   before it's lost — it contains the only tangible output of the second attempt.
