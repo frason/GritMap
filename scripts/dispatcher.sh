@@ -38,6 +38,9 @@ cd "$ROOT"
 
 # load cron environment (PATH + CLAUDE_CODE_OAUTH_TOKEN / GH_TOKEN)
 if [ -f "$ROOT/.env" ]; then set -a; . "$ROOT/.env"; set +a; fi
+# PATH lives in a separate file, not .env -- Expo CLI refuses to load any .env file that
+# defines PATH, and .env is auto-scanned by every `expo`/`npx expo` command in this repo.
+if [ -f "$ROOT/.env.dispatcher-path" ]; then set -a; . "$ROOT/.env.dispatcher-path"; set +a; fi
 
 # ---- parse manual force flags ----
 force_lead=false

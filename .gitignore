@@ -1,5 +1,6 @@
 # Env / secrets
 .env
+.env.dispatcher-path
 
 # Agent-team local logs (regenerated per tick; not needed in version control)
 logs/
