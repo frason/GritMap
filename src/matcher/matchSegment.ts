@@ -27,6 +27,11 @@ export interface MatchCandidate {
   maxBackwardMeters: number;
   maxGapMs: number;
   maxDeviationMeters: number;
+  medianDeviationMeters: number;
+  /** Diagnostic confidence score in [0, 1]; higher is more trustworthy. */
+  confidence: number;
+  /** Matcher algorithm version active when this candidate was produced. */
+  matcherVersion: number;
   reasons: string[];
 }
 
@@ -34,6 +39,24 @@ const EARTH_RADIUS_METERS = 6_371_008.8;
 const MAX_BACKWARD_METERS = 30;
 const MAX_GAP_MS = 30_000;
 const DUPLICATE_OVERLAP_THRESHOLD = 0.5;
+
+/**
+ * Bumped whenever the matching algorithm's inputs/outputs or decision logic change.
+ * Persisted with every decision so a later reevaluation pass can find and re-run
+ * candidates that were produced under an older version.
+ */
+export const MATCHER_VERSION = 1;
+
+/** Relative weights used to blend confidence sub-scores. Must sum to 1. */
+const CONFIDENCE_WEIGHTS = {
+  coverage: 0.35,
+  direction: 0.25,
+  corridor: 0.15,
+  backward: 0.15,
+  continuity: 0.1,
+} as const;
+
+const DIRECTION_FAILURE_REASONS = new Set(["reverse-traversal", "different-route"]);
 
 interface XY {
   x: number;
@@ -45,7 +68,7 @@ interface Projection {
   progressMeters: number;
 }
 
-interface EvaluatedCandidate extends MatchCandidate {
+interface EvaluatedCandidate extends Omit<MatchCandidate, "confidence" | "matcherVersion"> {
   offCorridorTravelMeters: number;
 }
 
@@ -85,9 +108,46 @@ export function matchSegment(
   }
 
   const reverse = findReverseTraversals(ride, rideXY, referenceXY, segment, totalLength);
-  return deduplicate([...forward, ...reverse]).map(({ offCorridorTravelMeters: _, ...match }) =>
-    match,
+  return deduplicate([...forward, ...reverse]).map(({ offCorridorTravelMeters: _, ...match }) => ({
+    ...match,
+    confidence: calculateConfidence(match, segment),
+    matcherVersion: MATCHER_VERSION,
+  }));
+}
+
+/**
+ * Diagnostic confidence score in [0, 1] blending route coverage, direction/order
+ * correctness, corridor (perpendicular) distance, backward projected movement, and
+ * GPS continuity. Used for advanced review triage, not for the accept/borderline/reject
+ * decision itself (that remains rule-based above).
+ */
+export function calculateConfidence(
+  candidate: Pick<
+    MatchCandidate,
+    "coveragePct" | "maxDeviationMeters" | "maxBackwardMeters" | "maxGapMs" | "reasons"
+  >,
+  segment: Pick<SegmentDefinition, "corridorMeters">,
+): number {
+  const coverageScore = clamp01(candidate.coveragePct);
+  const directionScore = candidate.reasons.some((reason) => DIRECTION_FAILURE_REASONS.has(reason))
+    ? 0
+    : 1;
+  const corridorScore = clamp01(1 - candidate.maxDeviationMeters / (segment.corridorMeters * 2));
+  const backwardScore = clamp01(1 - candidate.maxBackwardMeters / MAX_BACKWARD_METERS);
+  const continuityScore = clamp01(1 - candidate.maxGapMs / (MAX_GAP_MS * 2));
+
+  return clamp01(
+    coverageScore * CONFIDENCE_WEIGHTS.coverage +
+      directionScore * CONFIDENCE_WEIGHTS.direction +
+      corridorScore * CONFIDENCE_WEIGHTS.corridor +
+      backwardScore * CONFIDENCE_WEIGHTS.backward +
+      continuityScore * CONFIDENCE_WEIGHTS.continuity,
   );
+}
+
+function clamp01(value: number): number {
+  if (!Number.isFinite(value)) return 0;
+  return Math.max(0, Math.min(1, value));
 }
 
 function evaluateForward(
@@ -105,6 +165,7 @@ function evaluateForward(
   let offCorridorTravel = 0;
   let previousIndex = startIndex;
   const projections: Projection[] = [];
+  const deviations: number[] = [];
 
   for (let index = startIndex; index < ride.length; index += 1) {
     const projection = projectOntoPolyline(
@@ -113,6 +174,7 @@ function evaluateForward(
       segment.referencePolyline,
     );
     projections.push(projection);
+    deviations.push(projection.deviationMeters);
     maximumDeviation = Math.max(maximumDeviation, projection.deviationMeters);
 
     if (index > startIndex) {
@@ -126,9 +188,15 @@ function evaluateForward(
     maximumBackward = Math.max(maximumBackward, maximumProgress - projection.progressMeters);
 
     if (maximumBackward > MAX_BACKWARD_METERS) {
-      return reject(startIndex, index, maximumBackward, maximumGap, maximumDeviation, [
-        "backward-progress",
-      ]);
+      return reject(
+        startIndex,
+        index,
+        maximumBackward,
+        maximumGap,
+        maximumDeviation,
+        median(deviations),
+        ["backward-progress"],
+      );
     }
 
     if (isAtEnd(rideXY[index], referenceXY.at(-1)!, projection, totalLength, segment)) {
@@ -139,9 +207,17 @@ function evaluateForward(
         maximumDeviation > segment.corridorMeters * 2;
 
       if (significantDetour) {
-        return reject(startIndex, index, maximumBackward, maximumGap, maximumDeviation, [
-          "different-route",
-        ], coveragePct, offCorridorTravel);
+        return reject(
+          startIndex,
+          index,
+          maximumBackward,
+          maximumGap,
+          maximumDeviation,
+          median(deviations),
+          ["different-route"],
+          coveragePct,
+          offCorridorTravel,
+        );
       }
 
       const reasons: string[] = [];
@@ -156,6 +232,7 @@ function evaluateForward(
         maxBackwardMeters: maximumBackward,
         maxGapMs: maximumGap,
         maxDeviationMeters: maximumDeviation,
+        medianDeviationMeters: median(deviations),
         reasons,
         offCorridorTravelMeters: offCorridorTravel,
       };
@@ -193,9 +270,15 @@ function findReverseTraversals(
       if (endProjection.progressMeters > segment.corridorMeters) continue;
 
       results.push(
-        reject(start, end, totalLength, maxTimestampGap(ride, start, end), 0, [
-          "reverse-traversal",
-        ]),
+        reject(
+          start,
+          end,
+          totalLength,
+          maxTimestampGap(ride, start, end),
+          0,
+          0,
+          ["reverse-traversal"],
+        ),
       );
       break;
     }
@@ -293,6 +376,7 @@ function reject(
   maxBackwardMeters: number,
   maxGapMs: number,
   maxDeviationMeters: number,
+  medianDeviationMeters: number,
   reasons: string[],
   coveragePct = 0,
   offCorridorTravelMeters = 0,
@@ -305,6 +389,7 @@ function reject(
     maxBackwardMeters,
     maxGapMs,
     maxDeviationMeters,
+    medianDeviationMeters,
     reasons,
     offCorridorTravelMeters,
   };
@@ -316,6 +401,13 @@ function maxTimestampGap(ride: readonly RidePoint[], start: number, end: number)
     maximum = Math.max(maximum, ride[index].timestampMs - ride[index - 1].timestampMs);
   }
   return maximum;
+}
+
+function median(values: readonly number[]): number {
+  if (values.length === 0) return 0;
+  const sorted = [...values].sort((a, b) => a - b);
+  const middle = Math.floor(sorted.length / 2);
+  return sorted.length % 2 === 0 ? (sorted[middle - 1] + sorted[middle]) / 2 : sorted[middle];
 }
 
 function toXY(point: { lat: number; lng: number }, origin: { lat: number; lng: number }): XY {

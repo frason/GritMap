@@ -1,7 +1,12 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 
-import { matchSegment, type RidePoint, type SegmentDefinition } from "./matchSegment.ts";
+import {
+  MATCHER_VERSION,
+  matchSegment,
+  type RidePoint,
+  type SegmentDefinition,
+} from "./matchSegment.ts";
 
 const METERS_PER_DEGREE = 111_195;
 
@@ -55,6 +60,43 @@ describe("matchSegment", () => {
     const accepted = result.filter((candidate) => candidate.decision === "accept");
     assert.equal(accepted.length, 2);
     assert.ok(accepted[0].endPointIndex < accepted[1].startPointIndex);
+  });
+
+  it("stamps every decision with the current matcher version", () => {
+    const results = [
+      ...matchSegment(lineRide(0, 100, 10), segment()),
+      ...matchSegment(lineRide(100, 0, -10), segment()),
+    ];
+    assert.ok(results.length > 0);
+    for (const candidate of results) {
+      assert.equal(candidate.matcherVersion, MATCHER_VERSION);
+    }
+  });
+
+  it("gives a clean accepted traversal high confidence", () => {
+    const result = matchSegment(lineRide(0, 100, 10), segment());
+    assert.equal(result[0]?.decision, "accept");
+    assert.ok(result[0]!.confidence > 0.9, `expected high confidence, got ${result[0]!.confidence}`);
+  });
+
+  it("gives a reverse traversal low confidence", () => {
+    const result = matchSegment(lineRide(100, 0, -10), segment());
+    assert.equal(result[0]?.decision, "reject");
+    assert.ok(result[0]!.confidence < 0.5, `expected low confidence, got ${result[0]!.confidence}`);
+  });
+
+  it("gives a borderline gps-gap traversal lower confidence than a clean one", () => {
+    const clean = matchSegment(lineRide(0, 100, 10), segment())[0]!;
+    const withGap = lineRide(0, 100, 10);
+    for (let index = 6; index < withGap.length; index += 1) withGap[index].timestampMs += 31_000;
+    const gappy = matchSegment(withGap, segment())[0]!;
+    assert.equal(gappy.decision, "borderline");
+    assert.ok(gappy.confidence < clean.confidence);
+  });
+
+  it("computes a median deviation no greater than the max deviation", () => {
+    const result = matchSegment(lineRide(0, 100, 10), segment())[0]!;
+    assert.ok(result.medianDeviationMeters <= result.maxDeviationMeters);
   });
 });
 
