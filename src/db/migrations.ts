@@ -144,6 +144,34 @@ export const migrations: readonly Migration[] = [
         ON segment_attempts(ride_id, start_point_index, end_point_index);
     `,
   },
+  {
+    version: 2,
+    name: "import_identity_and_retained_files",
+    sql: `
+      ALTER TABLE imported_files ADD COLUMN retained_file_uri TEXT;
+      ALTER TABLE imported_files ADD COLUMN file_size_bytes INTEGER
+        CHECK (file_size_bytes IS NULL OR file_size_bytes >= 0);
+
+      ALTER TABLE rides ADD COLUMN activity_id TEXT;
+      ALTER TABLE rides ADD COLUMN device_id TEXT;
+      ALTER TABLE rides ADD COLUMN duration_ms INTEGER
+        CHECK (duration_ms IS NULL OR duration_ms >= 0);
+      ALTER TABLE rides ADD COLUMN original_timezone_offset_minutes INTEGER
+        CHECK (
+          original_timezone_offset_minutes IS NULL OR
+          original_timezone_offset_minutes BETWEEN -1440 AND 1440
+        );
+      ALTER TABLE rides ADD COLUMN fit_metadata_json TEXT
+        CHECK (fit_metadata_json IS NULL OR json_valid(fit_metadata_json));
+
+      CREATE INDEX idx_rides_activity_id
+        ON rides(activity_id)
+        WHERE activity_id IS NOT NULL;
+      CREATE INDEX idx_rides_device_timing
+        ON rides(device_id, start_timestamp_ms, duration_ms)
+        WHERE device_id IS NOT NULL;
+    `,
+  },
 ];
 
 export function configureDatabaseConnection(database: MigrationDatabase): void {

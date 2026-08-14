@@ -2,7 +2,8 @@ import assert from "node:assert/strict";
 import { DatabaseSync } from "node:sqlite";
 import { describe, it } from "node:test";
 
-import { applyMigrations } from "./migrations.ts";
+import { applyMigrations, migrations } from "./migrations.ts";
+import { getRideIdentity } from "./getRideIdentity.ts";
 
 const CORE_TABLES = [
   "imported_files",
@@ -23,7 +24,16 @@ describe("SQLite migrations", () => {
       .map((row) => String(row.name));
 
     for (const table of CORE_TABLES) assert.ok(tables.includes(table), `missing ${table}`);
-    assert.equal(Number(database.prepare("PRAGMA user_version").get()?.user_version), 1);
+    assert.equal(Number(database.prepare("PRAGMA user_version").get()?.user_version), 2);
+
+    assertColumns(database, "imported_files", [
+      "id",
+      "sha256",
+      "original_filename",
+      "imported_at_ms",
+      "retained_file_uri",
+      "file_size_bytes",
+    ]);
 
     assertColumns(database, "rides", [
       "id",
@@ -33,6 +43,11 @@ describe("SQLite migrations", () => {
       "end_timestamp_ms",
       "created_at_ms",
       "updated_at_ms",
+      "activity_id",
+      "device_id",
+      "duration_ms",
+      "original_timezone_offset_minutes",
+      "fit_metadata_json",
     ]);
     assertColumns(database, "ride_points", [
       "ride_id",
@@ -62,6 +77,29 @@ describe("SQLite migrations", () => {
       "manually_approved",
       "created_at_ms",
     ]);
+    assert.deepEqual(
+      columnDefinitions(database, "imported_files", ["retained_file_uri", "file_size_bytes"]),
+      [
+        { name: "retained_file_uri", type: "TEXT", notnull: 0 },
+        { name: "file_size_bytes", type: "INTEGER", notnull: 0 },
+      ],
+    );
+    assert.deepEqual(
+      columnDefinitions(database, "rides", [
+        "activity_id",
+        "device_id",
+        "duration_ms",
+        "original_timezone_offset_minutes",
+        "fit_metadata_json",
+      ]),
+      [
+        { name: "activity_id", type: "TEXT", notnull: 0 },
+        { name: "device_id", type: "TEXT", notnull: 0 },
+        { name: "duration_ms", type: "INTEGER", notnull: 0 },
+        { name: "original_timezone_offset_minutes", type: "INTEGER", notnull: 0 },
+        { name: "fit_metadata_json", type: "TEXT", notnull: 0 },
+      ],
+    );
   });
 
   it("inserts a complete FK-respecting ride, segment, attempt, and diagnostic graph", () => {
@@ -155,6 +193,130 @@ describe("SQLite migrations", () => {
           ),
       /FOREIGN KEY constraint failed/,
     );
+  });
+
+  it("upgrades populated version-1 data without loss or fabricated metadata", () => {
+    using database = new DatabaseSync(":memory:");
+    applyMigrations(database, migrations.slice(0, 1));
+    insertRide(database, "legacy-ride", "legacy-file");
+
+    applyMigrations(database);
+
+    assert.equal(Number(database.prepare("PRAGMA user_version").get()?.user_version), 2);
+    assert.deepEqual({ ...database.prepare(`
+      SELECT rides.id, imported_files.original_filename,
+             imported_files.retained_file_uri, imported_files.file_size_bytes,
+             rides.activity_id, rides.device_id, rides.duration_ms,
+             rides.original_timezone_offset_minutes, rides.fit_metadata_json
+      FROM rides
+      JOIN imported_files ON imported_files.id = rides.imported_file_id
+      WHERE rides.id = 'legacy-ride'
+    `).get() }, {
+      id: "legacy-ride",
+      original_filename: "legacy-file.fit",
+      retained_file_uri: null,
+      file_size_bytes: null,
+      activity_id: null,
+      device_id: null,
+      duration_ms: null,
+      original_timezone_offset_minutes: null,
+      fit_metadata_json: null,
+    });
+    assert.equal(pointsForRide(database, "legacy-ride"), 3);
+  });
+
+  it("converts nullable stored identifiers to absent RideIdentity properties", () => {
+    using database = migratedDatabase();
+    insertRide(database, "ride-null-ids", "file-null-ids");
+    database.prepare(`
+      UPDATE rides
+      SET duration_ms = ?, activity_id = NULL, device_id = NULL
+      WHERE id = ?
+    `).run(2_000, "ride-null-ids");
+
+    assert.deepEqual(getRideIdentity(database, "ride-null-ids"), {
+      rideId: "ride-null-ids",
+      contentHash: hashFor("file-null-ids"),
+      startTimestampMs: 1_000,
+      durationMs: 2_000,
+    });
+    assert.equal(getRideIdentity(database, "missing-ride"), undefined);
+  });
+
+  it("uses the device and timing index for duplicate-candidate lookup", () => {
+    using database = migratedDatabase();
+    const index = database.prepare(`
+      SELECT sql FROM sqlite_master
+      WHERE type = 'index' AND name = 'idx_rides_device_timing'
+    `).get();
+    assert.ok(index);
+
+    const plan = database.prepare(`
+      EXPLAIN QUERY PLAN
+      SELECT id FROM rides
+      WHERE device_id = ?
+        AND start_timestamp_ms BETWEEN ? AND ?
+        AND duration_ms BETWEEN ? AND ?
+    `).all("device-1", 0, 10_000, 0, 10_000);
+    assert.ok(
+      plan.some((row) => String(row.detail).includes("idx_rides_device_timing")),
+      JSON.stringify(plan),
+    );
+  });
+
+  it("replaces file and ride identity metadata transactionally while preserving ride id", () => {
+    using database = migratedDatabase();
+    insertRide(database, "ride-replace", "file-replace");
+
+    database.exec("BEGIN IMMEDIATE");
+    database.prepare(`
+      UPDATE imported_files
+      SET sha256 = ?, original_filename = ?, retained_file_uri = ?, file_size_bytes = ?
+      WHERE id = ?
+    `).run("b".repeat(64), "replacement.fit", "file:///rides/replacement.fit", 12_345, "file-replace");
+    database.prepare(`
+      UPDATE rides
+      SET parser_version = ?, start_timestamp_ms = ?, end_timestamp_ms = ?,
+          activity_id = ?, device_id = ?, duration_ms = ?,
+          original_timezone_offset_minutes = ?, fit_metadata_json = ?, updated_at_ms = ?
+      WHERE id = ?
+    `).run(
+      2,
+      10_000,
+      25_000,
+      "activity-new",
+      "device-new",
+      15_000,
+      -420,
+      JSON.stringify({ devices: [{ serialNumber: "device-new" }] }),
+      30_000,
+      "ride-replace",
+    );
+    database.exec("COMMIT");
+
+    assert.deepEqual(getRideIdentity(database, "ride-replace"), {
+      rideId: "ride-replace",
+      contentHash: "b".repeat(64),
+      activityId: "activity-new",
+      deviceId: "device-new",
+      startTimestampMs: 10_000,
+      durationMs: 15_000,
+    });
+    assert.deepEqual({ ...database.prepare(`
+      SELECT rides.id, imported_files.original_filename,
+             imported_files.retained_file_uri, imported_files.file_size_bytes,
+             rides.original_timezone_offset_minutes, rides.fit_metadata_json
+      FROM rides
+      JOIN imported_files ON imported_files.id = rides.imported_file_id
+      WHERE rides.id = 'ride-replace'
+    `).get() }, {
+      id: "ride-replace",
+      original_filename: "replacement.fit",
+      retained_file_uri: "file:///rides/replacement.fit",
+      file_size_bytes: 12_345,
+      original_timezone_offset_minutes: -420,
+      fit_metadata_json: '{"devices":[{"serialNumber":"device-new"}]}',
+    });
   });
 });
 
@@ -252,6 +414,18 @@ function assertColumns(database: DatabaseSync, table: string, expected: string[]
     .all()
     .map((row) => String(row.name));
   assert.deepEqual(actual, expected);
+}
+
+function columnDefinitions(database: DatabaseSync, table: string, names: string[]) {
+  return database
+    .prepare(`PRAGMA table_info(${table})`)
+    .all()
+    .filter((row) => names.includes(String(row.name)))
+    .map((row) => ({
+      name: String(row.name),
+      type: String(row.type),
+      notnull: Number(row.notnull),
+    }));
 }
 
 function count(database: DatabaseSync, table: string): number {
