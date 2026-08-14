@@ -1,50 +1,43 @@
 FAILED
 
-Claimed (issue #1): create-expo-app/prebuild scaffold w/ dev build, iOS+Android native
-project files, expo-sqlite + @maplibre/maplibre-react-native installed & wired, a minimal
-MapView screen with OSM tile source, and dev-setup docs — all committed.
+Prerequisite check: matcher module IS on main (`git log --oneline main -- src/matcher`
+shows `33d8d2e Merge pull request #21 from frason/agent/issue-8-directed-matcher`), so the
+issue's stale blocker note does not apply — worker correctly proceeded.
 
-- [FAIL] "package.json, app.json, tsconfig, native project files (ios/, android/) exist
-  and are committed" — `git status --porcelain` shows package.json, app.json, tsconfig.json,
-  app.tsx, app/, assets/, docs/DEV_SETUP.md are all `??` (untracked). `git log --oneline`
-  shows only the original bootstrap commit `9202cba`; zero new commits exist. Nothing from
-  this issue is committed.
-- [FAIL] "native project files (ios/, android/) exist" — `find . -iname ios -o -iname
-  android` returns nothing; `expo prebuild` was never run, so no native projects exist at all.
-- [FAIL] "expo-sqlite and @maplibre/maplibre-react-native installed and imported without
-  build errors, verify via `npx tsc --noEmit` and/or `expo prebuild --no-install`" — neither
-  check can pass: there is no `node_modules/` and no lockfile (package-lock.json/yarn.lock)
-  anywhere in the repo, meaning `npm install` was never actually executed by the worker.
-  `which tsc`/`which expo` both resolve to nothing locally, so no build verification was
-  ever performed before marking the issue done.
-- [FAIL] `tsconfig.json` references `"references": [{ "path": "./tsconfig.app.json" }]` but
-  that file does not exist anywhere in the repo (`ls tsconfig.app.json` → No such file or
-  directory). `tsc -b`/project-reference resolution would fail immediately even after install.
-- [FAIL] Asset files referenced by app.json (`assets/icon.png`, `splash.png`,
-  `adaptive-icon.png`, `favicon.png`) are not real images — `cat assets/icon.png` outputs the
-  literal text `placeholder` (11 bytes). `expo prebuild`/EAS build will fail parsing these as
-  PNGs, another blocker for the "prebuild succeeding" acceptance check.
-- [PASS] Minimal MapView code exists — `app/index.tsx` renders
-  `MapLibreGL.MapView` with `styleURL="https://demotiles.maplibre.org/style.json"` (an open
-  MapLibre demo style, no paid tiles), satisfying the code-level intent of the requirement,
-  though it has never been proven to actually build/run (see FAILs above).
-- [PASS] `docs/DEV_SETUP.md` content is reasonable and covers install/prebuild/run steps for
-  both platforms — but the file itself is uncommitted (see first FAIL).
-
-Process evidence: `logs/activity.log` shows the worker run hit
-`MAX-TURNS-EXHAUSTED: ran worker (haiku) cost=$0.11 subtype=error_max_turns — treating as
-complete (verify output before trusting this run...)` — the run was cut off mid-task, not
-completed, and the pipeline auto-marked it "complete" only because turns ran out. This
-matches what's on disk: plausible-looking source files were generated but the mechanical,
-required steps (npm install, tsc --noEmit, expo prebuild, git add/commit) were never run.
+- [PASS] Confidence score + matcher version computed/stored on every decision — read
+  src/matcher/matchSegment.ts:48 (`MATCHER_VERSION = 1`), :124-146 (`calculateConfidence`
+  blends coverage/direction/corridor/backward/continuity per docs/MVP.md), :111-115 stamps
+  `confidence`/`matcherVersion` onto every returned candidate (accept/borderline/reject
+  alike). Verified via `node --test src/matcher/matchSegment.test.ts`: 11/11 pass, incl.
+  "stamps every decision with the current matcher version" and 3 confidence-ordering tests.
+- [PASS] Accepted/borderline persisted to segment_attempts w/ full diagnostics in
+  match_diagnostics; rejects get no attempt row — src/matcher/persistMatches.ts:184-250
+  (`persistMatchResults`). `node --test src/matcher/persistMatches.test.ts`: 5/5 pass, incl.
+  "does not create a segment_attempts row for a rejected candidate, but does write
+  diagnostics". SegmentAttemptRow uses start/end point index + timestamps, no GPS stream
+  copy (persistMatches.ts:10-27), matching MVP.md "Attempt and review model".
+- [PASS] Duplicate-run idempotency — persistMatches.ts:189-218 upserts keyed on
+  segmentId+rideId+start/end index (traversalKey). Test "does not duplicate rows when the
+  matcher runs twice on the same ride/segment" passes: attemptsCreated=1 then 0,
+  attemptsUpdated=1, `stores.attempts.all().length === 1` after 2 runs.
+- [FAIL] "Wire the matcher to run automatically whenever a segment is created (issue #7) or
+  a ride is imported/replaced (issue #5)" — not done. persistMatches.ts:255-263 comment
+  states plainly: "Neither of those trigger points exists in this codebase yet, so nothing
+  calls this automatically today." Confirmed independently: `find src -maxdepth 2 -type d`
+  shows only types/fit/matcher/comparison — no segment or ride-import module exists in the
+  repo at all (issues #5 and #7 are still "backlog" per state/STATUS.md "Up next"). This was
+  explicit scope in the issue's Context section, and without it the matcher never actually
+  runs against real data — `runMatcherAndPersist` is dead code today, callable only from
+  tests.
+- [FAIL] Required output file not written — GitHub issue #9 has two "Worker completed issue
+  #9 but did not write its output file" comments (2026-08-14T00:51Z and 01:34Z), confirming
+  the worker skipped the explicit "## Output" instruction twice.
 
 ## Gaps to close
-1. Run `npm install` and commit the resulting lockfile; fix `tsconfig.json` (remove the
-   dangling `tsconfig.app.json` reference or add that file) so `npx tsc --noEmit` passes.
-2. Replace the placeholder asset files with real PNGs (or remove them from app.json until
-   real assets exist) so `expo prebuild` doesn't choke on invalid images.
-3. Run `expo prebuild --no-install` (or `expo prebuild`) to generate `ios/` and `android/`
-   native projects, and confirm it completes without error.
-4. `git add` and commit package.json, app.json, tsconfig.json, app.tsx, app/, assets/,
-   docs/DEV_SETUP.md, and the generated ios/android project files — nothing is committed
-   right now, so a clean checkout has none of this scaffolding.
+1. The wiring requirement can't be completed until #5 and #7 exist — this should be
+   explicitly re-scoped/deferred (like the #8-on-PR-#21 blocker pattern already used in this
+   issue) rather than silently left as dead code with only a code comment noting it. Either
+   split it into a follow-up issue gated on #5/#7, or have the lead descope "wiring" out of
+   #9's Done-when-adjacent Context so future audits don't keep flagging it as missing scope.
+2. Have the worker write its `<=40 line>` summary to the designated output file as the issue
+   instructs, so the record on GitHub reflects what was actually delivered.
