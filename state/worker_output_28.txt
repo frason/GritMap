@@ -1,0 +1,29 @@
+## Summary
+
+Fixed dispatcher worktree hygiene by making `prepare_worker_branch()` resilient to uncommitted changes in `state/STATUS.md` and `state/verdict.txt`. Added defensive `git checkout --` to discard these snapshot files before branch operations.
+
+## Changes
+
+- **scripts/dispatcher.sh**: Added `git checkout -- state/STATUS.md state/verdict.txt 2>/dev/null || true` at the start of `prepare_worker_branch()` (line 251) to discard any dirty state before attempting branch checkouts. This prevents `git checkout` failures when budget_check.sh or karen verification leave these tracked files uncommitted.
+
+## Rationale
+
+The root cause was that `budget_check.sh` rewrites `state/STATUS.md` in place without committing (line 78 in budget_check.sh). When dispatcher ran on any non-base branch (e.g., a stray leftover `agent/issue-N-work` branch), this left STATUS.md dirty. The subsequent `git checkout` sequence in `prepare_worker_branch()` would then fail because git refuses to overwrite uncommitted changes.
+
+The fix is safe because both files are regenerated every tick:
+- `state/STATUS.md`: rewritten by budget_check.sh (line 70+)
+- `state/verdict.txt`: generated fresh by each karen verification (line 508-527)
+
+Neither file carries real task output that should be preserved.
+
+## Verification
+
+- No other `git checkout` operations outside `prepare_worker_branch()` found that could have the same issue.
+- `budget_check.sh` only reads and writes; it doesn't interact with branch preparation logic.
+- The fix uses `2>/dev/null || true` pattern to fail gracefully if files don't exist (e.g., on a new repo).
+
+## Testing performed
+
+- Confirmed dirty `state/STATUS.md` was present in working tree before fix
+- Verified that `git checkout -- state/STATUS.md state/verdict.txt` successfully discards changes
+- Confirmed both scripts have valid bash syntax (no parsing errors)
