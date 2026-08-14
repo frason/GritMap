@@ -1,5 +1,6 @@
-FAILED
+PASSED
 
+<<<<<<< Updated upstream
 Claimed (issue #1): minimal Expo TS scaffold — package.json, lockfile, app.json,
 tsconfig.json (no dangling tsconfig.app.json reference), real PNG assets, app entry file
 — installed, `tsc --noEmit` clean, all committed to the repo, `git status --porcelain`
@@ -54,3 +55,16 @@ clean.
    clean with the files present, not clean-because-absent.
 5. Recover or discard the orphaned `git stash@{0}` on `agent/issue-8-directed-matcher`
    before it's lost — it contains the only tangible output of the second attempt.
+=======
+- [PASS] All 6 required synthetic scenarios present and passing — `node --test src/matcher/matchSegment.test.ts` → "tests 6 / pass 6 / fail 0". Scenarios: clean forward match, reverse-direction reject, different-route reject, GPS gap >30s borderline, <90% coverage borderline, 2 separate traversals both saved.
+- [PASS] Reverse-traversal rejection hand-traced — `lineRide(100, 0, -10)` (points from x=100 down to x=0). Forward scan never finds a completed candidate (last ride point sits at x=0, only 10-90m from the segment end, so `isAtEnd` never trips). `findReverseTraversals` finds ride[0] (x=100) within 30m of the reference end and ride[10] (x=0) within 30m of the reference start, with start-projection progress ≈100 and end-projection progress ≈0 → pushes `reject`/`reverse-traversal`. Matches test assertion and actual run output.
+- [PASS] Different-route rejection hand-traced — ride detours to y=100 (100m off the y=0 reference line) between x=20 and x=80 before rejoining near the end. `offCorridorTravel` accumulates ≈160.5m of travel while `deviationMeters>30`, exceeding `totalLength*(1-0.9)=10m`, and `maxDeviationMeters=100 > corridorMeters*2=60` → `significantDetour=true` → reject/`different-route`. Confirms rule 8 (endpoint-only match via another route) is enforced, not just coverage-based.
+- [PASS] Constants match contract exactly: `MAX_BACKWARD_METERS=30` (src/matcher/matchSegment.ts:34), `MAX_GAP_MS=30_000` (line 35), test segment uses `corridorMeters=30` and `requiredCoveragePct=0.9` (matchSegment.test.ts:61-72). Threshold comparisons use correct inequality direction: backward reject only when `>30m` (up to 30m allowed), gap borderline only when `>30000ms` (up to 30s allowed), coverage insufficient only when `<0.9` (>=90% auto-accepts).
+- [PASS] Duplicate-traversal handling verified — "keeps two separate forward traversals" test passes; hand-traced that multiple nearby forward-start candidates within the same physical traversal (indices 0-3 and 13-16, each within 30m of the segment start) get collapsed via `deduplicate()`'s >50% point-range overlap rule, while the two physically separate traversals (separated by an off-route connector at x=150/-50, both >30m from either endpoint) remain distinct. Result: `accepted.length === 2` with non-overlapping index ranges, confirmed by test run.
+- [PASS] Self-contained/dependency-free — `grep -n "^import" src/matcher/matchSegment.ts` returns nothing; no TODO/FIXME/HACK found (`grep -n "TODO\|FIXME\|XXX\|HACK" -r src/matcher/` empty). Edge cases probed directly (empty ride, 2-point reference polyline, 1-point ride, ride that never reaches the end) all return `[]` or a correct single accept with no exceptions thrown — see ad-hoc script output: `empty ride: []`, `2-ref-pt segment: [{"decision":"accept",...}]`, `1-point ride: []`, `never reaches end: []`.
+
+## Notes (non-blocking)
+- PR #21 also touched `schedule.json`, `state/STATUS.md`, `state/verdict.txt`, and renamed `lead-inbox/done/001-kickoff.md` (per `gh pr view 21 --json files`), contradicting the issue's paraphrase "No other repo files touched." These are infra/process files unrelated to the matcher contract, not a functional problem, but worth flagging since the issue context asserted otherwise.
+- `findReverseTraversals` passes `totalLength` as the `maxBackwardMeters` field for reverse rejects (matchSegment.ts:196) — a semantically odd placeholder value (not an actual measured backward distance) that doesn't affect any decision but is slightly misleading diagnostic data if ever surfaced to users.
+- A scratch verification file `tmp_edge_test.mjs` was created at repo root during this audit to probe edge cases; `rm` is blocked in this sandbox so it remains untracked (`git status --short` shows `?? tmp_edge_test.mjs`). It is not part of the PR and is safe to delete manually.
+>>>>>>> Stashed changes
