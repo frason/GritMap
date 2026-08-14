@@ -244,6 +244,11 @@ run_agent() {
 prepare_worker_branch() {
   local n="$1"
   local branch="agent/issue-${n}-work"
+  # Discard any dirty state in known agent-managed snapshot files before checkout.
+  # budget_check.sh rewrites STATUS.md in place without committing; verdict.txt is
+  # generated fresh each verification. These are safe to reset since they're
+  # regenerated every tick and never carry real task output.
+  git checkout -- state/STATUS.md state/verdict.txt 2>/dev/null || true
   git fetch origin "$base_branch" >>"$ROOT/logs/dispatcher.log" 2>&1 || true
   git checkout "$base_branch" >>"$ROOT/logs/dispatcher.log" 2>&1 || true
   git branch -D "$branch" >>"$ROOT/logs/dispatcher.log" 2>&1 || true
