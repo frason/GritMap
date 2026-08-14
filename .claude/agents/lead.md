@@ -183,22 +183,55 @@ A task reaching `agent-done` means karen verified it. To proactively queue verif
 
 ---
 
-## GitHub: PRs out (after karen PASS)
+## GitHub: PRs out (after karen PASS) — now automatic
 
-Once a slice is karen-verified, open a PR:
+The dispatcher does this for you the instant karen marks an issue `agent-done`; you do
+NOT need to do it yourself for a normal worker-completed issue. Each worker already
+committed its work to its own branch (`agent/issue-<n>-work`, prepared fresh by the
+dispatcher before that worker ran — see worker.md). On PASS, the dispatcher pushes that
+branch (if it has commits) and runs:
 
 ```bash
-base=$(jq -r '.github.base_branch // "main"'  schedule.json)
-work=$(jq -r '.github.work_branch // "agents/work"' schedule.json)
-git checkout -B "$work"
-git add -A && git commit -m "<what changed> (closes #<n>)"
-git push -u origin "$work"
-gh pr create --repo "<REPO>" --base "$base" --head "$work" \
-  --title "<summary>" \
-  --body "<what / why + karen verdict>. Closes #<n>"
+gh pr create --repo "<REPO>" --base "$base_branch" --head "agent/issue-<n>-work" \
+  --title "<issue title>" --body "Karen-verified — see the verdict comment on #<n>.
+
+Closes #<n>."
 ```
 
-NEVER push to or merge `<base_branch>` — the client reviews and merges.
+**The issue is deliberately left OPEN with the `agent-done` label at this point.**
+GitHub's own `Closes #<n>` link is what closes it, and only once the PR actually merges.
+
+> ⚠️ **Never close an issue manually before its PR merges** — not from the CLI, not by
+> hand on GitHub, and never add a code path that closes one outside of a merge.
+> `depends_on` promotion (see "Creating GitHub Issues" above) only checks whether a
+> dependency issue's GitHub `state` is CLOSED. An early close — manual or automatic —
+> lets a downstream issue start against code that was only karen-verified in a working
+> tree, not yet on `<base_branch>`. This exact race has bitten real runs: a client closed
+> two issues right after opening their PRs but before merging, and a downstream issue
+> promoted immediately. If you ever see an issue closed with no merged PR behind it,
+> that's a bug to flag, not something to route around.
+
+If an issue reaches `agent-done` with no branch (a "Verify: X" issue where nothing was
+changed), the dispatcher closes it directly — there's no code to merge, so no race is
+possible.
+
+### When you need to intervene manually
+
+The automatic path can fail — a stale/conflicting branch, a `gh pr create` error, or an
+`agent-blocked` issue you're decomposing by hand. In those cases:
+
+```bash
+base=$(jq -r '.github.base_branch // "main"' schedule.json)
+git fetch origin "$base"
+git checkout -B "agent/issue-<n>-work" "origin/$base"
+# ...make/cherry-pick the fix...
+git add -A && git commit -m "<what changed>"
+git push -u origin "agent/issue-<n>-work"
+gh pr create --repo "<REPO>" --base "$base" --head "agent/issue-<n>-work" \
+  --title "<summary>" --body "<what / why>. Closes #<n>"
+```
+
+NEVER push to or merge `<base_branch>` directly — the client reviews and merges.
 
 ### Handling rebase conflicts in generated files
 
@@ -213,25 +246,25 @@ markers — they are noise, not signal. Instead:
 
 Only hand-resolve conflicts in files that are genuinely hand-authored (source code, specs).
 
-### Rebasing a work branch (never force-push)
+### Rebasing a branch (never force-push)
 
 `settings.json` denies `git push --force:*` and direct pushes to `<base_branch>` on purpose
-— this is intentional friction, not a bug to work around. If `<work_branch>` needs a rebase
-(e.g. to pick up a regenerated file per the section above, or to resolve staleness against
-`<base_branch>`), do NOT force-push a rewritten history. Instead:
+— this is intentional friction, not a bug to work around. If a per-issue branch needs a
+rebase (e.g. to pick up a regenerated file per the section above, or to resolve staleness
+against `<base_branch>`), do NOT force-push a rewritten history. Instead:
 
 ```bash
-base=$(jq -r '.github.base_branch // "main"'  schedule.json)
-new_work="agents/work-$(date +%s)"
-git checkout -b "$new_work" "$base"
+base=$(jq -r '.github.base_branch // "main"' schedule.json)
+new_branch="agent/issue-<n>-work-$(date +%s)"
+git checkout -b "$new_branch" "$base"
 git cherry-pick <original-commit-sha(s)>   # or re-apply the diff cleanly
-git push -u origin "$new_work"
-gh pr create --repo "<REPO>" --base "$base" --head "$new_work" \
+git push -u origin "$new_branch"
+gh pr create --repo "<REPO>" --base "$base" --head "$new_branch" \
   --title "<summary>" --body "<what / why + karen verdict>. Closes #<n>"
 ```
 
 Push the rebased commit(s) to a **new branch name** and open a fresh PR rather than
-force-pushing history over the old `work_branch`. Close the stale PR if one exists.
+force-pushing history over the old branch. Close the stale PR if one exists.
 
 ---
 

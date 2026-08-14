@@ -38,6 +38,23 @@ Rules:
 
 ## GitHub Issues mode
 
+### Git workflow — commit as you go, don't save it for the end
+
+The dispatcher already checked out an isolated branch for you (`agent/issue-<n>-work`,
+named in your task prompt) before you started — stay on it, don't switch. Your ONLY git
+job is to commit:
+
+- Commit after each meaningful step (`git add -A && git commit -m "..."`), not just once
+  at the very end. If you run out of turns mid-task, only what you've already committed
+  survives — an uncommitted edit sitting in the working tree when you get cut off is lost
+  progress, not saved progress.
+- This applies even to a rushed or incomplete run. Partial, committed work on your own
+  branch is strictly better than a plausible-looking file that never got committed —
+  karen has caught exactly that gap before (files that looked done, `git status` showed
+  everything untracked).
+- Do NOT push and do NOT open a PR. The dispatcher pushes your branch and opens the PR
+  itself once karen verifies your work — that's deterministic plumbing, not your job.
+
 When you are invoked by the dispatcher in GitHub Issues mode (the prompt references a GitHub
 issue number), you MUST write your completion summary to `state/worker_output_<issue-number>.txt`
 (the exact path is given in your task prompt — it's per-issue, not shared, so a concurrent

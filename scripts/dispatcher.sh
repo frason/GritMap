@@ -114,6 +114,7 @@ max_worker_attempts=$(jq -r '.max_worker_attempts   // 3'       "$SCHEDULE")
 worker_escalation_model=$(jq -r '.worker_escalation_model // ""' "$SCHEDULE")
 worker_escalation_after=$(jq -r '.worker_escalation_after // 1'  "$SCHEDULE")
 project_num=$(      jq -r '.github.project_number  // ""'       "$SCHEDULE")
+base_branch=$(       jq -r '.github.base_branch     // "main"'   "$SCHEDULE")
 
 # ---- refresh the rolling-budget summary in STATUS.md (token-free, gated) ----
 if [ "$(jq -r '.telemetry.show_rolling_budget_in_status // false' "$SCHEDULE")" = "true" ]; then
@@ -218,12 +219,62 @@ run_agent() {
       log "MAX-TURNS-EXHAUSTED: ran $agent ($model) cost=\$$cost subtype=error_max_turns — treating as complete (verify output before trusting this run; \$0 cost or missing artifacts usually means it did nothing useful)"
       return 0
     fi
-    log "ERROR: claude run failed for agent=$agent rc=$rc (see logs/dispatcher.log)"
+    # stderr already went to logs/dispatcher.log via the redirect above, but a crash
+    # can leave stderr empty (observed: karen crashing rc!=0 with nothing in stderr,
+    # undiagnosable short of rerunning the dispatcher in the foreground). Captured
+    # stdout is the other diagnostic surface we have — log a tail of it inline so
+    # activity.log alone is enough to start debugging.
+    local out_tail
+    out_tail=$(printf '%s' "${out:-}" | tail -c 400 | tr '\n' ' ')
+    log "ERROR: claude run failed for agent=$agent rc=$rc subtype=${subtype:-none} stdout_tail=\"${out_tail:-<empty>}\" (full output in logs/dispatcher.log)"
     return 1
   fi
 
   log "ran $agent ($model) cost=\$$cost"
   return 0
+}
+
+# ---- helper: prepare an isolated per-issue branch before a worker run ----
+# Deterministic, no tokens. Always branches fresh off base_branch's tip so:
+#   - the worker's output can never land on whatever branch a human happens to
+#     have checked out in this working directory (it used to, since workers
+#     never touched git at all — see incident notes in worker.md).
+#   - a retry after a FAILED verdict starts clean rather than stacking commits
+#     on top of a previous, karen-rejected attempt.
+prepare_worker_branch() {
+  local n="$1"
+  local branch="agent/issue-${n}-work"
+  git fetch origin "$base_branch" >>"$ROOT/logs/dispatcher.log" 2>&1 || true
+  git checkout "$base_branch" >>"$ROOT/logs/dispatcher.log" 2>&1 || true
+  git branch -D "$branch" >>"$ROOT/logs/dispatcher.log" 2>&1 || true
+  git push origin --delete "$branch" >>"$ROOT/logs/dispatcher.log" 2>&1 || true
+  if git checkout -B "$branch" "origin/$base_branch" >>"$ROOT/logs/dispatcher.log" 2>&1; then
+    :
+  else
+    git checkout -B "$branch" "$base_branch" >>"$ROOT/logs/dispatcher.log" 2>&1 || true
+  fi
+}
+
+# ---- helper: commit+push whatever the worker produced, no matter how its run
+# ended (clean finish, max-turns exhaustion, or an outright crash). This is a
+# safety net, not a substitute for the worker's own commits — an LLM run can be
+# cut off mid-task, so we don't rely solely on it remembering to commit at the
+# end. Uncommitted files sitting in a shared working tree is exactly the failure
+# mode this closes off. ----
+commit_worker_progress() {
+  local n="$1"
+  local branch="agent/issue-${n}-work"
+  if [ -n "$(git status --porcelain 2>/dev/null)" ]; then
+    git add -A >>"$ROOT/logs/dispatcher.log" 2>&1 || true
+    if ! git diff --cached --quiet 2>/dev/null; then
+      git commit -m "agent: worker progress for issue #${n} (dispatcher safety-net commit)" \
+        >>"$ROOT/logs/dispatcher.log" 2>&1 || true
+      log "  safety-net commit for #$n on $branch (worker may not have committed itself)"
+    fi
+  fi
+  if git rev-parse --verify -q "$branch" >/dev/null; then
+    git push -u origin "$branch" >>"$ROOT/logs/dispatcher.log" 2>&1 || true
+  fi
 }
 
 # ---- helper: promote backlog issues whose declared dependencies are all closed ----
@@ -522,9 +573,39 @@ ${verdict_text}
   if [ "$first_word" = "PASSED" ]; then
     gh issue edit  "$iss_num" --repo "$REPO" \
       --remove-label "agent-review" --add-label "agent-done" >/dev/null 2>&1 || true
-    gh issue close "$iss_num" --repo "$REPO" >/dev/null 2>&1 || true
     rm -f "$STATE/worker_output_${iss_num}.txt"
-    log "  issue #$iss_num PASSED — labelled agent-done, closed"
+
+    # Do NOT close the issue here. Closing on verification (rather than on merge)
+    # is what let a downstream depends_on issue promote to agent-todo against code
+    # that was only karen-verified in a local working tree, not yet on base_branch —
+    # observed twice when a client also closed issues manually right after opening
+    # a PR but before merging. GitHub's own "Closes #<n>" link on the PR is now the
+    # only thing that closes this issue, so depends_on can never race ahead of a
+    # real merge. See the "never close manually" warning in lead.md.
+    pr_branch="agent/issue-${iss_num}-work"
+    if git ls-remote --exit-code --heads origin "$pr_branch" >/dev/null 2>&1; then
+      existing_pr=$(gh pr list --repo "$REPO" --head "$pr_branch" --state open \
+        --json number --jq '.[0].number // empty' 2>/dev/null || true)
+      if [ -z "${existing_pr:-}" ]; then
+        if gh pr create --repo "$REPO" --base "$base_branch" --head "$pr_branch" \
+             --title "${iss_title}" \
+             --body "Karen-verified — see the verdict comment on #${iss_num}.
+
+Closes #${iss_num}." >/dev/null 2>&1; then
+          log "  issue #$iss_num PASSED — agent-done, PR opened from $pr_branch (closes on merge)"
+        else
+          log "  WARNING: issue #$iss_num PASSED but 'gh pr create' failed — open one manually from $pr_branch (see logs/dispatcher.log)"
+        fi
+      else
+        log "  issue #$iss_num PASSED — agent-done, PR #$existing_pr already open from $pr_branch (closes on merge)"
+      fi
+    else
+      # Nothing was committed (e.g. a verification-only "Verify: X" issue) — no
+      # code to merge, so there's nothing depends_on could race ahead of. Safe
+      # to close directly.
+      gh issue close "$iss_num" --repo "$REPO" >/dev/null 2>&1 || true
+      log "  issue #$iss_num PASSED — agent-done, closed directly (no branch/commits to PR)"
+    fi
   else
     gh issue edit "$iss_num" --repo "$REPO" \
       --remove-label "agent-review" --add-label "agent-todo" >/dev/null 2>&1 || true
@@ -602,6 +683,10 @@ check_global_budget
 gh issue edit "$iss_num" --repo "$REPO" \
   --remove-label "agent-todo" --add-label "agent-doing" >/dev/null 2>&1 || true
 
+# Isolated branch for this attempt (see prepare_worker_branch comment above).
+worker_branch="agent/issue-${iss_num}-work"
+prepare_worker_branch "$iss_num"
+
 # Per-issue output path — NOT a shared file. The dispatcher only runs one worker at a
 # time, but karen may still be retrying verification on an older issue (e.g. crashing
 # repeatedly) while a newer issue's worker runs in the meantime. A shared path would let
@@ -622,17 +707,23 @@ ${iss_body}
 Instructions:
 1. Read only the files you actually need — do not explore the entire repository.
 2. Do the work described. Stay strictly in scope; do not expand requirements.
-3. When finished, write a concise technical markdown summary to state/worker_output_${iss_num}.txt.
+3. You are already on an isolated branch (${worker_branch}) prepared for this issue —
+   do not switch branches. Commit your changes as you go with git add / git commit
+   (small, meaningful commits after each real step) rather than saving it all for one
+   commit at the end — if you run out of turns mid-task, only committed work survives.
+   Do not push or open a PR yourself; the dispatcher handles that once karen verifies.
+4. When finished, write a concise technical markdown summary to state/worker_output_${iss_num}.txt.
    Include: what you did, which files were changed or created, any caveats or follow-up items.
    Keep it under 40 lines — this will be posted as a GitHub issue comment.
-4. If the task is ambiguous or blocked, write what you found to state/worker_output_${iss_num}.txt,
-   state the blocker clearly, and stop — do not guess or broaden scope.
+5. If the task is ambiguous or blocked, write what you found to state/worker_output_${iss_num}.txt,
+   commit it, state the blocker clearly, and stop — do not guess or broaden scope.
 
 Your summary will be posted to the issue and then independently verified by karen.
 PROMPT
 
 if ! run_agent worker "$effective_worker_model" "$tmp"; then
   rm -f "$tmp"
+  commit_worker_progress "$iss_num"
   log "  worker failed — cycling #$iss_num back to agent-todo"
   gh issue comment "$iss_num" --repo "$REPO" \
     --body "⚠️ **Worker run failed** (claude exited non-zero). Cycling back to \`agent-todo\` — check \`logs/dispatcher.log\` for the error." \
@@ -643,6 +734,7 @@ if ! run_agent worker "$effective_worker_model" "$tmp"; then
 fi
 record_global_spend
 rm -f "$tmp"
+commit_worker_progress "$iss_num"
 
 if [ -f "$output_file" ]; then
   summary=$(cat "$output_file")

@@ -335,7 +335,10 @@ tail -5 logs/activity.log 2>/dev/null
 ```
 
 Report truthfully:
-- An issue in `agent-done` (closed) is **verified** — karen passed it.
+- An issue labelled `agent-done` is **verified** — karen passed it, and its PR is open
+  (or, for a no-code "Verify:" issue, already closed). It closes for real only once the
+  PR merges — that's intentional, so a dependent issue can never start against code
+  that isn't on `base_branch` yet. Don't report it as "closed" until it actually is.
 - An issue in `agent-review` is **claimed done**, not yet verified.
 - An issue in `agent-todo` or `agent-backlog` is **pending**.
 - At most ONE agent is running at any moment (the dispatcher lock prevents overlap).
