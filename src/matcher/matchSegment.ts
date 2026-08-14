@@ -28,12 +28,65 @@ export interface MatchCandidate {
   maxGapMs: number;
   maxDeviationMeters: number;
   reasons: string[];
+  confidenceScore: number;
+  matcherVersion: number;
 }
+
+/**
+ * Current matcher algorithm version. Bump this whenever the matching logic,
+ * confidence scoring, or decision criteria change. Needed for reevaluation
+ * when the algorithm improves.
+ */
+export const MATCHER_VERSION = 1;
 
 const EARTH_RADIUS_METERS = 6_371_008.8;
 const MAX_BACKWARD_METERS = 30;
 const MAX_GAP_MS = 30_000;
 const DUPLICATE_OVERLAP_THRESHOLD = 0.5;
+
+/**
+ * Calculate a diagnostic confidence score (0-100) based on multiple factors:
+ * - Coverage: how much of the reference route was traversed
+ * - Direction/Order: whether the traversal was monotonically forward
+ * - Corridor distance: how close points stayed to the reference route
+ * - Backward movement: GPS jitter or actual backtracking
+ * - GPS continuity: presence of gaps in the GPS signal
+ */
+function calculateConfidenceScore(
+  coveragePct: number,
+  maxDeviationMeters: number,
+  corridorMeters: number,
+  maxBackwardMeters: number,
+  maxGapMs: number,
+  reasons: string[],
+): number {
+  let score = 100;
+
+  // Penalty for coverage shortfall (each % below required loses 1 point, max -30)
+  const coveragePenalty = Math.min(30, Math.max(0, (0.9 - coveragePct) * 100));
+  score -= coveragePenalty;
+
+  // Penalty for deviation from corridor (each 10m over corridor loses 5 points, max -30)
+  const deviationPenalty = Math.min(30, Math.max(0, ((maxDeviationMeters - corridorMeters) / 10) * 5));
+  score -= deviationPenalty;
+
+  // Penalty for backward movement (each 5m loses 2 points, max -15)
+  const backwardPenalty = Math.min(15, Math.max(0, (maxBackwardMeters / 5) * 2));
+  score -= backwardPenalty;
+
+  // Penalty for GPS gaps (each 10s over max loses 1 point, max -20)
+  const gapPenalty = Math.min(20, Math.max(0, ((maxGapMs - MAX_GAP_MS) / 10_000) * 1));
+  score -= gapPenalty;
+
+  // Additional penalty for specific rejection/borderline reasons
+  if (reasons.includes("insufficient-coverage")) score -= 5;
+  if (reasons.includes("gps-gap")) score -= 3;
+  if (reasons.includes("backward-progress")) score -= 20;
+  if (reasons.includes("different-route")) score -= 25;
+  if (reasons.includes("reverse-traversal")) score -= 50;
+
+  return Math.max(0, Math.round(score));
+}
 
 interface XY {
   x: number;
@@ -128,7 +181,7 @@ function evaluateForward(
     if (maximumBackward > MAX_BACKWARD_METERS) {
       return reject(startIndex, index, maximumBackward, maximumGap, maximumDeviation, [
         "backward-progress",
-      ]);
+      ], 0, 0, segment.corridorMeters);
     }
 
     if (isAtEnd(rideXY[index], referenceXY.at(-1)!, projection, totalLength, segment)) {
@@ -141,12 +194,21 @@ function evaluateForward(
       if (significantDetour) {
         return reject(startIndex, index, maximumBackward, maximumGap, maximumDeviation, [
           "different-route",
-        ], coveragePct, offCorridorTravel);
+        ], coveragePct, offCorridorTravel, segment.corridorMeters);
       }
 
       const reasons: string[] = [];
       if (coveragePct < segment.requiredCoveragePct) reasons.push("insufficient-coverage");
       if (maximumGap > MAX_GAP_MS) reasons.push("gps-gap");
+
+      const confidenceScore = calculateConfidenceScore(
+        coveragePct,
+        maximumDeviation,
+        segment.corridorMeters,
+        maximumBackward,
+        maximumGap,
+        reasons,
+      );
 
       return {
         decision: reasons.length === 0 ? "accept" : "borderline",
@@ -158,6 +220,8 @@ function evaluateForward(
         maxDeviationMeters: maximumDeviation,
         reasons,
         offCorridorTravelMeters: offCorridorTravel,
+        confidenceScore,
+        matcherVersion: MATCHER_VERSION,
       };
     }
     previousIndex = index;
@@ -195,7 +259,7 @@ function findReverseTraversals(
       results.push(
         reject(start, end, totalLength, maxTimestampGap(ride, start, end), 0, [
           "reverse-traversal",
-        ]),
+        ], 0, 0, segment.corridorMeters),
       );
       break;
     }
@@ -296,7 +360,16 @@ function reject(
   reasons: string[],
   coveragePct = 0,
   offCorridorTravelMeters = 0,
+  corridorMeters = 30,
 ): EvaluatedCandidate {
+  const confidenceScore = calculateConfidenceScore(
+    coveragePct,
+    maxDeviationMeters,
+    corridorMeters,
+    maxBackwardMeters,
+    maxGapMs,
+    reasons,
+  );
   return {
     decision: "reject",
     startPointIndex,
@@ -307,6 +380,8 @@ function reject(
     maxDeviationMeters,
     reasons,
     offCorridorTravelMeters,
+    confidenceScore,
+    matcherVersion: MATCHER_VERSION,
   };
 }
 
