@@ -10,6 +10,7 @@ import {
   type MatchDecision,
   type SegmentDefinition,
 } from "../matcher/matchSegment.ts";
+import { toMatcherRidePoints, type SourcePoint } from "../matcher/toMatcherRidePoints.ts";
 import { applyMigrations } from "./migrations.ts";
 import { persistMatchCandidate } from "./persistMatchCandidate.ts";
 
@@ -27,6 +28,7 @@ describe("persistMatchCandidate", () => {
 
     assert.deepEqual({ ...database.prepare(`
       SELECT segment_id, ride_id, start_point_index, end_point_index,
+             start_timestamp_ms, end_timestamp_ms,
              matcher_version, confidence_score, decision, manually_approved
       FROM segment_attempts WHERE id = ?
     `).get("attempt-accept") }, {
@@ -34,6 +36,9 @@ describe("persistMatchCandidate", () => {
       ride_id: "ride-1",
       start_point_index: 1,
       end_point_index: 3,
+      // Read directly from the ride_points rows at point_index 1 and 3, not supplied by the caller.
+      start_timestamp_ms: NOW + 1_000,
+      end_timestamp_ms: NOW + 3_000,
       matcher_version: MATCHER_VERSION,
       confidence_score: 0.95,
       decision: "accept",
@@ -79,6 +84,18 @@ describe("persistMatchCandidate", () => {
       `).get("attempt-borderline") },
       { gps_gap_count: 1, confidence_score: 0.62, reasons_json: '["gps-gap"]' },
     );
+  });
+
+  it("throws instead of persisting when a boundary point_index has no ride_points row", () => {
+    using database = createDatabase();
+    const candidate = matchCandidate("accept", { startPointIndex: 1, endPointIndex: 99 });
+
+    assert.throws(
+      () => persistMatchCandidate(database, candidate, context("attempt-missing-row")),
+      /No ride_points row for ride ride-1 at point_index 99/,
+    );
+    assert.equal(count(database, "segment_attempts"), 0);
+    assert.equal(count(database, "match_diagnostics"), 0);
   });
 
   it("does not persist rejected candidates", () => {
@@ -138,6 +155,79 @@ describe("persistMatchCandidate", () => {
     // Direction/order contributes zero for backward-progress: .775 - .20 = .575.
     assert.equal(byDecision.reject, 0.575);
   });
+
+  it("persists correct original point_index boundaries across a non-GPS gap in the ride", () => {
+    // Full source array as it would arrive from the FIT parser: 11 points along the
+    // segment, with index 5 missing GPS entirely (dropped fix mid-ride).
+    const sourcePoints: SourcePoint[] = Array.from({ length: 11 }, (_, index) => ({
+      timestampMs: NOW + index * 1_000,
+      ...(index === 5 ? {} : { lat: 0, lng: (index * 10) / METERS_PER_DEGREE }),
+    }));
+
+    const matcherInput = toMatcherRidePoints(sourcePoints);
+    assert.equal(matcherInput.length, 10, "the non-GPS point must be filtered out");
+
+    // 5m corridor forces isAtEnd to trigger only at the literal last point (100m) -- with
+    // the default 30m corridor, points as early as 70m already qualify on their own, so
+    // the match could complete before the array's actual end (not what this test isolates).
+    const [candidate] = matchSegment(matcherInput, {
+      id: "gap-segment",
+      corridorMeters: 5,
+      requiredCoveragePct: 0.9,
+      referencePolyline: Array.from({ length: 11 }, (_, index) => ({
+        lat: 0,
+        lng: (index * 10) / METERS_PER_DEGREE,
+        distanceMeters: index * 10,
+      })),
+    });
+    assert.equal(candidate.decision, "accept");
+    assert.equal(candidate.startPointIndex, 0);
+    assert.equal(candidate.endPointIndex, 10);
+
+    // Import stores every parsed point, GPS or not -- point_index 5 exists with NULL
+    // lat/longitude, exactly as a real batch import would write it.
+    using database = new DatabaseSync(":memory:");
+    applyMigrations(database);
+    database.exec(`
+      INSERT INTO imported_files (id, sha256, original_filename, imported_at_ms)
+      VALUES ('file-gap', '${"b".repeat(64)}', 'gap-ride.fit', ${NOW});
+      INSERT INTO rides (
+        id, imported_file_id, parser_version, start_timestamp_ms, end_timestamp_ms,
+        created_at_ms, updated_at_ms
+      ) VALUES ('ride-gap', 'file-gap', 1, ${NOW}, ${NOW + 10_000}, ${NOW}, ${NOW});
+      INSERT INTO segments (
+        id, name, corridor_meters, required_coverage, schema_version, fingerprint, created_at_ms
+      ) VALUES ('segment-gap', 'Gap segment', 30, 0.9, 1, 'gap-fingerprint', ${NOW});
+    `);
+    const insertPoint = database.prepare(`
+      INSERT INTO ride_points (ride_id, point_index, timestamp_ms, latitude, longitude)
+      VALUES ('ride-gap', ?, ?, ?, ?)
+    `);
+    sourcePoints.forEach((point, index) => {
+      insertPoint.run(index, point.timestampMs, point.lat ?? null, point.lng ?? null);
+    });
+
+    const result = persistMatchCandidate(database, candidate, {
+      attemptId: "attempt-gap",
+      segmentId: "segment-gap",
+      rideId: "ride-gap",
+      createdAtMs: NOW + 20_000,
+    });
+    assert.deepEqual(result, { status: "inserted", attemptId: "attempt-gap" });
+
+    const stored = database.prepare(`
+      SELECT start_point_index, end_point_index, start_timestamp_ms, end_timestamp_ms
+      FROM segment_attempts WHERE id = 'attempt-gap'
+    `).get();
+    assert.deepEqual({ ...stored }, {
+      start_point_index: 0,
+      end_point_index: 10,
+      // Read from ride_points at point_index 0 and 10 -- not the filtered array's own
+      // first/last positions, which would incorrectly resolve to point_index 0 and 9.
+      start_timestamp_ms: NOW,
+      end_timestamp_ms: NOW + 10_000,
+    });
+  });
 });
 
 function createDatabase(): DatabaseSync {
@@ -190,8 +280,6 @@ function context(attemptId: string) {
     attemptId,
     segmentId: "segment-1",
     rideId: "ride-1",
-    startTimestampMs: NOW + 1_000,
-    endTimestampMs: NOW + 3_000,
     createdAtMs: NOW + 10_000,
   };
 }

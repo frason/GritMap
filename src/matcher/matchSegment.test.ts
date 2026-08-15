@@ -56,6 +56,37 @@ describe("matchSegment", () => {
     assert.equal(accepted.length, 2);
     assert.ok(accepted[0].endPointIndex < accepted[1].startPointIndex);
   });
+
+  it("reports original source indexes across a non-GPS gap inside the matched region", () => {
+    // 11 points along the reference line (0..100m), but index 5 (50m) has no GPS fix --
+    // simulating a dropped record that a caller filtered out before calling matchSegment,
+    // while still carrying the original array position forward via sourcePointIndex.
+    const withGap: RidePoint[] = lineRide(0, 100, 10).map((point, index) => ({
+      ...point,
+      sourcePointIndex: index,
+    }));
+    const filtered = withGap.filter((_, index) => index !== 5);
+
+    assert.equal(filtered.length, 10);
+    assert.deepEqual(
+      filtered.map((point) => point.sourcePointIndex),
+      [0, 1, 2, 3, 4, 6, 7, 8, 9, 10],
+    );
+
+    // A tight 5m corridor forces isAtEnd to trigger only at the literal last point (100m):
+    // with the default 30m corridor, points as early as 70m are already within 30m of the
+    // endpoint and satisfy isAtEnd on their own, so the match could legitimately complete
+    // before the array's actual end -- not what this test is trying to isolate.
+    const result = matchSegment(filtered, segment(5));
+    assert.equal(result.length, 1);
+    const [candidate] = result;
+    assert.equal(candidate.decision, "accept");
+    // Must be the *original* first/last indexes (0 and 10) from the unfiltered 11-point
+    // ride, not the filtered array's own positions (0 and 9) -- a caller looking up
+    // ride_points by these indexes must land on the correct database rows.
+    assert.equal(candidate.startPointIndex, 0);
+    assert.equal(candidate.endPointIndex, 10);
+  });
 });
 
 function segment(corridorMeters = 30): SegmentDefinition {
