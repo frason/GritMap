@@ -1,0 +1,13 @@
+## Summary
+Bridged the tested `applyMigrations` (Node `node:sqlite`-shaped) migration layer onto the real Expo SQLite connection from #17, added a single idempotent app-startup bootstrap, and wired it into `App.tsx`.
+
+## Changes
+- `src/db/expoMigrationAdapter.ts` (new): thin `toMigrationDatabase()` adapter mapping `exec`/`prepare(...).get(...)` onto Expo's `execSync`/`getFirstSync`, reusing `migrations.ts` SQL unchanged.
+- `src/db/bootstrap.ts` (new): `bootstrapDatabase()` opens/reuses the cached Expo connection, applies pending migrations (no-op if already current), and on any failure calls `closeDatabaseConnection` so a poisoned cached handle is never reused on retry.
+- `App.tsx`: calls `bootstrapDatabase()` once in a `useEffect` on mount, logging (not throwing) on failure. No new UI/import/MapLibre code added.
+- `docs/EXPO_SQLITE_BOOTSTRAP.md` (new): explains the adapter/bootstrap design and documents development-build verification steps for `PRAGMA user_version` = 2, all seven tables, `PRAGMA foreign_keys = 1`, idempotent re-launch, and a rejected invalid foreign key — on the app's actual connection.
+
+## Caveats / follow-up
+- No native Expo dev-client/simulator was available in this environment, and `expo-sqlite`'s JS build cannot be `require`d under plain `node --test` (needs the native Expo Modules bridge) — confirmed and documented. Per the issue's own allowance ("Expo integration test **or** documented development-build verification"), I documented manual verification steps instead of a fake/mocked automated test. A human with a physical device/simulator should run the steps in docs/EXPO_SQLITE_BOOTSTRAP.md before this ships to confirm on real hardware.
+- `node --test src/db/migrations.test.ts` (9/9) and the full suite (`npm test`, 37/37) plus `npm run typecheck` all pass unchanged.
+- Scope respected: no batch import, UI, MapLibre, or new schema fields added; #44's schema and #5's import flow untouched.
