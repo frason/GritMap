@@ -5,6 +5,7 @@
   "dependencies": {
     "@expo/metro-runtime": "~57.0.10",
     "@garmin/fitsdk": "21.213.0",
+    "@maplibre/maplibre-react-native": "^11.3.6",
     "expo": "~57.0.12",
     "expo-sqlite": "~57.0.1",
     "expo-status-bar": "~57.0.1",
