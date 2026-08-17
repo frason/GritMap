@@ -15,6 +15,11 @@ class SegmentImportRepository(
 ) {
     suspend fun importSegment(json: String): SegmentDefinition {
         val definition = parser.parse(json)
+        importDefinition(definition)
+        return definition
+    }
+
+    suspend fun importDefinition(definition: SegmentDefinition) {
         database.segmentDao().insertDefinition(
             SegmentEntity(
                 id = definition.id,
@@ -35,7 +40,6 @@ class SegmentImportRepository(
                 )
             },
         )
-        return definition
     }
 }
 
@@ -45,6 +49,11 @@ class RiderHistoryImportRepository(
 ) {
     suspend fun importRiderHistory(json: String): RiderHistoryPackage {
         val history = parser.parse(json)
+        importHistory(history)
+        return history
+    }
+
+    suspend fun importHistory(history: RiderHistoryPackage) {
         database.riderHistoryDao().replace(
             RiderProfileEntity(
                 schemaVersion = history.schemaVersion,
@@ -69,7 +78,5 @@ class RiderHistoryImportRepository(
                 )
             },
         )
-        return history
     }
 }
-
