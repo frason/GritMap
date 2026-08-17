@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="karoo_profile_content_description">Segment elevation and pacing profile</string>
+    <string name="karoo_extension_name">GritMap Live Pacing</string>
+    <string name="karoo_extension_description">Live segment progress and pacing guidance</string>
+</resources>

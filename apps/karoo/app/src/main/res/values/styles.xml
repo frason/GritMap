@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <style name="Theme.GritMapKaroo" parent="android:style/Theme.Material.Light.NoActionBar">
+        <item name="android:fontFamily">sans</item>
+        <item name="android:colorAccent">#20AA5B</item>
+        <item name="android:navigationBarColor">#121417</item>
+        <item name="android:statusBarColor">#121417</item>
+        <item name="android:windowLightStatusBar">false</item>
+    </style>
+</resources>
+

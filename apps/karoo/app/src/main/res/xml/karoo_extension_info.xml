@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ExtensionInfo
+    id="gritmap-live-pacing"
+    displayName="@string/karoo_extension_name"
+    icon="@drawable/karoo_ic_extension"
+    scansDevices="false"
+    mapLayer="false"
+    fitFile="false">
+    <DataType
+        typeId="live-pacing"
+        displayName="@string/karoo_extension_name"
+        description="@string/karoo_extension_description"
+        graphical="true"
+        icon="@drawable/karoo_ic_extension" />
+</ExtensionInfo>

@@ -1,0 +1,10 @@
+.gradle/
+.idea/
+**/build/
+local.properties
+*.iml
+captures/
+.kotlin/
+**/.cxx/
+app/src/main/assets/models/*.bin
+app/src/main/jniLibs/arm64-v8a/libcactus_engine.so
