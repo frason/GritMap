@@ -1,6 +1,7 @@
 package com.gritmap.karoo.data
 
 import androidx.room.Entity
+import androidx.room.ColumnInfo
 import androidx.room.ForeignKey
 import androidx.room.Index
 import androidx.room.PrimaryKey
@@ -41,12 +42,17 @@ data class SegmentReferencePointEntity(
 @Entity(tableName = "pacing_plans", foreignKeys = [ForeignKey(
     entity = SegmentEntity::class, parentColumns = ["id"], childColumns = ["segmentId"],
     onDelete = ForeignKey.CASCADE,
-)], indices = [Index("segmentId")])
+)], indices = [Index(value = ["segmentId", "isBaseline"])])
 data class PacingPlanEntity(
     @PrimaryKey val id: String,
     val segmentId: String,
     val segmentFingerprint: String,
     val createdAtMs: Long,
+    @ColumnInfo(defaultValue = "'LOCAL'") val source: String = "LOCAL",
+    val generatorModelVersion: String? = null,
+    val ftpWatts: Int? = null,
+    val targetFinishTimeSeconds: Int? = null,
+    @ColumnInfo(defaultValue = "0") val isBaseline: Boolean = false,
 )
 
 @Entity(tableName = "pacing_zones", foreignKeys = [ForeignKey(
@@ -132,4 +138,3 @@ data class HistoricalAttemptSampleEntity(
     val speedMetersPerSecond: Double?,
     val elevationMeters: Double?,
 )
-

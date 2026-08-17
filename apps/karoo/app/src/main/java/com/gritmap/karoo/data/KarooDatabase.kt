@@ -8,6 +8,17 @@ import androidx.room.Query
 import androidx.room.RoomDatabase
 import androidx.room.Transaction
 
+data class SegmentLibraryRow(
+    val id: String,
+    val name: String,
+    val fingerprint: String,
+    val corridorMeters: Int,
+    val requiredCoveragePct: Double,
+    val pointCount: Int,
+    val lengthMeters: Double,
+    val hasBaselinePlan: Boolean,
+)
+
 @Dao
 interface SegmentDao {
     @Insert(onConflict = OnConflictStrategy.ABORT)
@@ -24,6 +35,22 @@ interface SegmentDao {
 
     @Query("SELECT * FROM segments WHERE id = :id")
     suspend fun segment(id: String): SegmentEntity?
+
+    @Query("SELECT * FROM segments WHERE fingerprint = :fingerprint")
+    suspend fun segmentByFingerprint(fingerprint: String): SegmentEntity?
+
+    @Query("""
+        SELECT s.id, s.name, s.fingerprint, s.corridorMeters, s.requiredCoveragePct,
+               COUNT(DISTINCT p.id) AS pointCount,
+               COALESCE(MAX(p.distanceMeters), 0) AS lengthMeters,
+               CASE WHEN COUNT(pp.id) > 0 THEN 1 ELSE 0 END AS hasBaselinePlan
+        FROM segments s
+        LEFT JOIN segment_reference_points p ON p.segmentId = s.id
+        LEFT JOIN pacing_plans pp ON pp.segmentId = s.id AND pp.isBaseline = 1
+        GROUP BY s.id
+        ORDER BY s.name COLLATE NOCASE, s.id
+    """)
+    suspend fun library(): List<SegmentLibraryRow>
 
     @Query("SELECT * FROM segment_reference_points WHERE segmentId = :segmentId ORDER BY pointIndex")
     suspend fun points(segmentId: String): List<SegmentReferencePointEntity>
@@ -60,8 +87,15 @@ interface PacingDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertZones(zones: List<PacingZoneEntity>)
 
+    @Query("DELETE FROM pacing_plans WHERE segmentId = :segmentId AND isBaseline = 1")
+    suspend fun deleteBaseline(segmentId: String)
+
+    @Query("SELECT * FROM pacing_plans WHERE segmentId = :segmentId AND isBaseline = 1 LIMIT 1")
+    suspend fun baseline(segmentId: String): PacingPlanEntity?
+
     @Transaction
     suspend fun replacePlan(plan: PacingPlanEntity, zones: List<PacingZoneEntity>) {
+        if (plan.isBaseline) deleteBaseline(plan.segmentId)
         insertPlan(plan)
         insertZones(zones)
     }
@@ -90,7 +124,7 @@ interface RiderHistoryDao {
     entities = [SegmentEntity::class, SegmentReferencePointEntity::class, PacingPlanEntity::class,
         PacingZoneEntity::class, SegmentAttemptEntity::class, AttemptCheckpointEntity::class,
         RiderProfileEntity::class, TrainingLoadEntity::class, HistoricalAttemptSampleEntity::class],
-    version = 1,
+    version = 2,
     exportSchema = true,
 )
 abstract class KarooDatabase : RoomDatabase() {
