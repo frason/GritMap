@@ -85,6 +85,32 @@ The parser accepts only schema version 1 and forward direction. Distances must s
 and increase strictly. The fingerprint is SHA-256 over the canonical directed geometry and
 matching parameters; name, ID, timestamp, and local source provenance are excluded.
 
+## Segment Library and phone transfer
+
+The launcher includes a Segment Library showing each installed segment's length,
+reference-point count, matching settings, fingerprint prefix, and whether a phone-generated
+baseline pacing plan is installed. Deletion is explicit and requires confirmation.
+
+On Karoo, copy raw segment JSON files or atomic GritMap transfer packages into either of
+these app-specific directories over ADB:
+
+```text
+/sdcard/Android/data/com.gritmap.karoo/files/imports/packages/
+/sdcard/Android/data/com.gritmap.karoo/files/imports/segments/   (legacy raw segments)
+```
+
+Then press **Import Segment JSON**. Every pending file is validated. Successful and exact
+duplicate imports move to `imports/processed/`; invalid packages move to `imports/failed/`
+with a `.error.txt` explanation. A same-ID/different-fingerprint segment is rejected rather
+than silently replacing immutable geography.
+
+The transfer package can carry a segment, rider history, and a phone/cloud/manual baseline
+pacing plan in one transaction. The plan remains separate from reference coordinates and is
+accepted only when its fingerprint, FTP, complete distance coverage, power bounds, enums,
+and transitions validate. See [TRANSFER_PACKAGE.md](TRANSFER_PACKAGE.md) for the versioned
+contract. The folder inbox is deliberately transport-neutral: a future companion-phone
+transport can deliver the same bytes without changing validation or persistence behavior.
+
 ## Runtime data flow
 
 ```text

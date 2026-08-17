@@ -13,6 +13,10 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -20,13 +24,19 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.lifecycleScope
 import com.gritmap.karoo.data.DatabaseProvider
+import com.gritmap.karoo.data.SegmentLibraryRow
 import com.gritmap.karoo.importing.RiderHistoryImportRepository
 import com.gritmap.karoo.importing.SegmentImportRepository
+import com.gritmap.karoo.importing.SegmentInboxProcessor
+import com.gritmap.karoo.importing.SegmentLibraryRepository
+import com.gritmap.karoo.importing.StagedFileSegmentInbox
+import com.gritmap.karoo.importing.TransferPackageRepository
 import com.gritmap.karoo.service.LiveSegmentService
 import java.io.IOException
 import java.io.File
@@ -42,15 +52,26 @@ class MainActivity : ComponentActivity() {
         val database = DatabaseProvider.get(this)
         val segmentImporter = SegmentImportRepository(database)
         val historyImporter = RiderHistoryImportRepository(database)
+        val segmentLibrary = SegmentLibraryRepository(database)
+        val transferImporter = TransferPackageRepository(database)
 
         setContent {
             var status by remember { mutableStateOf("Ready") }
+            var segments by remember { mutableStateOf<List<SegmentLibraryRow>>(emptyList()) }
+            var pendingDeleteId by remember { mutableStateOf<String?>(null) }
+            suspend fun refreshLibrary() {
+                segments = segmentLibrary.list()
+            }
+            LaunchedEffect(Unit) { refreshLibrary() }
             val segmentPicker = rememberLauncherForActivityResult(
                 ActivityResultContracts.OpenDocument(),
             ) { uri ->
                 if (uri != null) lifecycleScope.launch {
                     status = importText(uri) { segmentImporter.importSegment(it) }.fold(
-                        onSuccess = { "Imported segment ${it.name}" },
+                        onSuccess = {
+                            refreshLibrary()
+                            "Imported segment ${it.name}"
+                        },
                         onFailure = { "Segment import failed: ${it.message}" },
                     )
                 }
@@ -68,7 +89,8 @@ class MainActivity : ComponentActivity() {
 
             MaterialTheme {
                 Column(
-                    modifier = Modifier.fillMaxSize().background(Color(0xFF121417)).padding(20.dp),
+                    modifier = Modifier.fillMaxSize().background(Color(0xFF121417))
+                        .verticalScroll(rememberScrollState()).padding(20.dp),
                     verticalArrangement = Arrangement.spacedBy(12.dp),
                 ) {
                     Text("GritMap Karoo", color = Color.White, style = MaterialTheme.typography.headlineMedium)
@@ -78,12 +100,26 @@ class MainActivity : ComponentActivity() {
                             segmentPicker.launch(arrayOf("application/json", "text/plain"))
                         } else {
                             lifecycleScope.launch {
-                                status = importStagedJson("segments") {
-                                    segmentImporter.importSegment(it)
-                                }.fold(
-                                    onSuccess = { "Imported segment ${it.name}" },
-                                    onFailure = { "Segment import failed: ${it.message}" },
-                                )
+                                status = runCatching {
+                                    val results = listOf("packages", "segments").map { folder ->
+                                        SegmentInboxProcessor(
+                                            StagedFileSegmentInbox(this@MainActivity, folder),
+                                            segmentLibrary,
+                                            transferImporter,
+                                        ).processAll()
+                                    }
+                                    refreshLibrary()
+                                    val imported = results.sumOf { it.imported.size }
+                                    val duplicates = results.sumOf { it.duplicates.size }
+                                    val failures = results.flatMap { it.failed.entries }
+                                    buildString {
+                                        append("Inbox: $imported imported, $duplicates duplicates")
+                                        if (failures.isNotEmpty()) {
+                                            append(", ${failures.size} failed: ")
+                                            append(failures.joinToString { "${it.key}: ${it.value}" })
+                                        }
+                                    }
+                                }.getOrElse { "Inbox import failed: ${it.message}" }
                             }
                         }
                     }) {
@@ -113,6 +149,41 @@ class MainActivity : ComponentActivity() {
                             "The official graphical data field works without overlay permission.",
                         color = Color.LightGray,
                     )
+                    Text(
+                        "Installed segments (${segments.size})",
+                        color = Color.White,
+                        style = MaterialTheme.typography.titleMedium,
+                    )
+                    segments.forEach { segment ->
+                        Column(Modifier.fillMaxWidth()) {
+                                Text(segment.name, color = Color.White)
+                                Text(
+                                    "${segment.lengthMeters.toInt()} m · ${segment.pointCount} points · " +
+                                        if (segment.hasBaselinePlan) "baseline plan" else "no baseline plan",
+                                    color = Color.LightGray,
+                                )
+                                Text(
+                                    "forward · ${segment.corridorMeters} m corridor · " +
+                                        segment.fingerprint.take(12),
+                                    color = Color.Gray,
+                                )
+                                if (pendingDeleteId == segment.id) {
+                                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                        Button(onClick = {
+                                            lifecycleScope.launch {
+                                                segmentLibrary.delete(segment.id)
+                                                pendingDeleteId = null
+                                                refreshLibrary()
+                                                status = "Deleted ${segment.name}"
+                                            }
+                                        }) { Text("Confirm delete") }
+                                        Button(onClick = { pendingDeleteId = null }) { Text("Cancel") }
+                                    }
+                                } else {
+                                    Button(onClick = { pendingDeleteId = segment.id }) { Text("Delete") }
+                                }
+                        }
+                    }
                 }
             }
         }

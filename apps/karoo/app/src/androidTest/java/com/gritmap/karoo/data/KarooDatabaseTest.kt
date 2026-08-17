@@ -5,6 +5,8 @@ import androidx.room.Room
 import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.gritmap.karoo.importing.SegmentImportRepository
+import com.gritmap.karoo.importing.SegmentLibraryRepository
+import com.gritmap.karoo.importing.TransferPackageRepository
 import kotlinx.coroutines.runBlocking
 import org.junit.After
 import org.junit.Assert.assertEquals
@@ -49,5 +51,32 @@ class KarooDatabaseTest {
         """.trimIndent())
         assertEquals(imported.fingerprint, db.segmentDao().segment("imported")?.fingerprint)
         assertEquals(2, db.segmentDao().points("imported").size)
+    }
+
+    @Test fun libraryProjectsMetadataAndTransferPackagePersistsBaseline() = runBlocking {
+        val segmentJson = """
+            {"schemaVersion":1,"id":"packaged","name":"Packaged","direction":"forward",
+             "matching":{"corridorMeters":30,"requiredCoveragePct":0.9},
+             "referencePolyline":[
+               {"lat":37.0,"lng":-122.0,"distanceMeters":0},
+               {"lat":37.001,"lng":-122.0,"distanceMeters":111}]}
+        """.trimIndent()
+        val fingerprint = com.gritmap.karoo.importing.SegmentJsonParser().parse(segmentJson).fingerprint
+        val result = TransferPackageRepository(db).importPackage("""
+            {"schemaVersion":1,"packageType":"gritmap-transfer","packageId":"p1","createdAtMs":1,
+             "segment":$segmentJson,
+             "riderHistory":{"schemaVersion":1,"profile":{"ftpWatts":250,"weightKg":70},"trainingLoads":[],"samples":[]},
+             "baselinePacingPlan":{"schemaVersion":1,"id":"plan","segmentFingerprint":"$fingerprint",
+               "createdAtMs":1,"generator":{"type":"phone-ai","modelVersion":"v1"},"ftpWatts":250,
+               "zones":[{"startDistanceMeters":0,"endDistanceMeters":111,"targetPowerWatts":300,
+                 "classification":"hold","icon":"hold","instruction":"Hold"}]}}
+        """.trimIndent())
+
+        assertEquals(true, result.segmentWasNew)
+        val row = SegmentLibraryRepository(db).list().single()
+        assertEquals(2, row.pointCount)
+        assertEquals(111.0, row.lengthMeters, 0.001)
+        assertEquals(true, row.hasBaselinePlan)
+        assertEquals("phone-ai", db.pacingDao().baseline("packaged")?.source)
     }
 }
