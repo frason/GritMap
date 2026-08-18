@@ -105,3 +105,18 @@ whole thing) is committed.
 - The Karoo was disconnected at install time, so 0.2.1 is built but not installed. Reconnect it
   and use `adb install -r apps/karoo/app/build/outputs/apk/debug/app-debug.apk`; do not uninstall,
   clear app data, or run connected instrumentation.
+
+## Parallel Karoo crash fix — Codex, 2026-08-18 08:50 PDT
+
+- Physical testing proved matching works: diagnostics recorded `candidate_discovered`,
+  `candidate_selected`, and `attempt_started` for Coco Jumbo at 08:37.
+- Android exit history and DropBox recorded two immediate version 0.2.0 crashes. Exact cause:
+  `IllegalStateException: Composed into the View which doesn't propagate
+  ViewTreeSavedStateRegistryOwner!` from the WindowManager Compose overlay.
+- `ef2c066 apps/karoo: fix Compose overlay owners` adds lifecycle, saved-state registry, and
+  ViewModel-store owners to the overlay view tree and makes failed/unused teardown safe.
+- The focused overlay test and APK assembly passed.
+- Corrected version 0.2.1 (versionCode 3) was installed successfully with `adb install -r` and
+  launched. The Room database and WAL remain present; Coco Jumbo/app data were not cleared.
+- The on-road overlay path still needs one confirmation pass. If anything fails, preserve the
+  device state and retrieve DropBox plus `files/diagnostics/live-segment.log` before reinstalling.
