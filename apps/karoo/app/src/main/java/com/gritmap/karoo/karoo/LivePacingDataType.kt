@@ -2,6 +2,7 @@ package com.gritmap.karoo.karoo
 
 import android.content.Context
 import android.os.SystemClock
+import android.view.View
 import android.widget.RemoteViews
 import com.gritmap.karoo.R
 import com.gritmap.karoo.service.LiveServiceStarter
@@ -61,6 +62,7 @@ class PacingProfileDataFieldRenderer(
         val elapsed = if (lastEmitMs == Long.MIN_VALUE) MIN_UPDATE_INTERVAL_MS else clockMs() - lastEmitMs
         if (elapsed < MIN_UPDATE_INTERVAL_MS) delay(MIN_UPDATE_INTERVAL_MS - elapsed)
         val latestNow = clockMs()
+        val size = karooFieldSize(config)
         val remoteViews = RemoteViews(context.packageName, R.layout.karoo_live_pacing_field)
         remoteViews.setTextViewText(R.id.karoo_segment_name, state.segmentName.ifBlank { "GritMap" })
         remoteViews.setTextViewText(
@@ -78,9 +80,23 @@ class PacingProfileDataFieldRenderer(
                 "${recommendation.instruction} · ${recommendation.targetPowerWatts} W$next"
             } ?: state.sensorStatus.warning.orEmpty(),
         )
-        val width = config.viewSize.first.coerceAtLeast(1)
-        val height = (config.viewSize.second * 0.55).toInt().coerceAtLeast(1)
-        remoteViews.setImageViewBitmap(R.id.karoo_profile_image, profileRenderer.render(state, width, height))
+        remoteViews.setViewVisibility(
+            R.id.karoo_profile_guidance,
+            if (size == KarooFieldSize.MEDIUM) View.GONE else View.VISIBLE,
+        )
+        remoteViews.setViewVisibility(
+            R.id.karoo_profile_image,
+            if (size == KarooFieldSize.SMALL) View.GONE else View.VISIBLE,
+        )
+        if (size != KarooFieldSize.SMALL) {
+            val width = config.viewSize.first.coerceAtLeast(1)
+            val graphFraction = if (size == KarooFieldSize.MEDIUM) 0.72 else 0.55
+            val height = (config.viewSize.second * graphFraction).toInt().coerceAtLeast(1)
+            remoteViews.setImageViewBitmap(
+                R.id.karoo_profile_image,
+                profileRenderer.render(state, width, height),
+            )
+        }
         emitter.updateView(remoteViews)
         lastEmitMs = latestNow
     }

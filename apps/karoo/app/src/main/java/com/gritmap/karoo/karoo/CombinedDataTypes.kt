@@ -1,6 +1,7 @@
 package com.gritmap.karoo.karoo
 
 import android.content.Context
+import android.view.View
 import android.widget.RemoteViews
 import com.gritmap.karoo.R
 import com.gritmap.karoo.service.LiveServiceStarter
@@ -23,17 +24,21 @@ abstract class StateGraphicDataType(
     typeId: String,
     private val state: StateFlow<LiveUiState> = LiveUiStore.state,
 ) : DataTypeImpl(extensionId, typeId) {
-    protected abstract fun remoteViews(context: Context, state: LiveUiState): RemoteViews
+    protected abstract fun remoteViews(
+        context: Context,
+        state: LiveUiState,
+        size: KarooFieldSize,
+    ): RemoteViews
 
     override fun startView(context: Context, config: ViewConfig, emitter: ViewEmitter) {
         emitter.onNext(UpdateGraphicConfig(showHeader = false))
         val scope = CoroutineScope(Job() + Dispatchers.Default)
         scope.launch {
             if (config.preview) {
-                emitter.updateView(remoteViews(context, KarooPreviewState))
+                emitter.updateView(remoteViews(context, KarooPreviewState, karooFieldSize(config)))
             } else {
                 LiveServiceStarter.startIfPermitted(context, "$typeId-view")
-                state.collect { emitter.updateView(remoteViews(context, it)) }
+                state.collect { emitter.updateView(remoteViews(context, it, karooFieldSize(config))) }
             }
         }
         emitter.setCancellable { scope.cancel() }
@@ -41,13 +46,21 @@ abstract class StateGraphicDataType(
 }
 
 class PacingCoachDataType(extensionId: String) : StateGraphicDataType(extensionId, TYPE_ID) {
-    override fun remoteViews(context: Context, state: LiveUiState): RemoteViews {
+    override fun remoteViews(context: Context, state: LiveUiState, size: KarooFieldSize): RemoteViews {
         val text = pacingCoachText(state)
         return RemoteViews(context.packageName, R.layout.karoo_pacing_coach_field).apply {
             setTextViewText(R.id.karoo_coach_action, text.action)
             setTextViewText(R.id.karoo_coach_target, text.target)
             setTextViewText(R.id.karoo_coach_actual, text.actual)
             setTextViewText(R.id.karoo_coach_next, text.next)
+            setViewVisibility(
+                R.id.karoo_coach_actual,
+                if (size == KarooFieldSize.SMALL) View.GONE else View.VISIBLE,
+            )
+            setViewVisibility(
+                R.id.karoo_coach_next,
+                if (size == KarooFieldSize.LARGE) View.VISIBLE else View.GONE,
+            )
         }
     }
 
@@ -55,17 +68,38 @@ class PacingCoachDataType(extensionId: String) : StateGraphicDataType(extensionI
 }
 
 class SegmentPerformanceDataType(extensionId: String) : StateGraphicDataType(extensionId, TYPE_ID) {
-    override fun remoteViews(context: Context, state: LiveUiState): RemoteViews {
+    override fun remoteViews(context: Context, state: LiveUiState, size: KarooFieldSize): RemoteViews {
         val text = segmentPerformanceText(state)
         return RemoteViews(context.packageName, R.layout.karoo_segment_performance_field).apply {
             setTextViewText(R.id.karoo_performance_name, text.segmentName)
             setTextViewText(R.id.karoo_performance_finish, text.predictedFinish)
             setTextViewText(R.id.karoo_performance_adherence, text.adherence)
             setTextViewText(R.id.karoo_performance_progress, text.progress)
+            setViewVisibility(
+                R.id.karoo_performance_name,
+                if (size == KarooFieldSize.LARGE) View.VISIBLE else View.GONE,
+            )
+            setViewVisibility(
+                R.id.karoo_performance_adherence,
+                if (size == KarooFieldSize.SMALL) View.GONE else View.VISIBLE,
+            )
+            setViewVisibility(
+                R.id.karoo_performance_progress,
+                if (size == KarooFieldSize.LARGE) View.VISIBLE else View.GONE,
+            )
         }
     }
 
     companion object { const val TYPE_ID = "segment-performance" }
+}
+
+enum class KarooFieldSize { SMALL, MEDIUM, LARGE }
+
+/** Karoo's page grid is always 60 rows high, independent of device pixel density. */
+internal fun karooFieldSize(config: ViewConfig): KarooFieldSize = when (config.gridSize.second) {
+    in Int.MIN_VALUE..15 -> KarooFieldSize.SMALL
+    in 16..29 -> KarooFieldSize.MEDIUM
+    else -> KarooFieldSize.LARGE
 }
 
 internal data class PacingCoachText(
