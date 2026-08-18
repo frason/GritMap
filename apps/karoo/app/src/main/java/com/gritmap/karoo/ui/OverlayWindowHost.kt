@@ -10,13 +10,20 @@ import androidx.compose.ui.platform.ComposeView
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleOwner
 import androidx.lifecycle.LifecycleRegistry
+import androidx.lifecycle.ViewModelStore
+import androidx.lifecycle.ViewModelStoreOwner
 import androidx.lifecycle.setViewTreeLifecycleOwner
+import androidx.lifecycle.setViewTreeViewModelStoreOwner
+import androidx.savedstate.SavedStateRegistry
+import androidx.savedstate.SavedStateRegistryController
+import androidx.savedstate.SavedStateRegistryOwner
+import androidx.savedstate.setViewTreeSavedStateRegistryOwner
 import com.gritmap.karoo.ui.state.LiveUiState
 
 class OverlayWindowHost(context: Context) {
     private val appContext = context.applicationContext
     private val windowManager = appContext.getSystemService(WindowManager::class.java)
-    private var lifecycleOwner = OverlayLifecycleOwner()
+    private var lifecycleOwner: OverlayLifecycleOwner? = null
     private var overlay: ComposeView? = null
     private val overlayState = mutableStateOf(LiveUiState.Idle)
 
@@ -27,11 +34,13 @@ class OverlayWindowHost(context: Context) {
         if (!Settings.canDrawOverlays(appContext)) return false
         overlayState.value = state
         val view = overlay ?: ComposeView(appContext).also {
-            lifecycleOwner = OverlayLifecycleOwner()
-            it.setViewTreeLifecycleOwner(lifecycleOwner)
-            lifecycleOwner.attach()
-            windowManager.addView(it, createLayoutParams())
+            val owner = OverlayLifecycleOwner().also(OverlayLifecycleOwner::attach)
+            lifecycleOwner = owner
+            it.setViewTreeLifecycleOwner(owner)
+            it.setViewTreeSavedStateRegistryOwner(owner)
+            it.setViewTreeViewModelStoreOwner(owner)
             it.setContent { LivePacingOverlay(overlayState.value) }
+            windowManager.addView(it, createLayoutParams())
             overlay = it
         }
         view.invalidate()
@@ -39,9 +48,13 @@ class OverlayWindowHost(context: Context) {
     }
 
     fun hide() {
-        overlay?.let { windowManager.removeView(it) }
+        overlay?.let {
+            windowManager.removeView(it)
+            it.disposeComposition()
+        }
         overlay = null
-        lifecycleOwner.detach()
+        lifecycleOwner?.detach()
+        lifecycleOwner = null
     }
 
     companion object {
@@ -59,17 +72,28 @@ class OverlayWindowHost(context: Context) {
     }
 }
 
-private class OverlayLifecycleOwner : LifecycleOwner {
+private class OverlayLifecycleOwner : LifecycleOwner, SavedStateRegistryOwner, ViewModelStoreOwner {
     private val registry = LifecycleRegistry(this)
+    private val savedStateController = SavedStateRegistryController.create(this)
     override val lifecycle: Lifecycle = registry
+    override val savedStateRegistry: SavedStateRegistry = savedStateController.savedStateRegistry
+    override val viewModelStore = ViewModelStore()
+    private var attached = false
 
     fun attach() {
+        check(!attached) { "Overlay lifecycle owner is already attached" }
+        savedStateController.performAttach()
+        savedStateController.performRestore(null)
         registry.currentState = Lifecycle.State.CREATED
         registry.currentState = Lifecycle.State.STARTED
         registry.currentState = Lifecycle.State.RESUMED
+        attached = true
     }
 
     fun detach() {
+        if (!attached) return
         registry.currentState = Lifecycle.State.DESTROYED
+        viewModelStore.clear()
+        attached = false
     }
 }
