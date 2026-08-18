@@ -17,21 +17,12 @@
         android:textStyle="bold" />
 
     <TextView
-        android:id="@+id/karoo_target_power"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:gravity="end"
-        android:textColor="#FFFFFF"
-        android:textSize="22sp"
-        android:textStyle="bold" />
-
-    <TextView
-        android:id="@+id/karoo_guidance"
+        android:id="@+id/karoo_profile_status"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:ellipsize="end"
         android:maxLines="1"
-        android:textColor="#FFC857"
+        android:textColor="#D0D4DA"
         android:textSize="12sp" />
 
     <ImageView

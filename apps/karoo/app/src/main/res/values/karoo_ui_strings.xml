@@ -3,4 +3,8 @@
     <string name="karoo_profile_content_description">Segment elevation and pacing profile</string>
     <string name="karoo_extension_name">GritMap Live Pacing</string>
     <string name="karoo_extension_description">Live segment progress and pacing guidance</string>
+    <string name="karoo_target_power_name">GritMap Target Power</string>
+    <string name="karoo_target_power_description">Current recommended segment power target</string>
+    <string name="karoo_pacing_profile_name">GritMap Pacing Profile</string>
+    <string name="karoo_pacing_profile_description">Elevation, pacing zones, and segment progress</string>
 </resources>

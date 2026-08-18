@@ -7,9 +7,15 @@
     mapLayer="false"
     fitFile="false">
     <DataType
+        typeId="target-power"
+        displayName="@string/karoo_target_power_name"
+        description="@string/karoo_target_power_description"
+        graphical="false"
+        icon="@drawable/karoo_ic_extension" />
+    <DataType
         typeId="live-pacing"
-        displayName="@string/karoo_extension_name"
-        description="@string/karoo_extension_description"
+        displayName="@string/karoo_pacing_profile_name"
+        description="@string/karoo_pacing_profile_description"
         graphical="true"
         icon="@drawable/karoo_ic_extension" />
 </ExtensionInfo>

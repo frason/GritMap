@@ -20,13 +20,13 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.launch
 
-class LivePacingDataType(
+class PacingProfileDataType(
     extensionId: String,
     private val state: StateFlow<LiveUiState> = LiveUiStore.state,
 ) : DataTypeImpl(extensionId, TYPE_ID) {
     override fun startView(context: Context, config: ViewConfig, emitter: ViewEmitter) {
         emitter.onNext(UpdateGraphicConfig(showHeader = false))
-        val renderer = KarooDataFieldRenderer(context, emitter, config, ProfileBitmapRenderer())
+        val renderer = PacingProfileDataFieldRenderer(context, emitter, config, ProfileBitmapRenderer())
         val scope = CoroutineScope(Job() + Dispatchers.Default)
         scope.launch {
             // StateFlow is already conflated; a slow renderer resumes with the newest state.
@@ -36,12 +36,13 @@ class LivePacingDataType(
     }
 
     companion object {
+        // Retain the original ID so existing Karoo page configurations become the profile field.
         const val TYPE_ID = "live-pacing"
     }
 }
 
 /** Converts framework-neutral state to RemoteViews and enforces Hammerhead's 1 Hz limit. */
-class KarooDataFieldRenderer(
+class PacingProfileDataFieldRenderer(
     private val context: Context,
     private val emitter: ViewEmitter,
     private val config: ViewConfig,
@@ -57,12 +58,12 @@ class KarooDataFieldRenderer(
         val remoteViews = RemoteViews(context.packageName, R.layout.karoo_live_pacing_field)
         remoteViews.setTextViewText(R.id.karoo_segment_name, state.segmentName.ifBlank { "GritMap" })
         remoteViews.setTextViewText(
-            R.id.karoo_target_power,
-            state.recommendation?.targetPowerWatts?.let { "$it W" } ?: "-- W",
-        )
-        remoteViews.setTextViewText(
-            R.id.karoo_guidance,
-            state.sensorStatus.warning ?: state.recommendation?.instruction ?: "Waiting for segment",
+            R.id.karoo_profile_status,
+            if (state.totalDistanceMeters > 0.0) {
+                "${state.progressMeters.toInt()} / ${state.totalDistanceMeters.toInt()} m"
+            } else {
+                "Waiting for segment"
+            },
         )
         val width = config.viewSize.first.coerceAtLeast(1)
         val height = (config.viewSize.second * 0.55).toInt().coerceAtLeast(1)

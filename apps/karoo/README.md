@@ -130,9 +130,17 @@ KarooSystemService streams (1 Hz)
 Room writes: entry, material plan change, 30 s checkpoint, exit only
 ```
 
-The official graphical data field is constrained to `RemoteViews` and at most one update per
-second. Its profile is rendered to a cached bitmap. The overlay is Compose-based and always
-uses `FLAG_NOT_FOCUSABLE | FLAG_NOT_TOUCHABLE`.
+The extension exposes two deliberately focused Karoo fields:
+
+- **GritMap Target Power** is a standard numeric field containing only the current
+  recommended watt target.
+- **GritMap Pacing Profile** is a graphical `RemoteViews` field containing the elevation
+  profile, recover/hold/push color regions, and current-position marker.
+
+The profile retains the original `live-pacing` type ID so existing page configurations
+upgrade to the dedicated graph. Graphical updates are limited to at most one per second and
+the profile is rendered to a bitmap. The overlay is Compose-based and always uses
+`FLAG_NOT_FOCUSABLE | FLAG_NOT_TOUCHABLE`.
 
 ## Safety boundary
 
