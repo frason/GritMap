@@ -120,3 +120,18 @@ whole thing) is committed.
   launched. The Room database and WAL remain present; Coco Jumbo/app data were not cleared.
 - The on-road overlay path still needs one confirmation pass. If anything fails, preserve the
   device state and retrieve DropBox plus `files/diagnostics/live-segment.log` before reinstalling.
+
+## Parallel Karoo presentation update — Codex, 2026-08-18 11:23 PDT
+
+- The follow-up drive proved the overlay no longer crashes, but it obscured native Karoo data
+  fields and duplicated the graphical profile field.
+- Official `karoo-ext` 1.1.9 has no public API for Hammerhead's native Climber bottom sheet. The
+  agreed replacement is a brief native in-ride alert plus persistent configurable data fields.
+- `5a4d504 apps/karoo: replace overlay with entry alert` removes automatic system-overlay display
+  and its permission/UI. Segment entry dispatches a four-second `InRideAlert` containing segment
+  name, distance, and initial target/instruction when available.
+- `GritMap Pacing Profile` and `GritMap Target Power` remain the persistent ride-page UI.
+- Launcher now shows `Version 0.3.0`; APK versionCode is 4.
+- Focused native-alert tests and APK assembly passed.
+- The Karoo disconnected before installation. It still has corrected 0.2.1; install the verified
+  0.3.0 APK only with `adb install -r apps/karoo/app/build/outputs/apk/debug/app-debug.apk`.
