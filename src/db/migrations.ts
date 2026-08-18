@@ -172,6 +172,21 @@ export const migrations: readonly Migration[] = [
         WHERE device_id IS NOT NULL;
     `,
   },
+  {
+    version: 3,
+    name: "ride_summary_columns",
+    sql: `
+      -- Populated once at import time (persistImportedRide.ts), not aggregated on every read.
+      -- total_distance_meters: the last ride_points.distance_meters value (FIT distance is
+      -- cumulative). total_ascent_meters: sum of positive deltas between consecutive points
+      -- that both have a present elevation_meters value, in point_index order; a gap across
+      -- missing elevation samples contributes no delta.
+      ALTER TABLE rides ADD COLUMN total_distance_meters REAL
+        CHECK (total_distance_meters IS NULL OR total_distance_meters >= 0);
+      ALTER TABLE rides ADD COLUMN total_ascent_meters REAL
+        CHECK (total_ascent_meters IS NULL OR total_ascent_meters >= 0);
+    `,
+  },
 ];
 
 export function configureDatabaseConnection(database: MigrationDatabase): void {

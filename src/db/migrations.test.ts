@@ -24,7 +24,7 @@ describe("SQLite migrations", () => {
       .map((row) => String(row.name));
 
     for (const table of CORE_TABLES) assert.ok(tables.includes(table), `missing ${table}`);
-    assert.equal(Number(database.prepare("PRAGMA user_version").get()?.user_version), 2);
+    assert.equal(Number(database.prepare("PRAGMA user_version").get()?.user_version), 3);
 
     assertColumns(database, "imported_files", [
       "id",
@@ -48,6 +48,8 @@ describe("SQLite migrations", () => {
       "duration_ms",
       "original_timezone_offset_minutes",
       "fit_metadata_json",
+      "total_distance_meters",
+      "total_ascent_meters",
     ]);
     assertColumns(database, "ride_points", [
       "ride_id",
@@ -202,7 +204,7 @@ describe("SQLite migrations", () => {
 
     applyMigrations(database);
 
-    assert.equal(Number(database.prepare("PRAGMA user_version").get()?.user_version), 2);
+    assert.equal(Number(database.prepare("PRAGMA user_version").get()?.user_version), 3);
     assert.deepEqual({ ...database.prepare(`
       SELECT rides.id, imported_files.original_filename,
              imported_files.retained_file_uri, imported_files.file_size_bytes,
@@ -317,6 +319,38 @@ describe("SQLite migrations", () => {
       original_timezone_offset_minutes: -420,
       fit_metadata_json: '{"devices":[{"serialNumber":"device-new"}]}',
     });
+  });
+
+  it("adds nullable, non-negative ride summary columns defaulting to NULL on upgrade", () => {
+    using database = new DatabaseSync(":memory:");
+    applyMigrations(database, migrations.slice(0, 2));
+    insertRide(database, "ride-pre-v3", "file-pre-v3");
+
+    applyMigrations(database);
+
+    assert.equal(Number(database.prepare("PRAGMA user_version").get()?.user_version), 3);
+    assert.deepEqual({ ...database.prepare(`
+      SELECT total_distance_meters, total_ascent_meters FROM rides WHERE id = 'ride-pre-v3'
+    `).get() }, { total_distance_meters: null, total_ascent_meters: null });
+
+    assert.deepEqual(
+      columnDefinitions(database, "rides", ["total_distance_meters", "total_ascent_meters"]),
+      [
+        { name: "total_distance_meters", type: "REAL", notnull: 0 },
+        { name: "total_ascent_meters", type: "REAL", notnull: 0 },
+      ],
+    );
+
+    database
+      .prepare("UPDATE rides SET total_distance_meters = ?, total_ascent_meters = ? WHERE id = ?")
+      .run(1_234.5, 88.2, "ride-pre-v3");
+    assert.throws(
+      () =>
+        database
+          .prepare("UPDATE rides SET total_distance_meters = ? WHERE id = ?")
+          .run(-1, "ride-pre-v3"),
+      /CHECK constraint failed/,
+    );
   });
 });
 
