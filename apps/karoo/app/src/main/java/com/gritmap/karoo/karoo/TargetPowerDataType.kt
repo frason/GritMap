@@ -17,24 +17,42 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.collect
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.launch
+import java.util.concurrent.atomic.AtomicInteger
 
 /** A standard Karoo numeric field containing only the current pacing target. */
 class TargetPowerDataType(
     extensionId: String,
     private val state: StateFlow<LiveUiState> = LiveUiStore.state,
 ) : DataTypeImpl(extensionId, TYPE_ID) {
+    private val previewViewCount = AtomicInteger(0)
+    private val previewActive = MutableStateFlow(false)
+
     override fun startStream(emitter: Emitter<StreamState>) {
         val scope = CoroutineScope(Job() + Dispatchers.Default)
         scope.launch {
-            state.collect { emitter.onNext(targetPowerStreamState(it, dataTypeId)) }
+            combine(state, previewActive) { liveState, preview ->
+                targetPowerStreamState(stateForKarooView(liveState, preview), dataTypeId)
+            }.collect(emitter::onNext)
         }
         emitter.setCancellable { scope.cancel() }
     }
 
     override fun startView(context: Context, config: ViewConfig, emitter: ViewEmitter) {
         emitter.onNext(UpdateNumericConfig(formatDataTypeId = DataType.Type.POWER))
+        if (config.preview) {
+            previewViewCount.incrementAndGet()
+            previewActive.value = true
+            emitter.setCancellable {
+                if (previewViewCount.decrementAndGet() <= 0) {
+                    previewViewCount.set(0)
+                    previewActive.value = false
+                }
+            }
+        }
     }
 
     companion object {

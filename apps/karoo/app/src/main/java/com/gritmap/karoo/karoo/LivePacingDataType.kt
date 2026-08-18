@@ -26,13 +26,17 @@ class PacingProfileDataType(
     private val state: StateFlow<LiveUiState> = LiveUiStore.state,
 ) : DataTypeImpl(extensionId, TYPE_ID) {
     override fun startView(context: Context, config: ViewConfig, emitter: ViewEmitter) {
-        LiveServiceStarter.startIfPermitted(context, "pacing-profile-view")
         emitter.onNext(UpdateGraphicConfig(showHeader = false))
         val renderer = PacingProfileDataFieldRenderer(context, emitter, config, ProfileBitmapRenderer())
         val scope = CoroutineScope(Job() + Dispatchers.Default)
         scope.launch {
-            // StateFlow is already conflated; a slow renderer resumes with the newest state.
-            state.collect { latest -> renderer.submit(latest) }
+            if (config.preview) {
+                renderer.submit(KarooPreviewState)
+            } else {
+                LiveServiceStarter.startIfPermitted(context, "pacing-profile-view")
+                // StateFlow is already conflated; a slow renderer resumes with the newest state.
+                state.collect { latest -> renderer.submit(latest) }
+            }
         }
         emitter.setCancellable { scope.cancel() }
     }
