@@ -20,6 +20,7 @@ import io.hammerhead.karooext.models.OnStreamState
 import io.hammerhead.karooext.models.RideState
 import io.hammerhead.karooext.models.StreamState
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.CoroutineExceptionHandler
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
@@ -32,7 +33,14 @@ import java.util.concurrent.atomic.AtomicBoolean
  * into [onTelemetry]; no ordinary sensor tick performs a Room write.
  */
 class LiveSegmentService : Service() {
-    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
+    private val exceptionHandler = CoroutineExceptionHandler { _, error ->
+        LiveDiagnostics.record(
+            this,
+            "coroutine_error",
+            "type=${error.javaClass.simpleName} message=${error.message}",
+        )
+    }
+    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default + exceptionHandler)
     private val karooSystem by lazy { KarooSystemService(this) }
     private val overlayHost by lazy { OverlayWindowHost(this) }
     private val eventSink get() = LiveSegmentServiceDependencies.attemptEventSink
@@ -43,6 +51,7 @@ class LiveSegmentService : Service() {
             begin = ::beginAttempt,
             update = ::updateAttempt,
             finish = ::finishAttempt,
+            diagnostic = { event, details -> LiveDiagnostics.record(this, event, details) },
         )
     }
     private val consumerIds = mutableListOf<String>()
@@ -52,16 +61,28 @@ class LiveSegmentService : Service() {
     private var lastCheckpointMs = 0L
     private var lastInferenceMs = 0L
     private val inferenceInFlight = AtomicBoolean(false)
+    private var observingKaroo = false
+    private var locationCount = 0L
+    private var lastLocationDiagnosticMs = 0L
 
     override fun onCreate() {
         super.onCreate()
         LiveSegmentServiceDependencies.attemptEventSink =
             RoomAttemptEventSink(DatabaseProvider.get(this))
         createNotificationChannel()
-        observeKaroo()
+        LiveDiagnostics.record(this, "service_created")
     }
 
     override fun onBind(intent: Intent?): IBinder? = null
+
+    override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
+        if (LiveServiceStarter.hasLocationPermission(this)) {
+            if (!observingKaroo) observeKaroo()
+        } else {
+            LiveDiagnostics.record(this, "location_permission_missing", "startId=$startId")
+        }
+        return START_STICKY
+    }
 
     override fun onDestroy() {
         activeSession?.let { session ->
@@ -70,13 +91,19 @@ class LiveSegmentService : Service() {
         }
         overlayHost.hide()
         LiveUiStore.clear()
-        karooSystem.disconnect()
+        if (observingKaroo) karooSystem.disconnect()
         scope.cancel()
+        LiveDiagnostics.record(this, "service_destroyed")
         super.onDestroy()
     }
 
     /** Called by the deterministic matcher when a segment is entered. */
     fun beginAttempt(session: ActiveAttemptSession) {
+        LiveDiagnostics.record(
+            this,
+            "attempt_started",
+            "segment=${session.segmentId} attempt=${session.attemptId}",
+        )
         activeSession = session
         lastCheckpointMs = session.startedAtMs
         lastInferenceMs = session.startedAtMs
@@ -110,6 +137,11 @@ class LiveSegmentService : Service() {
 
     fun finishAttempt(reason: String) {
         val session = activeSession ?: return
+        LiveDiagnostics.record(
+            this,
+            "attempt_finished",
+            "segment=${session.segmentId} attempt=${session.attemptId} reason=$reason",
+        )
         val finalStatus = if (reason == "completed") {
             com.gritmap.karoo.ui.state.MatchStatus.COMPLETE
         } else {
@@ -124,16 +156,29 @@ class LiveSegmentService : Service() {
     }
 
     private fun observeKaroo() {
-        karooSystem.connect()
+        observingKaroo = true
+        karooSystem.connect {
+            LiveDiagnostics.record(this, "karoo_connected")
+        }
         consumerIds += karooSystem.addConsumer { state: RideState -> onRideState(state) }
         consumerIds += karooSystem.addConsumer { location: OnLocationChanged ->
             val now = System.currentTimeMillis()
+            locationCount += 1
             telemetry = telemetry.copy(
                 timestampMs = now,
                 lat = location.lat,
                 lng = location.lng,
                 gpsUpdatedAtMs = now,
             )
+            if (now - lastLocationDiagnosticMs >= LOCATION_DIAGNOSTIC_INTERVAL_MS) {
+                lastLocationDiagnosticMs = now
+                LiveDiagnostics.record(
+                    this,
+                    "gps_received",
+                    "count=$locationCount recording=$recording lat=${"%.5f".format(location.lat)} " +
+                        "lng=${"%.5f".format(location.lng)}",
+                )
+            }
             onTelemetry()
         }
         observeMetric(DataType.Type.POWER, DataType.Field.POWER) { value ->
@@ -166,9 +211,10 @@ class LiveSegmentService : Service() {
     }
 
     private fun onRideState(state: RideState) {
+        LiveDiagnostics.record(this, "ride_state", "state=${state.javaClass.simpleName}")
         recording = state is RideState.Recording || state is RideState.Paused
         if (recording) {
-            startForegroundCompat()
+            if (!startForegroundCompat()) recording = false
         } else {
             activeSession?.let { finishAttempt("ride-ended") }
             stopForeground(STOP_FOREGROUND_REMOVE)
@@ -179,7 +225,15 @@ class LiveSegmentService : Service() {
         if (!recording) return
         val sensors = SensorFreshness.status(telemetry)
         scope.launch {
-            coordinator.process(telemetry, sensors)
+            try {
+                coordinator.process(telemetry, sensors)
+            } catch (error: Exception) {
+                LiveDiagnostics.record(
+                    this@LiveSegmentService,
+                    "telemetry_processing_failed",
+                    "type=${error.javaClass.simpleName} message=${error.message}",
+                )
+            }
         }
     }
 
@@ -213,14 +267,33 @@ class LiveSegmentService : Service() {
         scope.launch(Dispatchers.Main.immediate) { overlayHost.show(state) }
     }
 
-    private fun startForegroundCompat() {
+    private fun startForegroundCompat(): Boolean {
+        if (!LiveServiceStarter.hasLocationPermission(this)) {
+            LiveDiagnostics.record(this, "foreground_blocked", "permission=location")
+            return false
+        }
         val notification = NotificationCompat.Builder(this, CHANNEL_ID)
             .setSmallIcon(R.drawable.karoo_ic_extension)
             .setContentTitle(getString(R.string.karoo_extension_name))
             .setContentText("Live segment matching active")
             .setOngoing(true)
             .build()
-        startForeground(NOTIFICATION_ID, notification, ServiceInfo.FOREGROUND_SERVICE_TYPE_LOCATION)
+        return try {
+            startForeground(
+                NOTIFICATION_ID,
+                notification,
+                ServiceInfo.FOREGROUND_SERVICE_TYPE_LOCATION,
+            )
+            LiveDiagnostics.record(this, "foreground_started")
+            true
+        } catch (error: SecurityException) {
+            LiveDiagnostics.record(
+                this,
+                "foreground_failed",
+                "type=${error.javaClass.simpleName} message=${error.message}",
+            )
+            false
+        }
     }
 
     private fun createNotificationChannel() {
@@ -237,5 +310,6 @@ class LiveSegmentService : Service() {
         private const val NOTIFICATION_ID = 701
         private const val CHECKPOINT_INTERVAL_MS = 30_000L
         private const val INFERENCE_INTERVAL_MS = 10_000L
+        private const val LOCATION_DIAGNOSTIC_INTERVAL_MS = 10_000L
     }
 }

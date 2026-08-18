@@ -1,5 +1,6 @@
 package com.gritmap.karoo
 
+import android.Manifest
 import android.content.Intent
 import android.net.Uri
 import android.os.Bundle
@@ -37,7 +38,8 @@ import com.gritmap.karoo.importing.SegmentInboxProcessor
 import com.gritmap.karoo.importing.SegmentLibraryRepository
 import com.gritmap.karoo.importing.StagedFileSegmentInbox
 import com.gritmap.karoo.importing.TransferPackageRepository
-import com.gritmap.karoo.service.LiveSegmentService
+import com.gritmap.karoo.service.LiveDiagnostics
+import com.gritmap.karoo.service.LiveServiceStarter
 import java.io.IOException
 import java.io.File
 import kotlinx.coroutines.Dispatchers
@@ -47,7 +49,6 @@ import kotlinx.coroutines.withContext
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        startService(Intent(this, LiveSegmentService::class.java))
 
         val database = DatabaseProvider.get(this)
         val segmentImporter = SegmentImportRepository(database)
@@ -59,10 +60,43 @@ class MainActivity : ComponentActivity() {
             var status by remember { mutableStateOf("Ready") }
             var segments by remember { mutableStateOf<List<SegmentLibraryRow>>(emptyList()) }
             var pendingDeleteId by remember { mutableStateOf<String?>(null) }
+            var locationGranted by remember {
+                mutableStateOf(LiveServiceStarter.hasLocationPermission(this@MainActivity))
+            }
+            var diagnosticLines by remember { mutableStateOf<List<String>>(emptyList()) }
             suspend fun refreshLibrary() {
                 segments = segmentLibrary.list()
             }
-            LaunchedEffect(Unit) { refreshLibrary() }
+            suspend fun refreshDiagnostics() {
+                diagnosticLines = LiveDiagnostics.recent(this@MainActivity, 8)
+            }
+            val locationPermissionLauncher = rememberLauncherForActivityResult(
+                ActivityResultContracts.RequestMultiplePermissions(),
+            ) {
+                locationGranted = LiveServiceStarter.hasLocationPermission(this@MainActivity)
+                if (locationGranted) {
+                    LiveServiceStarter.startIfPermitted(this@MainActivity, "permission-result")
+                    status = "Location enabled; live matching service started"
+                } else {
+                    LiveDiagnostics.record(this@MainActivity, "location_permission_denied")
+                    status = "Location permission denied; live segment matching is disabled"
+                }
+                lifecycleScope.launch { refreshDiagnostics() }
+            }
+            LaunchedEffect(Unit) {
+                refreshLibrary()
+                refreshDiagnostics()
+                if (locationGranted) {
+                    LiveServiceStarter.startIfPermitted(this@MainActivity, "launcher")
+                } else {
+                    locationPermissionLauncher.launch(
+                        arrayOf(
+                            Manifest.permission.ACCESS_COARSE_LOCATION,
+                            Manifest.permission.ACCESS_FINE_LOCATION,
+                        ),
+                    )
+                }
+            }
             val segmentPicker = rememberLauncherForActivityResult(
                 ActivityResultContracts.OpenDocument(),
             ) { uri ->
@@ -95,6 +129,22 @@ class MainActivity : ComponentActivity() {
                 ) {
                     Text("GritMap Karoo", color = Color.White, style = MaterialTheme.typography.headlineMedium)
                     Text(status, color = Color.White)
+                    Button(onClick = {
+                        if (LiveServiceStarter.hasLocationPermission(this@MainActivity)) {
+                            locationGranted = true
+                            LiveServiceStarter.startIfPermitted(this@MainActivity, "launcher-button")
+                            status = "Location enabled; live matching service started"
+                        } else {
+                            locationPermissionLauncher.launch(
+                                arrayOf(
+                                    Manifest.permission.ACCESS_COARSE_LOCATION,
+                                    Manifest.permission.ACCESS_FINE_LOCATION,
+                                ),
+                            )
+                        }
+                    }) {
+                        Text(if (locationGranted) "Location enabled" else "Enable location")
+                    }
                     Button(onClick = {
                         if (hasDocumentPicker()) {
                             segmentPicker.launch(arrayOf("application/json", "text/plain"))
@@ -184,6 +234,19 @@ class MainActivity : ComponentActivity() {
                                 }
                         }
                     }
+                    Text(
+                        "Live diagnostics",
+                        color = Color.White,
+                        style = MaterialTheme.typography.titleMedium,
+                    )
+                    Button(onClick = {
+                        lifecycleScope.launch { refreshDiagnostics() }
+                    }) { Text("Refresh diagnostics") }
+                    Text(
+                        diagnosticLines.takeLast(8).joinToString("\n").ifBlank { "No live events recorded" },
+                        color = Color.LightGray,
+                        style = MaterialTheme.typography.bodySmall,
+                    )
                 }
             }
         }

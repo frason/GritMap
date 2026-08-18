@@ -4,6 +4,7 @@ import android.content.Context
 import android.os.SystemClock
 import android.widget.RemoteViews
 import com.gritmap.karoo.R
+import com.gritmap.karoo.service.LiveServiceStarter
 import com.gritmap.karoo.ui.ProfileBitmapRenderer
 import com.gritmap.karoo.ui.state.LiveUiState
 import com.gritmap.karoo.ui.state.LiveUiStore
@@ -25,6 +26,7 @@ class PacingProfileDataType(
     private val state: StateFlow<LiveUiState> = LiveUiStore.state,
 ) : DataTypeImpl(extensionId, TYPE_ID) {
     override fun startView(context: Context, config: ViewConfig, emitter: ViewEmitter) {
+        LiveServiceStarter.startIfPermitted(context, "pacing-profile-view")
         emitter.onNext(UpdateGraphicConfig(showHeader = false))
         val renderer = PacingProfileDataFieldRenderer(context, emitter, config, ProfileBitmapRenderer())
         val scope = CoroutineScope(Job() + Dispatchers.Default)

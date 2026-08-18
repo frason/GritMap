@@ -142,6 +142,13 @@ upgrade to the dedicated graph. Graphical updates are limited to at most one per
 the profile is rendered to a bitmap. The overlay is Compose-based and always uses
 `FLAG_NOT_FOCUSABLE | FLAG_NOT_TOUCHABLE`.
 
+Live matching requires Android location permission. The launcher requests it during setup,
+shows whether it is enabled, and starts a restartable service that also receives start
+requests from the Karoo extension/profile lifecycle. A bounded local diagnostic trail records
+ride state, periodic GPS receipt, candidate discovery, attempt start/finish, and service or
+permission errors. The latest entries are visible under **Live diagnostics** in the launcher;
+the active log is capped at 256 KB with one rotated predecessor.
+
 ## Safety boundary
 
 Geometry and attempt lifecycle are deterministic. Needle cannot start, select, finish, or

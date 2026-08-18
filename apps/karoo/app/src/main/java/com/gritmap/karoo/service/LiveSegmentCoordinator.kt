@@ -30,6 +30,7 @@ class LiveSegmentCoordinator(
     private val begin: (ActiveAttemptSession) -> Unit,
     private val update: (LiveTelemetry, LiveUiState, Double) -> Unit,
     private val finish: (String) -> Unit,
+    private val diagnostic: (event: String, details: String) -> Unit = { _, _ -> },
 ) {
     private data class Candidate(
         val definition: SegmentDefinition,
@@ -41,12 +42,19 @@ class LiveSegmentCoordinator(
     private val selector = CandidateSelector(lockProgressMeters = 50.0)
     private val candidates = linkedMapOf<String, Candidate>()
     private var selectedId: String? = null
+    private var lastEmptyDiscoveryDiagnosticMs = 0L
 
     suspend fun process(sample: LiveTelemetry, sensors: SensorStatus) = mutex.withLock {
         val lat = sample.lat ?: return@withLock
         val lng = sample.lng ?: return@withLock
         if (candidates.isEmpty()) discover(lat, lng)
-        if (candidates.isEmpty()) return@withLock
+        if (candidates.isEmpty()) {
+            if (sample.timestampMs - lastEmptyDiscoveryDiagnosticMs >= DISCOVERY_DIAGNOSTIC_INTERVAL_MS) {
+                lastEmptyDiscoveryDiagnosticMs = sample.timestampMs
+                diagnostic("candidate_none", "lat=${"%.5f".format(lat)} lng=${"%.5f".format(lng)}")
+            }
+            return@withLock
+        }
 
         val states = candidates.mapValues { (_, candidate) ->
             candidate.matcher.update(sample.timestampMs, lat, lng)
@@ -77,6 +85,11 @@ class LiveSegmentCoordinator(
         if (selectedId != selected.segmentId) {
             if (selectedId != null) finish("candidate-replaced-before-lock")
             selectedId = selected.segmentId
+            diagnostic(
+                "candidate_selected",
+                "segment=${selected.segmentId} progress=${selected.progressMeters.toInt()} " +
+                    "startDistance=${selected.startDistanceMeters.toInt()}",
+            )
             val definition = candidates.getValue(selected.segmentId).definition
             begin(newSession(candidates.getValue(selected.segmentId), sensors, sample.timestampMs))
         }
@@ -115,13 +128,15 @@ class LiveSegmentCoordinator(
         val lngDelta = START_SEARCH_METERS / (111_320.0 * longitudeScale)
         // Rider data is read once during candidate discovery, never on the 1 Hz update path.
         val ftpWatts = database.riderHistoryDao().profile()?.ftpWatts
-        database.segmentDao().segmentStartsInBounds(
+        val nearby = database.segmentDao().segmentStartsInBounds(
             lat - latDelta, lat + latDelta, lng - lngDelta, lng + lngDelta,
-        ).forEach { entity ->
+        )
+        nearby.forEach { entity ->
             val definition = loadDefinition(entity)
             val matcher = DirectedLiveMatcher(definition)
             if (matcher.canStart(lat, lng)) {
                 candidates[entity.id] = Candidate(definition, matcher, ftpWatts)
+                diagnostic("candidate_discovered", "segment=${entity.id} nearby=${nearby.size}")
             }
         }
     }
@@ -199,5 +214,6 @@ class LiveSegmentCoordinator(
 
     companion object {
         private const val START_SEARCH_METERS = 30.0
+        private const val DISCOVERY_DIAGNOSTIC_INTERVAL_MS = 10_000L
     }
 }
