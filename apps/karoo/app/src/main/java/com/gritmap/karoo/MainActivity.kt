@@ -4,7 +4,6 @@ import android.Manifest
 import android.content.Intent
 import android.net.Uri
 import android.os.Bundle
-import android.provider.Settings
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
@@ -128,6 +127,7 @@ class MainActivity : ComponentActivity() {
                     verticalArrangement = Arrangement.spacedBy(12.dp),
                 ) {
                     Text("GritMap Karoo", color = Color.White, style = MaterialTheme.typography.headlineMedium)
+                    Text("Version ${BuildConfig.VERSION_NAME}", color = Color.Gray)
                     Text(status, color = Color.White)
                     Button(onClick = {
                         if (LiveServiceStarter.hasLocationPermission(this@MainActivity)) {
@@ -191,12 +191,9 @@ class MainActivity : ComponentActivity() {
                     }) {
                         Text("Import rider history JSON")
                     }
-                    Button(onClick = ::requestOverlayPermission) {
-                        Text(if (Settings.canDrawOverlays(this@MainActivity)) "Overlay enabled" else "Enable overlay")
-                    }
                     Text(
                         "Tracking activates only while Karoo reports a recorded ride. " +
-                            "The official graphical data field works without overlay permission.",
+                            "Add GritMap Pacing Profile or Target Power to a ride page for live guidance.",
                         color = Color.LightGray,
                     )
                     Text(
@@ -250,11 +247,6 @@ class MainActivity : ComponentActivity() {
                 }
             }
         }
-    }
-
-    private fun requestOverlayPermission() {
-        if (Settings.canDrawOverlays(this)) return
-        startActivity(Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION, Uri.parse("package:$packageName")))
     }
 
     private fun hasDocumentPicker(): Boolean = Intent(Intent.ACTION_OPEN_DOCUMENT).apply {

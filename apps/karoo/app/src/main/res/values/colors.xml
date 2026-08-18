@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="gritmap_alert_background">#173F2A</color>
+    <color name="gritmap_alert_text">#FFFFFF</color>
+</resources>

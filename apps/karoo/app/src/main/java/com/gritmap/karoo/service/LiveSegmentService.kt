@@ -9,12 +9,12 @@ import android.os.IBinder
 import androidx.core.app.NotificationCompat
 import com.gritmap.karoo.R
 import com.gritmap.karoo.data.DatabaseProvider
-import com.gritmap.karoo.ui.OverlayWindowHost
 import com.gritmap.karoo.ui.state.LiveUiState
 import com.gritmap.karoo.ui.state.LiveUiStore
 import com.gritmap.karoo.ui.state.SensorStatus
 import io.hammerhead.karooext.KarooSystemService
 import io.hammerhead.karooext.models.DataType
+import io.hammerhead.karooext.models.InRideAlert
 import io.hammerhead.karooext.models.OnLocationChanged
 import io.hammerhead.karooext.models.OnStreamState
 import io.hammerhead.karooext.models.RideState
@@ -42,7 +42,6 @@ class LiveSegmentService : Service() {
     }
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default + exceptionHandler)
     private val karooSystem by lazy { KarooSystemService(this) }
-    private val overlayHost by lazy { OverlayWindowHost(this) }
     private val eventSink get() = LiveSegmentServiceDependencies.attemptEventSink
     private val pacingEngine get() = LiveSegmentServiceDependencies.pacingGuidanceEngine
     private val coordinator by lazy {
@@ -89,7 +88,6 @@ class LiveSegmentService : Service() {
             // Service teardown is a macro-event and must not be cancelled with the live scope.
             runBlocking(Dispatchers.IO) { eventSink.onSegmentExit(session, "service-destroyed") }
         }
-        overlayHost.hide()
         LiveUiStore.clear()
         if (observingKaroo) karooSystem.disconnect()
         scope.cancel()
@@ -108,6 +106,12 @@ class LiveSegmentService : Service() {
         lastCheckpointMs = session.startedAtMs
         lastInferenceMs = session.startedAtMs
         publish(session.uiState)
+        val alertSent = karooSystem.dispatch(segmentEntryAlert(session))
+        LiveDiagnostics.record(
+            this,
+            "segment_entry_alert",
+            "segment=${session.segmentId} sent=$alertSent",
+        )
         scope.launch(Dispatchers.IO) { eventSink.onSegmentEntry(session) }
         val engine = pacingEngine
         if (engine != null && session.ftpWatts != null && inferenceInFlight.compareAndSet(false, true)) {
@@ -151,7 +155,6 @@ class LiveSegmentService : Service() {
         activeSession = null
         lastInferenceMs = 0L
         scope.launch(Dispatchers.IO) { eventSink.onSegmentExit(session, reason) }
-        scope.launch(Dispatchers.Main.immediate) { overlayHost.hide() }
         LiveUiStore.clear()
     }
 
@@ -264,7 +267,6 @@ class LiveSegmentService : Service() {
 
     private fun publish(state: LiveUiState) {
         LiveUiStore.publish(state)
-        scope.launch(Dispatchers.Main.immediate) { overlayHost.show(state) }
     }
 
     private fun startForegroundCompat(): Boolean {
@@ -312,4 +314,20 @@ class LiveSegmentService : Service() {
         private const val INFERENCE_INTERVAL_MS = 10_000L
         private const val LOCATION_DIAGNOSTIC_INTERVAL_MS = 10_000L
     }
+}
+
+internal fun segmentEntryAlert(session: ActiveAttemptSession): InRideAlert {
+    val state = session.uiState
+    val detail = state.recommendation?.let {
+        "${it.targetPowerWatts} W · ${it.instruction}"
+    } ?: "${state.totalDistanceMeters.toInt()} m · Open GritMap Pacing Profile"
+    return InRideAlert(
+        id = "gritmap-segment-${session.attemptId}",
+        icon = R.drawable.karoo_ic_extension,
+        title = "${state.segmentName.ifBlank { session.segmentId }} started",
+        detail = detail,
+        autoDismissMs = 4_000L,
+        backgroundColor = R.color.gritmap_alert_background,
+        textColor = R.color.gritmap_alert_text,
+    )
 }
