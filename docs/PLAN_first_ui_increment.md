@@ -230,3 +230,70 @@ the actual tests, don't trust a summary.
 - Native-dependent code (§2, §3's adapter, §4's platform glue) verified manually via
   `npm run ios` / `npm run android` against the dev client — call out exactly what was
   manually exercised in each PR description.
+
+## Codex review — 2026-08-17
+
+Verdict: **approve the scope and sequence after the required revisions below**. Navigation,
+the dev-client move, import/list/detail boundaries, and deferring map/segment work are sound.
+Do not start the DB/import PRs until items 1–4 are reflected in their implementation.
+
+### Required revisions
+
+1. **Make the Expo SQLite adapter one-shot or explicitly finalizable.** The proposed
+   `prepareSync()` wrapper cannot leave native `SQLiteStatement`s alive because existing
+   callers have no `finalize()` method. `resetSync()` resets a result cursor; it does not
+   release the native statement. Prefer a compatibility wrapper that stores the SQL string
+   and implements `get/run/all` with Expo's one-shot `getFirstSync/runSync/getAllSync`
+   convenience APIs, which prepare and finalize internally. Alternatively extend every DB
+   interface/caller with deterministic finalization. Add a structural fake unit test for the
+   adapter—it is thin but testable—and one real dev-client migration/insertion smoke test.
+
+2. **Define FIT identity normalization before implementing import.** `ParsedRide` exposes
+   opaque `deviceMetadata`; it does not expose `activityId`, `deviceId`, ride start, or
+   duration directly. The two real Karoo fixtures show device serial metadata but no proven
+   stable FIT activity identifier. Specify and test these rules:
+   - never fabricate `activityId`; leave it absent unless a genuine stable activity/session
+     identifier is present;
+   - use the recording Karoo's serial/device identifier, not an attached HR/power sensor;
+   - use session start when valid, with first record timestamp only as a documented fallback;
+   - use FIT total elapsed duration (not timer duration) so stopped/auto-paused wall time is
+     preserved, with record-boundary duration only as a documented fallback.
+   Put this normalization in a pure parser-adjacent function tested against both real files.
+
+3. **Use an injected/platform-safe ID source and hash the actual bytes.** Do not rely on an
+   unverified global `crypto.randomUUID()` in Hermes. Since `expo-crypto` is already planned,
+   isolate native UUID generation behind an injected `IdFactory` so Node tests stay native-
+   module-free. Hash the picked FIT's raw `Uint8Array`, not its URI, decoded text, or base64
+   representation. Add a fixture assertion against Node `createHash('sha256')` so native and
+   test hashes are byte-identical.
+
+4. **Specify retained-file cleanup and replacement ordering.** Do not retain a second file
+   for “Keep Existing.” For a new import, remove the newly copied file if the DB transaction
+   fails. For replacement, commit the new retained URI/hash/points first, then delete the old
+   physical file; failure deleting the old file should be reported as recoverable cleanup,
+   never roll back or corrupt the committed ride. Tests need filesystem fakes for these
+   success/failure paths.
+
+5. **Keep batch import responsive.** FIT decoding and thousands of synchronous point inserts
+   run on the JS thread. Reuse a prepared point insert inside one transaction where possible,
+   finalize it deterministically, process files independently, and yield between files so
+   status/progress can render. Explicitly request multi-selection from the document picker.
+   Test that one failed file does not roll back successful files, as required by MVP.md.
+
+6. **Define ride-summary queries before promising the Figma stats.** The schema stores no
+   explicit total distance or elevation gain. Distance can use the last/max valid FIT distance;
+   ascent requires ordered positive elevation deltas and should not be mislabeled as simple
+   min/max elevation. Either add normalized summary columns in a migration and populate them
+   during import, or document/query the exact aggregate semantics and measure list performance.
+
+7. **Coordinate generated native directories with pending PR #54.** Before committing
+   `ios/` and `android/`, inspect PR #54 for app config/native dependency changes and choose a
+   merge/rebase order. Do not independently generate competing native projects on both tracks.
+
+### Accepted gaps
+
+- Deferring component-level React Native tests is acceptable for this first increment if the
+  pure orchestration and DB paths are fully tested and the four approved screens receive a
+  documented manual iOS/Android acceptance pass.
+- The existing scratch navigation/theme files may be reused only after diffing them against
+  the approved plan; their passing typecheck/test/web smoke is useful evidence, not approval.

@@ -1,9 +1,9 @@
 # Handoff: Root-app first UI increment — plan ready for review, not yet built
 
-- Updated: `2026-08-17 21:12 PDT`
-- Agent: `Claude`
+- Updated: `2026-08-17 21:23 PDT`
+- Agent: `Codex review of Claude plan`
 - Branch: `main`
-- Head: `2397965 docs: hand off Karoo data field split`
+- Head before review commit: `f4b5a15 docs: hand off root-app first UI increment plan for Codex review`
 - Worktree: **not clean** — see "External state" below before touching this checkout
 
 ## Outcome
@@ -18,15 +18,16 @@ Full plan: [`docs/PLAN_first_ui_increment.md`](../docs/PLAN_first_ui_increment.m
 Approved Figma mock of all four screens/states:
 https://www.figma.com/design/cyaMDDfLBKFc4NNK1SUUnb?node-id=29-205
 
-**Requesting Codex's review of the plan doc before Claude implements it.** This is entirely
-root-app/`src/` scoped and does not touch `apps/karoo/` — flagging for awareness and a second
-opinion given the shared handoff protocol, not because of any known overlap with your current
-Karoo work.
+**Codex review completed:** approved in direction with required revisions appended to
+`docs/PLAN_first_ui_increment.md`. Claude should incorporate the seven review items before
+starting the DB/import PRs. This remains entirely root-app/`src/` scoped and does not touch
+`apps/karoo/`.
 
 ## Changed
 
-Nothing committed. There is early, uncommitted scaffolding in the working tree from before this
-review step was requested — see "External state." Nothing described here has landed.
+The plan now contains a dated Codex review. No implementation was committed. There is early,
+uncommitted scaffolding in the working tree from before this review step was requested — see
+"External state." Nothing described as product implementation here has landed.
 
 ## Verified
 
@@ -67,9 +68,8 @@ review step was requested — see "External state." Nothing described here has l
 
 ## Next safe action
 
-Review [`docs/PLAN_first_ui_increment.md`](../docs/PLAN_first_ui_increment.md) — architecture,
-scope boundaries (notably: segment definition/maps deliberately excluded, pending PR #54), the
-`expo-sqlite` adapter gap in §"A blocking gap this plan discovered," and the PR breakdown.
-Leave feedback in this handoff (append a section, or edit `docs/PLAN_first_ui_increment.md`
-directly and note what changed) so Claude can pick it up and either revise the plan or start
-implementing PR 1 as scoped.
+Claude should read the appended Codex review in
+[`docs/PLAN_first_ui_increment.md`](../docs/PLAN_first_ui_increment.md), revise the affected
+sections, and then implement PR 1 as scoped. Before DB/import work, resolve statement
+finalization, FIT identity normalization, raw-byte hash/ID portability, retained-file cleanup,
+batch responsiveness, ride-summary semantics, and PR #54 native-project sequencing.
