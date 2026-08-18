@@ -3,6 +3,7 @@ import type { RideIdentity } from "../import/findDuplicate.ts";
 export interface RideIdentityDatabase {
   prepare(sql: string): {
     get(...parameters: unknown[]): unknown;
+    all(...parameters: unknown[]): unknown[];
   };
 }
 
@@ -15,27 +16,43 @@ interface StoredRideIdentity {
   duration_ms: number | null;
 }
 
+const IDENTITY_SELECT = `
+  SELECT
+    rides.id AS ride_id,
+    imported_files.sha256 AS content_hash,
+    rides.activity_id,
+    rides.device_id,
+    rides.start_timestamp_ms,
+    rides.duration_ms
+  FROM rides
+  JOIN imported_files ON imported_files.id = rides.imported_file_id
+`;
+
 /** Reads duplicate-comparison identity entirely from SQLite; no FIT reparsing is needed. */
 export function getRideIdentity(
   database: RideIdentityDatabase,
   rideId: string,
 ): RideIdentity | undefined {
-  const row = database.prepare(`
-    SELECT
-      rides.id AS ride_id,
-      imported_files.sha256 AS content_hash,
-      rides.activity_id,
-      rides.device_id,
-      rides.start_timestamp_ms,
-      rides.duration_ms
-    FROM rides
-    JOIN imported_files ON imported_files.id = rides.imported_file_id
-    WHERE rides.id = ?
-  `).get(rideId) as StoredRideIdentity | undefined;
+  const row = database.prepare(`${IDENTITY_SELECT} WHERE rides.id = ?`).get(rideId) as
+    | StoredRideIdentity
+    | undefined;
 
   if (row === undefined) return undefined;
+  return toRideIdentity(row);
+}
+
+/**
+ * Reads every ride's duplicate-comparison identity, for comparing a not-yet-imported
+ * candidate against the whole existing collection (see `findDuplicate`).
+ */
+export function listRideIdentities(database: RideIdentityDatabase): RideIdentity[] {
+  const rows = database.prepare(IDENTITY_SELECT).all() as StoredRideIdentity[];
+  return rows.map(toRideIdentity);
+}
+
+function toRideIdentity(row: StoredRideIdentity): RideIdentity {
   if (row.start_timestamp_ms === null || row.duration_ms === null) {
-    throw new Error(`Ride ${rideId} is missing required duplicate-identity timing`);
+    throw new Error(`Ride ${row.ride_id} is missing required duplicate-identity timing`);
   }
 
   return {
