@@ -162,3 +162,14 @@ handing off issue #53; or starting segment-definition work now that a map exists
   `00442GA241760203`; no data clearing or instrumentation occurred.
 - Next device check: open Karoo's page editor under Extensions and confirm all six GritMap fields
   appear with preview data. Existing page configurations retain `live-pacing` as Pacing Profile.
+
+## Parallel Karoo compact-label update — Codex, 2026-08-18 14:00 PDT
+
+- `450ebc5 apps/karoo: shorten field labels to GM` changes all six Karoo field-library names
+  from `GritMap …` to `GM …` without changing their stable data type IDs.
+- APK version is now 0.4.1/versionCode 6. JVM tests and debug assembly passed, and the APK was
+  installed successfully in place on Karoo `00442GA241760203` with application data retained.
+- The full app/launcher title remains `GritMap Karoo`; only constrained field labels were
+  shortened.
+- Next device check: reopen Extensions in the page editor and confirm the compact names. The
+  responsive small/medium/large field-layout work discussed from screenshots remains separate.
