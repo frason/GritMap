@@ -87,3 +87,21 @@ Implement PR 1 (`nav/app-shell`) from the plan, then continue sequentially throu
 verifying each per the plan's per-PR verification notes before moving to the next. Update this
 handoff again once a meaningful chunk of the increment (at least through PR 4/5, ideally the
 whole thing) is committed.
+
+## Parallel Karoo update — Codex, 2026-08-18 08:15 PDT
+
+- `8395834 apps/karoo: preview pacing data fields` is committed independently of the root app
+  track. No root Expo files were touched by this commit.
+- Karoo page-editing preview mode now shows representative content instead of searching/blank
+  state: Target Power emits 260 W, and Pacing Profile renders a sample 533 m Coco Jumbo profile
+  with recover/hold/push regions, progress, and a recommendation.
+- Preview data is selected only when `ViewConfig.preview` is true. Normal ride views continue to
+  use `LiveUiStore`; the graphical preview does not start the foreground tracking service.
+- APK/extension version is now 0.2.1 (versionCode 3).
+- Focused app tests passed. APK assembly passed. The full 36-test run compiled and assembled the
+  app but had one failure in the pre-existing timing-sensitive
+  `NeedleAgentManagerTest.timeoutReturnsFallbackWithoutConcurrentInference`; this change does not
+  touch that code.
+- The Karoo was disconnected at install time, so 0.2.1 is built but not installed. Reconnect it
+  and use `adb install -r apps/karoo/app/build/outputs/apk/debug/app-debug.apk`; do not uninstall,
+  clear app data, or run connected instrumentation.
