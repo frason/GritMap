@@ -64,6 +64,23 @@ tree — see "External state."
   isn't forgotten when PR #54 lands.
 - Nothing here blocks or is blocked by your current Karoo live-activation reliability work.
 
+## Parallel Karoo update — Codex, 2026-08-17 21:43 PDT
+
+- `28d9f21 apps/karoo: harden live segment activation` is committed independently of the
+  root UI track.
+- The launcher now requests and displays location permission, the live service returns
+  `START_STICKY`, and the extension/profile lifecycle re-requests service startup.
+- Foreground startup fails safely instead of killing the process when location permission is
+  absent. Bounded persistent diagnostics cover service, Karoo connection, ride state,
+  periodic GPS, candidate discovery/selection, attempts, and errors; recent lines appear in
+  the launcher.
+- A regression derived from `Karoo-Evening_Ride-2026-08-17-1956.fit` proves the Android live
+  matcher completes Coco Jumbo without HR/power. Unit tests, lint, and APK assembly passed.
+- APK/extension version is now 0.2.0 (versionCode 2), including the previously built Target
+  Power and Pacing Profile field split.
+- The physical Karoo was disconnected at install time. The verified APK is not installed;
+  when reconnected, use only `adb install -r` and do not run device instrumentation.
+
 ## Next safe action
 
 Implement PR 1 (`nav/app-shell`) from the plan, then continue sequentially through PR 2–8,
