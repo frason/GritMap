@@ -1,48 +1,12 @@
 # Handoff: First root-app UI increment complete (import → list → detail)
 
-- Updated: `2026-08-18 15:39 PDT`
+- Updated: `2026-08-18 13:43 PDT`
 - Agent: `Claude`
 - Branch: `main`
-- Head (root-app work): `895239e scaffold: add MapLibre dependency + minimal MapView screen
-  (closes #47)` — already pushed to `origin/main` as of this update.
-- Local `main` is currently 4 commits ahead of `origin/main`, all of them Codex's parallel
-  `apps/karoo/` work (responsive fields, GM label rename) — not touched or pushed by this
-  update; see the Parallel Karoo sections below and their own archived handoffs.
+- Head: `895239e scaffold: add MapLibre dependency + minimal MapView screen (closes #47)`
 - Worktree: clean
-
-## Manual pass: duplicate-decision modal + multi-file batch import — done, both verified
-
-The one gap flagged in the previous handoff ("only a single fresh import was manually
-verified... worth a manual pass before considering this fully proven") is now closed:
-
-- Downloaded both real fixtures fresh into the iOS Simulator via Safari (`fixtures/fit/*.fit`
-  served over a local `python3 -m http.server`), confirmed byte-identical to the source files
-  before use (355 KB / 277 KB, exact match).
-- **Fresh single import**: selected fixture B (`...2026-08-09-0844.fit`) alone via the real
-  system document picker (Browse → On My iPhone → Downloads). Imported cleanly, footer read
-  `Imported: 1 · Replaced: 0 · Duplicate: 0 · Failed: 0`, and the Ride List correctly showed a
-  new "Sunday, Aug 9 · 34.5 mi · 2h 36m" row.
-- **Multi-file batch + duplicate modal, combined**: re-opened the picker, multi-selected
-  *both* fixtures (A already imported earlier this session as `debug-fixture.fit`, B just
-  imported above) in one picker session. Both rows showed `Pending` simultaneously, confirming
-  sequential batch processing works. The duplicate modal correctly appeared for the first file
-  processed, with the exact matched-rule copy: *"Karoo-Morning_Ride-2026-08-09-0844.fit matches
-  an existing ride byte-for-byte."*
-  - Tapped **Keep Existing** on file 1 → row correctly settled to `Duplicate`, footer
-    `Duplicate: 1`, and the flow automatically advanced to file 2's duplicate prompt (no manual
-    re-trigger needed).
-  - Tapped **Replace Existing** on file 2 → row correctly settled to `Replaced`, footer ended
-    `Imported: 0 · Replaced: 1 · Duplicate: 1 · Failed: 0`.
-- **Verified the replace at the DB level, not just the UI**: queried the on-device
-  `gritmap.db` directly — still exactly 2 rows in `rides` (not 3), confirming
-  `replaceImportedRide` updated the existing row in place rather than inserting a new one;
-  `updated_at_ms` on the replaced row was bumped to the replace time; `imported_files` now
-  points at the new file's `sha256`/`original_filename`. Ride List after the batch still shows
-  exactly 2 rides, and the Aug 2 row's filename updated from `debug-fixture.fit` to
-  `Karoo-Morning_Ride-2026-08-02-0837.fit`, matching the DB.
-- This exercises every remaining unverified branch of `ImportScreen.tsx`'s orchestration: the
-  `awaitDuplicateDecision()` pause/resume across multiple pending files, both resolution paths,
-  and the footer tally — not just the "single clean import" path already covered last session.
+- **Not yet pushed** — this session is blocked from `git push origin main` by the harness's
+  permission classifier (intentional). Ask the user to run `git push origin main`.
 
 ## Outcome
 
@@ -127,9 +91,10 @@ https://www.figma.com/design/cyaMDDfLBKFc4NNK1SUUnb?node-id=29-205
 - The "rescan against every segment on replace" MVP requirement is a documented no-op (no
   segment-scanning orchestrator exists anywhere yet) — tracked as a known follow-up, not
   forgotten; see the comment in `persistImportedRide.ts`'s `replaceImportedRide`.
-- ~~Duplicate-decision and batch-import flows... not separately exercised on-device~~ —
-  **resolved this update**, see the "Manual pass" section above. Both resolution paths and
-  sequential multi-file processing are now confirmed on-device and at the DB level.
+- Duplicate-decision and batch-import flows are covered by `importFitFile.test.ts` at the
+  logic layer; the actual on-screen modal/UI interaction (tapping Keep/Replace, multi-file
+  batches) was not separately exercised on-device this session — only a single fresh import
+  was manually verified end-to-end. Worth a manual pass before considering this fully proven.
 
 ## Parallel Karoo status (carried forward, see archive for full history)
 
@@ -167,15 +132,11 @@ flagged in `docs/PLAN_first_ui_increment.md`) becomes live and will need address
 
 ## Next safe action
 
-The root-app import→list→detail increment (all 8 PRs, PR #54's MapLibre scaffold, and now the
-manual duplicate/batch-import pass) is fully verified and pushed. Remaining priorities, in no
-particular order: integrating issue #43 from its worktree; handing off issue #53; or starting
-segment-definition work now that a map exists to build on (`src/screens/MapScreen.tsx`, not
-yet wired into navigation — see the flagged `web:smoke` risk above once it is).
-
-Note: local `main` is 4 commits ahead of `origin/main` from Codex's parallel `apps/karoo/`
-work (responsive fields + GM label rename) — not this update's to push; confirm with Codex's
-own handoff entries before pushing those.
+Ask the user to `git push origin main` (two commits pending: the PR #54 review above, plus
+the earlier handoff-confirmation commit). After that, pick the next priority: manually
+exercising the duplicate-decision modal and a multi-file batch import on-device (only a
+single fresh import was verified this session); integrating issue #43 from its worktree;
+handing off issue #53; or starting segment-definition work now that a map exists to build on.
 
 ## Parallel Karoo field-suite update — Codex, 2026-08-18 13:34 PDT
 
