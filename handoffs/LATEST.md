@@ -173,3 +173,16 @@ handing off issue #53; or starting segment-definition work now that a map exists
   shortened.
 - Next device check: reopen Extensions in the page editor and confirm the compact names. The
   responsive small/medium/large field-layout work discussed from screenshots remains separate.
+
+## Parallel Karoo responsive-field update — Codex, 2026-08-18 15:14 PDT
+
+- `9a1d33d apps/karoo: adapt graphical fields to page size` makes Pacing Coach, Pacing Profile,
+  and Segment Performance responsive to Karoo's 60-row page grid.
+- Small slots show only the essential signal, medium slots add the next most useful metric, and
+  large slots retain the complete content. Pacing Profile no longer squeezes its graph into a
+  small slot.
+- APK is now 0.5.0/versionCode 7. Full JVM tests and debug assembly passed after correcting one
+  compile-time visibility error, and the verified APK was installed successfully in place on
+  Karoo `00442GA241760203` with app data retained.
+- Next device check: preview the three graphical fields at different page sizes and confirm the
+  15/30-row breakpoints feel right on hardware.
