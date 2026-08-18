@@ -7,7 +7,7 @@
     android:padding="8dp">
 
     <TextView
-        android:id="@+id/karoo_segment_name"
+        android:id="@+id/karoo_coach_action"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:ellipsize="end"
@@ -17,7 +17,15 @@
         android:textStyle="bold" />
 
     <TextView
-        android:id="@+id/karoo_profile_status"
+        android:id="@+id/karoo_coach_target"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:textColor="#20AA5B"
+        android:textSize="24sp"
+        android:textStyle="bold" />
+
+    <TextView
+        android:id="@+id/karoo_coach_actual"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:ellipsize="end"
@@ -26,20 +34,11 @@
         android:textSize="12sp" />
 
     <TextView
-        android:id="@+id/karoo_profile_guidance"
+        android:id="@+id/karoo_coach_next"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:ellipsize="end"
         android:maxLines="1"
-        android:textColor="#20AA5B"
-        android:textSize="12sp"
-        android:textStyle="bold" />
-
-    <ImageView
-        android:id="@+id/karoo_profile_image"
-        android:layout_width="match_parent"
-        android:layout_height="0dp"
-        android:layout_weight="1"
-        android:contentDescription="@string/karoo_profile_content_description"
-        android:scaleType="fitXY" />
+        android:textColor="#FFC857"
+        android:textSize="12sp" />
 </LinearLayout>

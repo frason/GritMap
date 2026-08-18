@@ -7,39 +7,34 @@
     android:padding="8dp">
 
     <TextView
-        android:id="@+id/karoo_segment_name"
+        android:id="@+id/karoo_performance_name"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:ellipsize="end"
         android:maxLines="1"
         android:textColor="#FFFFFF"
-        android:textSize="16sp"
+        android:textSize="14sp"
         android:textStyle="bold" />
 
     <TextView
-        android:id="@+id/karoo_profile_status"
+        android:id="@+id/karoo_performance_finish"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:ellipsize="end"
-        android:maxLines="1"
+        android:textColor="#FFFFFF"
+        android:textSize="22sp"
+        android:textStyle="bold" />
+
+    <TextView
+        android:id="@+id/karoo_performance_adherence"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:textColor="#20AA5B"
+        android:textSize="13sp" />
+
+    <TextView
+        android:id="@+id/karoo_performance_progress"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
         android:textColor="#D0D4DA"
         android:textSize="12sp" />
-
-    <TextView
-        android:id="@+id/karoo_profile_guidance"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:ellipsize="end"
-        android:maxLines="1"
-        android:textColor="#20AA5B"
-        android:textSize="12sp"
-        android:textStyle="bold" />
-
-    <ImageView
-        android:id="@+id/karoo_profile_image"
-        android:layout_width="match_parent"
-        android:layout_height="0dp"
-        android:layout_weight="1"
-        android:contentDescription="@string/karoo_profile_content_description"
-        android:scaleType="fitXY" />
 </LinearLayout>

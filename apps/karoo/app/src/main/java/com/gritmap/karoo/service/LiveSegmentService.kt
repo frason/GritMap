@@ -27,6 +27,7 @@ import kotlinx.coroutines.cancel
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import java.util.concurrent.atomic.AtomicBoolean
+import kotlin.math.roundToInt
 
 /**
  * Owns the live in-memory telemetry session. Deterministic matching and AI orchestration plug
@@ -243,8 +244,11 @@ class LiveSegmentService : Service() {
     private fun updateAttempt(sample: LiveTelemetry, state: LiveUiState, maxDeviationMeters: Double) {
         val session = activeSession ?: return
         session.recordDeviation(maxDeviationMeters)
-        session.accept(sample, state)
-        publish(state)
+        val enriched = enrichLiveMetrics(state, session, sample)
+        session.accept(sample, enriched)
+        val published = enriched.copy(planAdherencePct = session.planAdherencePct())
+        session.updateUiState(published)
+        publish(published)
         if (sample.timestampMs - lastCheckpointMs >= CHECKPOINT_INTERVAL_MS) {
             lastCheckpointMs = sample.timestampMs
             scope.launch(Dispatchers.IO) { eventSink.onCheckpoint(session) }
@@ -314,6 +318,25 @@ class LiveSegmentService : Service() {
         private const val INFERENCE_INTERVAL_MS = 10_000L
         private const val LOCATION_DIAGNOSTIC_INTERVAL_MS = 10_000L
     }
+}
+
+internal fun enrichLiveMetrics(
+    state: LiveUiState,
+    session: ActiveAttemptSession,
+    sample: LiveTelemetry,
+): LiveUiState {
+    val elapsedSeconds = ((sample.timestampMs - session.startedAtMs).coerceAtLeast(0L) / 1_000.0)
+    val predictedFinish = if (
+        elapsedSeconds >= 5.0 && state.progressMeters >= 30.0 && state.progressFraction > 0f
+    ) {
+        (elapsedSeconds / state.progressFraction).roundToInt().coerceAtMost(24 * 60 * 60)
+    } else {
+        null
+    }
+    return state.copy(
+        currentPowerWatts = sample.powerWatts?.takeIf { state.sensorStatus.power }?.roundToInt(),
+        predictedFinishSeconds = predictedFinish,
+    )
 }
 
 internal fun segmentEntryAlert(session: ActiveAttemptSession): InRideAlert {

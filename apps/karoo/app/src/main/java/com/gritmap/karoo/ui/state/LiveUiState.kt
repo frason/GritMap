@@ -12,6 +12,9 @@ data class LiveUiState(
     val elevationProfile: List<ElevationSample> = emptyList(),
     val pacingZones: List<PacingZone> = emptyList(),
     val recommendation: Recommendation? = null,
+    val currentPowerWatts: Int? = null,
+    val predictedFinishSeconds: Int? = null,
+    val planAdherencePct: Int? = null,
     val sensorStatus: SensorStatus = SensorStatus(),
     val matchStatus: MatchStatus = MatchStatus.IDLE,
 ) {
@@ -21,6 +24,17 @@ data class LiveUiState(
         } else {
             0f
         }
+
+    val powerDeltaWatts: Int?
+        get() = currentPowerWatts?.let { actual ->
+            recommendation?.targetPowerWatts?.let { target -> actual - target }
+        }
+
+    val nextPacingZone: PacingZone?
+        get() = pacingZones.firstOrNull { it.startDistanceMeters > progressMeters }
+
+    val distanceToNextZoneMeters: Int?
+        get() = nextPacingZone?.let { (it.startDistanceMeters - progressMeters).toInt().coerceAtLeast(0) }
 
     companion object {
         val Idle = LiveUiState()

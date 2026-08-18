@@ -30,6 +30,9 @@ internal val KarooPreviewState = LiveUiState(
         PacingZone(390.0, 533.0, 295, Effort.PUSH),
     ),
     recommendation = Recommendation(260, "Hold steady", GuidanceIcon.HOLD),
+    currentPowerWatts = 247,
+    predictedFinishSeconds = 168,
+    planAdherencePct = 91,
     sensorStatus = SensorStatus(
         gps = true,
         power = true,

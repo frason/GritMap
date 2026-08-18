@@ -67,13 +67,22 @@ class ActiveAttemptSession(
     private var cadenceSum = 0.0
     private var speedCount = 0L
     private var speedSum = 0.0
+    private var pacingSampleCount = 0L
+    private var pacingSampleInRangeCount = 0L
 
     fun accept(sample: LiveTelemetry, updatedUiState: LiveUiState = uiState) {
         samples.addLast(sample)
         totalSampleCount++
-        sample.powerWatts?.let {
+        sample.powerWatts?.let { power ->
             powerSampleCount++
-            powerSumWatts += it
+            powerSumWatts += power
+            updatedUiState.recommendation?.targetPowerWatts?.takeIf {
+                updatedUiState.sensorStatus.power
+            }?.let { target ->
+                pacingSampleCount++
+                val tolerance = maxOf(15.0, target * 0.1)
+                if (kotlin.math.abs(power - target) <= tolerance) pacingSampleInRangeCount++
+            }
         }
         sample.heartRateBpm?.let { heartRateCount++; heartRateSum += it }
         sample.cadenceRpm?.let { cadenceCount++; cadenceSum += it }
@@ -88,6 +97,14 @@ class ActiveAttemptSession(
     }
 
     fun recentSamples(): List<LiveTelemetry> = samples.toList()
+
+    fun updateUiState(value: LiveUiState) {
+        uiState = value
+    }
+
+    fun planAdherencePct(): Int? = if (pacingSampleCount == 0L) null else {
+        (pacingSampleInRangeCount * 100.0 / pacingSampleCount).toInt().coerceIn(0, 100)
+    }
 
     val averagePowerWatts: Double?
         get() = if (powerSampleCount == 0L) null else powerSumWatts / powerSampleCount

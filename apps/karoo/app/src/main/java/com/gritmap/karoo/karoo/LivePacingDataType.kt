@@ -71,6 +71,13 @@ class PacingProfileDataFieldRenderer(
                 "Waiting for segment"
             },
         )
+        remoteViews.setTextViewText(
+            R.id.karoo_profile_guidance,
+            state.recommendation?.let { recommendation ->
+                val next = state.distanceToNextZoneMeters?.let { " · next in $it m" }.orEmpty()
+                "${recommendation.instruction} · ${recommendation.targetPowerWatts} W$next"
+            } ?: state.sensorStatus.warning.orEmpty(),
+        )
         val width = config.viewSize.first.coerceAtLeast(1)
         val height = (config.viewSize.second * 0.55).toInt().coerceAtLeast(1)
         remoteViews.setImageViewBitmap(R.id.karoo_profile_image, profileRenderer.render(state, width, height))
