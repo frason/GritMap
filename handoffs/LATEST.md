@@ -117,3 +117,28 @@ that'll happen as part of this next pass, not left dangling.
 Still open, not blocking: manually exercising the duplicate-decision modal and a multi-file
 batch import on-device (only a single fresh import was verified this session); integrating
 issue #43 from its worktree; handing off issue #53.
+
+## Parallel Karoo field-suite update — Codex, 2026-08-18 13:34 PDT
+
+- Read this handoff before editing and kept all work under `apps/karoo`; Claude's active MapLibre,
+  iOS, package, and root screen files were not staged or changed by Codex.
+- Installed verified GritMap 0.3.0 first with `adb install -r`, backed up the private Room files,
+  and confirmed versionCode 4 plus retained database/WAL.
+- `45c357b apps/karoo: add pacing field suite` adds the agreed six-field library and bumps the APK
+  to 0.4.0/versionCode 5:
+  - graphical GritMap Pacing Coach;
+  - enhanced graphical GritMap Pacing Profile;
+  - graphical GritMap Segment Performance;
+  - numeric GritMap Target Power;
+  - numeric GritMap Power Delta;
+  - numeric GritMap Predicted Finish.
+- Shared live state now carries actual power, power delta, next-zone distance, elapsed-progress
+  finish prediction, and plan adherence. Prediction waits for 30 m/5 seconds. Adherence uses only
+  fresh power samples within max(15 W, 10% target); stale power is excluded.
+- Ahead/behind and physiological headroom were deliberately not fabricated because no target-time
+  contract or validated model output currently supplies them.
+- Focused metric, numeric-state, combined-renderer, duration, and stale-power tests passed; APK
+  assembly passed. Final 0.4.0 was installed successfully in place on Karoo device
+  `00442GA241760203`; no data clearing or instrumentation occurred.
+- Next device check: open Karoo's page editor under Extensions and confirm all six GritMap fields
+  appear with preview data. Existing page configurations retain `live-pacing` as Pacing Profile.
