@@ -281,3 +281,12 @@ user).
   so 0.6.0 is built but not installed; 0.5.0 remains the last confirmed device version.
 - Next action: reconnect and run `adb install -r apps/karoo/app/build/outputs/apk/debug/app-debug.apk`,
   then validate both editor previews and the completion alert on a real traversal.
+
+## Parallel Karoo planned-finish update — Codex, 2026-08-18 22:07 PDT
+
+- `62d1c68 apps/karoo: show planned segment finish` wires the baseline pacing plan's stored
+  `targetFinishTimeSeconds` into live state.
+- Segment Performance now shows separate `Plan` and `Predicted` times, and the completion alert
+  includes the plan time when available. Missing targets display `Plan --` and are not fabricated.
+- APK is now 0.6.1/versionCode 9. Full JVM tests and assembly passed; the Karoo remains
+  disconnected, so installation is pending.
