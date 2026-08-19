@@ -1,3 +1,5 @@
+import { isSamePhysicalTraversal } from "./traversalOverlap.ts";
+
 export interface RidePoint {
   lat: number;
   lng: number;
@@ -63,7 +65,6 @@ export const MATCHER_VERSION = 2;
 const EARTH_RADIUS_METERS = 6_371_008.8;
 const MAX_BACKWARD_METERS = 30;
 const MAX_GAP_MS = 30_000;
-const DUPLICATE_OVERLAP_THRESHOLD = 0.5;
 
 /**
  * Produces a diagnostic confidence fraction from five independently bounded components:
@@ -357,7 +358,7 @@ function deduplicate(candidates: EvaluatedCandidate[]): EvaluatedCandidate[] {
   const ranked = [...candidates].sort(compareQuality);
   const kept: EvaluatedCandidate[] = [];
   for (const candidate of ranked) {
-    if (!kept.some((existing) => overlapRatio(candidate, existing) > DUPLICATE_OVERLAP_THRESHOLD)) {
+    if (!kept.some((existing) => isSamePhysicalTraversal(candidate, existing))) {
       kept.push(candidate);
     }
   }
@@ -371,16 +372,6 @@ function compareQuality(left: EvaluatedCandidate, right: EvaluatedCandidate): nu
     right.coveragePct - left.coveragePct ||
     left.maxDeviationMeters - right.maxDeviationMeters
   );
-}
-
-function overlapRatio(left: MatchCandidate, right: MatchCandidate): number {
-  const overlap =
-    Math.max(0, Math.min(left.endPointIndex, right.endPointIndex) - Math.max(left.startPointIndex, right.startPointIndex) + 1);
-  const shorter = Math.min(
-    left.endPointIndex - left.startPointIndex + 1,
-    right.endPointIndex - right.startPointIndex + 1,
-  );
-  return overlap / shorter;
 }
 
 interface CandidateMetrics {
