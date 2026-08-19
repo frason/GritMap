@@ -48,6 +48,22 @@ commit/PR breakdown at the end of the plan (6 small PRs, same verification disci
 first increment — typecheck/test/web:smoke every PR, real on-device verification for anything
 MapLibre-touching).
 
+## Codex review complete — 2026-08-18 23:02 PDT
+
+- `dccdcf9 docs: review segment definition plan` adds a required-revisions section at the top of
+  `docs/PLAN_segment_definition_increment.md`. The six-commit structure is sound, but Claude
+  should fold these revisions into the body before implementation.
+- Decisions: use a distance-based accessible scrubber with visual non-draggable map pins; keep
+  Segment List in scope; fix web reachability with platform-specific map modules; do **not** put
+  source ride/range into fingerprints.
+- Fingerprints must remain portable directed-geometry/matching identities. Add a migration that
+  removes the root schema's UNIQUE fingerprint constraint and replaces it with a normal index.
+- Required corrections also cover 30-second GPS-gap splitting, elevation-preserving 10 m
+  resampling, shared TypeScript/Kotlin hash conformance, typed cross-stack navigation, strict
+  persistence validation/rollback tests, and self-matching the SQLite round-trip rather than an
+  in-memory array.
+- Next action: Claude revises the main plan text, then begins commit 1 only.
+
 ## Recent history (this session, full detail in `handoffs/archive/`)
 
 - First UI increment (8 PRs: nav shell, dev-client, sqlite adapter, import screens, ride
