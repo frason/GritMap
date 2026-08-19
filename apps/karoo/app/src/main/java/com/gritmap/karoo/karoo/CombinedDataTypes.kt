@@ -73,12 +73,17 @@ class SegmentPerformanceDataType(extensionId: String) : StateGraphicDataType(ext
         val text = segmentPerformanceText(state)
         return RemoteViews(context.packageName, R.layout.karoo_segment_performance_field).apply {
             setTextViewText(R.id.karoo_performance_name, text.segmentName)
+            setTextViewText(R.id.karoo_performance_plan, text.plannedFinish)
             setTextViewText(R.id.karoo_performance_finish, text.predictedFinish)
             setTextViewText(R.id.karoo_performance_adherence, text.adherence)
             setTextViewText(R.id.karoo_performance_progress, text.progress)
             setViewVisibility(
                 R.id.karoo_performance_name,
                 if (size == KarooFieldSize.LARGE) View.VISIBLE else View.GONE,
+            )
+            setViewVisibility(
+                R.id.karoo_performance_plan,
+                if (size == KarooFieldSize.SMALL) View.GONE else View.VISIBLE,
             )
             setViewVisibility(
                 R.id.karoo_performance_adherence,
@@ -192,6 +197,7 @@ internal fun pacingCoachText(state: LiveUiState): PacingCoachText {
 
 internal data class SegmentPerformanceText(
     val segmentName: String,
+    val plannedFinish: String,
     val predictedFinish: String,
     val adherence: String,
     val progress: String,
@@ -199,6 +205,7 @@ internal data class SegmentPerformanceText(
 
 internal fun segmentPerformanceText(state: LiveUiState) = SegmentPerformanceText(
     segmentName = state.segmentName.ifBlank { "GritMap Performance" },
+    plannedFinish = "Plan ${state.plannedFinishSeconds?.let(::formatDuration).orEmpty().ifBlank { "--" }}",
     predictedFinish = "Predicted ${state.predictedFinishSeconds?.let(::formatDuration).orEmpty().ifBlank { "--" }}",
     adherence = "Plan adherence ${state.planAdherencePct?.let { "$it%" } ?: "--"}",
     progress = if (state.totalDistanceMeters > 0.0) {

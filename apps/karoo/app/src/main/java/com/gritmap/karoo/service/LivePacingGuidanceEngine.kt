@@ -27,7 +27,11 @@ class NeedleLivePacingGuidanceEngine(
         val ftp = session.ftpWatts ?: return null
         val total = session.uiState.totalDistanceMeters.takeIf { it > 0.0 } ?: return null
         val plan = manager.generatePlanOrFallback(
-            SegmentPacingInput(total, ftp, targetFinishTimeSeconds),
+            SegmentPacingInput(
+                total,
+                ftp,
+                targetFinishTimeSeconds ?: session.uiState.plannedFinishSeconds,
+            ),
         )
         return session.uiState.withPlan(plan)
     }

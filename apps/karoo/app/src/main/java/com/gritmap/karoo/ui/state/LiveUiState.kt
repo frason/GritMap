@@ -15,6 +15,7 @@ data class LiveUiState(
     val currentPowerWatts: Int? = null,
     val rollingPowerWatts3s: Int? = null,
     val currentHeartRateBpm: Int? = null,
+    val plannedFinishSeconds: Int? = null,
     val predictedFinishSeconds: Int? = null,
     val planAdherencePct: Int? = null,
     val sensorStatus: SensorStatus = SensorStatus(),

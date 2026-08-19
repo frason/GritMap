@@ -389,6 +389,7 @@ internal fun segmentCompletionAlert(session: ActiveAttemptSession, completedAtMs
     val elapsedSeconds = ((completedAtMs - session.startedAtMs).coerceAtLeast(0L) / 1_000L).toInt()
     val metrics = buildList {
         add(formatAttemptDuration(elapsedSeconds))
+        session.uiState.plannedFinishSeconds?.let { add("Plan ${formatAttemptDuration(it)}") }
         session.averagePowerWatts?.roundToInt()?.let { add("Avg $it W") }
         session.averageHeartRateBpm?.roundToInt()?.let { add("$it bpm") }
         session.planAdherencePct()?.let { add("$it% on plan") }

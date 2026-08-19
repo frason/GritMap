@@ -36,6 +36,7 @@ class LiveSegmentCoordinator(
         val definition: SegmentDefinition,
         val matcher: DirectedLiveMatcher,
         val ftpWatts: Int?,
+        val plannedFinishSeconds: Int?,
     )
 
     private val mutex = Mutex()
@@ -135,7 +136,13 @@ class LiveSegmentCoordinator(
             val definition = loadDefinition(entity)
             val matcher = DirectedLiveMatcher(definition)
             if (matcher.canStart(lat, lng)) {
-                candidates[entity.id] = Candidate(definition, matcher, ftpWatts)
+                val baselinePlan = database.pacingDao().baseline(entity.id)
+                candidates[entity.id] = Candidate(
+                    definition,
+                    matcher,
+                    ftpWatts,
+                    baselinePlan?.targetFinishTimeSeconds,
+                )
                 diagnostic("candidate_discovered", "segment=${entity.id} nearby=${nearby.size}")
             }
         }
@@ -203,6 +210,7 @@ class LiveSegmentCoordinator(
                     GuidanceIcon.valueOf(it.icon.name),
                 )
             },
+            plannedFinishSeconds = candidate.plannedFinishSeconds,
             sensorStatus = sensors,
             matchStatus = if (deviationMeters > definition.corridorMeters) {
                 MatchStatus.UNCERTAIN

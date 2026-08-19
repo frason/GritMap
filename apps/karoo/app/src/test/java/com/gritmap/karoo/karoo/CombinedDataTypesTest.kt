@@ -19,6 +19,7 @@ class CombinedDataTypesTest {
     fun `performance combines prediction adherence and progress`() {
         val text = segmentPerformanceText(KarooPreviewState)
 
+        assertEquals("Plan 2:40", text.plannedFinish)
         assertEquals("Predicted 2:48", text.predictedFinish)
         assertEquals("Plan adherence 91%", text.adherence)
         assertEquals("215 / 533 m", text.progress)

@@ -17,6 +17,14 @@
         android:textStyle="bold" />
 
     <TextView
+        android:id="@+id/karoo_performance_plan"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:textColor="#FFC857"
+        android:textSize="13sp"
+        android:textStyle="bold" />
+
+    <TextView
         android:id="@+id/karoo_performance_finish"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"

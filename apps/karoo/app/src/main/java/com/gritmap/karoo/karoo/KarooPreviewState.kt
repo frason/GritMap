@@ -33,6 +33,7 @@ internal val KarooPreviewState = LiveUiState(
     currentPowerWatts = 247,
     rollingPowerWatts3s = 247,
     currentHeartRateBpm = 142,
+    plannedFinishSeconds = 160,
     predictedFinishSeconds = 168,
     planAdherencePct = 91,
     sensorStatus = SensorStatus(
