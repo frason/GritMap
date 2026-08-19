@@ -1,83 +1,12 @@
 # Second UI increment: render ride track → define segment (issues #6, #7)
 
-## Codex review — revisions required before implementation (2026-08-18)
+## Status
 
-The six-commit increment and dependency order are sound, but the plan is **approved only after
-the revisions below are incorporated**. These resolve the four open questions and correct
-cross-platform/data-integrity gaps found against the current root and Karoo implementations.
-
-### Decisions on the four open questions
-
-1. **Use Option A: scrubber-driven selection.** Show start/end pins on the map as visual echoes
-   of the two scrubber thumbs, but do not imply that the map pins themselves are draggable.
-   Use React Native `PanResponder`; do not add gesture-handler/reanimated for this increment.
-   Add accessible increment/decrement actions and enforce start < end.
-2. **Do not put source ride identity into the fingerprint.** A fingerprint identifies immutable,
-   directed geography plus matching parameters for phone/Karoo/cloud sharing. Including
-   `source_ride_id` or source indexes would make the same segment hash differently for every
-   user and conflicts with the existing Karoo `SegmentFingerprint` contract. Instead add a
-   migration that removes `UNIQUE` from `segments.fingerprint`; keep a normal fingerprint index.
-   IDs remain unique, while geographically identical definitions may share a fingerprint as
-   the product specification requires. Exact re-save prevention, if desired, should compare the
-   source `(ride_id,start_index,end_index)` separately and must not redefine fingerprint identity.
-3. **Include `SegmentListScreen` now.** A saved immutable segment needs a discoverable home and
-   deletion path; leaving the permanent Segments tab as a placeholder would make the creation
-   loop incomplete.
-4. **Fix web reachability in the map commit.** Use platform-specific modules (for example,
-   `RouteMapView.native.tsx` and `RouteMapView.web.tsx`) so the reachable web graph never imports
-   MapLibre's native implementation. The web version may be a clearly labeled track preview or
-   fallback, but `web:smoke` must exercise the real Ride Detail import graph in that same commit.
-
-### Required technical corrections
-
-- **Preserve GPS gaps instead of drawing false roads.** `getRideTrack` must also return
-  `timestampMs`. Build a `MultiLineString`, splitting whenever consecutive GPS-present points
-  are more than 30 seconds apart. This uses the already-decided matcher continuity threshold and
-  prevents a tunnel/device gap from appearing as a real traversed straight line.
-- **Drive the scrubber by cumulative geographic distance, not array index.** GPS sampling density
-  changes with speed and pauses, so index-linear thumbs produce uneven and misleading precision.
-  Compute cumulative haversine distance across GPS-present points, map each thumb to distance,
-  then snap to a source point while retaining its real (possibly non-contiguous) `pointIndex` for
-  persistence. Display selected distance and elevation context in the scrubber.
-- **Resample elevation as well as coordinates.** The resampler input/output must carry optional
-  `elevationMeters` and linearly interpolate it when both bracketing values exist. Its output can
-  structurally extend matcher `ReferencePoint`; do not narrow it to `{lat,lng}` and silently lose
-  FIT barometric elevation. Emit 0 m, each 10 m station, and the exact final endpoint when the
-  total is not a multiple of 10; avoid duplicate-distance endpoints and consecutive zero-length
-  source legs.
-- **Make the fingerprint byte-identical across TypeScript and Kotlin.** The portable JSON must
-  match Karoo's schema (`schemaVersion`, `id`, `name`, `direction: "forward"`, `matching`, ordered
-  `referencePolyline`, optional `fingerprint`) and include elevation. Add a checked-in conformance
-  fixture with its expected SHA-256 and tests on both sides before relying on sharing. Explicitly
-  define numeric canonicalization—plain JS and Kotlin string conversion differ for values such
-  as `0` versus `0.0`. If the Karoo v1 algorithm must be revised, version the fingerprint
-  algorithm rather than silently changing existing hashes.
-- **Define cross-stack navigation before UI implementation.** `RootNavigator` currently mounts
-  the Segments placeholder directly, not a Segments stack. Add a real `SegmentsStackNavigator`
-  and type the nested tab navigation used after Save (`SegmentsTab` → `SegmentDetail`). Do not
-  assume a screen in the Rides stack can directly navigate to a sibling stack route.
-- **Validate persistence inputs before the transaction.** Require at least two reference points,
-  first distance exactly zero, strict distance increase, finite/in-range coordinates, valid
-  optional elevation, a real source ride/range, and start < end. Inject both ID and clock for
-  deterministic tests. Test rollback on a mid-point insert failure and deletion semantics.
-- **Keep the real self-match check, but make it end-to-end.** Read the newly stored reference
-  points back from SQLite, feed the source ride's timestamped GPS points to `matchSegment`, and
-  assert an accepted near-100% traversal. Do not validate only the in-memory pre-insert array.
-
-### Revised commit implications
-
-- Commit 1 (`db/ride-track-query`) also includes timestamps and gap/cumulative-distance tests.
-- Commit 2 (`map/route-map-view`) includes native/web module separation and MultiLineString gaps.
-- Commit 3 (`segments/resample-and-fingerprint`) includes elevation interpolation, the shared
-  JSON/fingerprint conformance fixture, and numeric-canonicalization tests.
-- Commit 4 (`db/insert-and-query-segments`) begins with the migration removing fingerprint
-  uniqueness while adding a non-unique index, then covers validation/rollback/delete behavior.
-- Commit 5 uses a distance-based accessible scrubber and explicitly non-draggable map pins.
-- Commit 6 adds the actual Segments stack/list/detail and typed cross-tab post-save navigation.
-
-Do not begin implementation from the contradictory recommendations later in this document
-(especially source-derived fingerprints); this review section supersedes them until Claude folds
-the revisions into the main body.
+Reviewed by Codex (2026-08-18); revisions below are folded into the plan body. One
+correction to Codex's review, verified independently against the real JVM rather than
+trusted from the summary: see "Fingerprint — verified cross-platform algorithm" below —
+the canonical string format and a real conformance-test hash are now confirmed, not just
+described.
 
 ## Context
 
@@ -86,14 +15,20 @@ is complete, merged, and manually verified — including this session's follow-u
 issue #43 (matcher overlap-dedup + version-aware rescan) and issue #53 (automated test for the
 SQLite bootstrap adapter). `src/screens/MapScreen.tsx` exists as a bare, unwired scaffold from
 issue #47/PR #54 (`<Map style={...} mapStyle="..." />`, nothing else) — no other file in the
-repo references MapLibre.
+root app references MapLibre.
 
 Issue #7 ("Segment definition: map handles + scrubber, persist directed segment") formally
 `depends_on: #4, #6`. #4 (schema) is done. **#6 ("Render ride GPS track on MapLibre map") is
 not done** — `RideDetailScreen.tsx`'s "Route" section is still an honest placeholder ("Map
-view — available once segment tooling lands"). So this plan covers both issues together, in
-that dependency order, as one increment — matching this repo's practice of not building #7
-against a foundation that doesn't exist yet.
+view — available once segment tooling lands"). This plan covers both issues together, in that
+dependency order.
+
+**Cross-platform constraint discovered during review, not in the original plan**:
+`apps/karoo/` already has a real, tested segment-JSON import/fingerprint contract
+(`SegmentJsonParser.kt`, `SegmentJsonParserTest.kt`) that the root app's segment definitions
+must produce byte-identical fingerprints against, since segments are meant to transfer
+phone → Karoo. This plan is written against that real contract (read directly, not
+paraphrased) rather than inventing an independent one.
 
 ## What's already there (verified against real source, not assumed)
 
@@ -102,13 +37,15 @@ against a foundation that doesn't exist yet.
   nullable together (`CHECK ((latitude IS NULL) = (longitude IS NULL))`).
 - `segments` (`migrations.ts:60`): `id, name, corridor_meters, required_coverage,
   schema_version, fingerprint TEXT NOT NULL UNIQUE, source_ride_id, source_start_point_index,
-  source_end_point_index, created_at_ms`.
+  source_end_point_index, created_at_ms`. **The `UNIQUE` on `fingerprint` needs a migration to
+  remove it** — see fingerprint section below for why.
 - `segment_reference_points` (`migrations.ts:85`): `segment_id, point_index, latitude,
   longitude, distance_meters NOT NULL, elevation_meters`, PK `(segment_id, point_index)`,
   cascades on segment delete.
-- `matchSegment.ts`'s `SegmentDefinition.referencePolyline: ReferencePoint[]` is exactly
-  `{lat, lng, distanceMeters}[]` — the resampled output this plan produces must match this
-  shape exactly, since it's what the matcher (already built, already tested) consumes.
+- `matchSegment.ts`'s `SegmentDefinition.referencePolyline: ReferencePoint[]` is
+  `{lat, lng, distanceMeters}[]` (no `elevationMeters` on the matcher's own type — the
+  resampler's output type extends this with elevation for storage/fingerprinting, matcher
+  input can structurally ignore the extra field).
 - `getRideDetail.ts` returns ride summary stats only — no track points. A new query is needed
   for both #6 (render) and #7 (handle-drag range selection).
 - Existing conventions to reuse, not reinvent: injected `generateId` (not bare
@@ -118,7 +55,7 @@ against a foundation that doesn't exist yet.
   Crypto.d.ts:41` — distinct from `digest()`, which takes `BufferSource` and is what
   `computeFileHash.ts` already uses for raw file bytes).
 
-## MapLibre API surface (confirmed against installed v11.3.6 source, not general Mapbox/MapLibre knowledge)
+## MapLibre API surface (confirmed against installed v11.3.6 source)
 
 No `ShapeSource`/`LineLayer` (pre-v11 naming) — v11 uses:
 - `GeoJSONSource` (`data: string | GeoJSON.GeoJSON`) + `<Layer type="line" layout={...}
@@ -126,177 +63,273 @@ No `ShapeSource`/`LineLayer` (pre-v11 naming) — v11 uses:
 - `Camera` component: `initialViewState={{ bounds: LngLatBounds }}` for first-load framing, or
   imperative `cameraRef.current.fitBounds(bounds, padding?, durationMs?)`.
   `LngLatBounds = [west, south, east, north]` (plain number tuple).
-- **No built-in "draggable point snapped to a line" primitive exists.** The only component
-  confirmed to expose real `draggable`/`onDragStart`/`onDrag`/`onDragEnd` props is
-  `ViewAnnotation` — `Marker` (the more commonly-documented component) does not expose
-  `draggable` in its type surface at all, on either platform. Dragging a handle *along* a
-  specific GPS track would require hand-rolling nearest-point-on-line projection in an
-  `onDrag` handler.
-- No `react-native-gesture-handler` or `react-native-reanimated` installed. Adding
-  interactive drag would mean adding one of these, or working entirely through
-  `ViewAnnotation`'s native drag callbacks without a gesture library.
+- **No built-in "draggable point snapped to a line" primitive.** The only component with real
+  `draggable`/`onDrag*` props is `ViewAnnotation`; `Marker` has none. No
+  `react-native-gesture-handler`/`react-native-reanimated` installed.
 
-**This directly shapes a design decision below (see "Handle interaction model").**
+## Decisions (Codex review, incorporated)
+
+1. **Scrubber-driven selection (Option A).** Two-thumb range control built on React Native's
+   built-in `PanResponder` (no gesture-handler/reanimated added). Map shows the selected
+   sub-range as a highlighted polyline plus two non-draggable pin markers at the current
+   endpoints — visual echoes of the scrubber thumbs, not independently draggable. Scrubber
+   thumbs are keyboard/screen-reader accessible via explicit increment/decrement actions.
+   Enforce start < end.
+2. **Fingerprint is geometry-only — no source ride/range folded in.** See the dedicated
+   section below; this is the correction that most needed independent verification, and it's
+   now grounded in the real Kotlin implementation, not a description of it.
+3. **`SegmentListScreen` is in scope**, replacing `SegmentsPlaceholderScreen`.
+4. **Platform-specific map module** (`RouteMapView.native.tsx` / `RouteMapView.web.tsx`) so
+   the web bundle's reachable graph never imports MapLibre's native-only code. Web renders a
+   labeled static preview (e.g. distance/elevation summary, no map) — `web:smoke` must
+   actually exercise the Ride Detail screen's import graph in the same commit that wires
+   `RouteMapView` in, not just still pass by accident.
 
 ## Part 1 (issue #6): render the ride track
 
 ### New query
 - `src/db/getRideTrack.ts` — `getRideTrack(db, rideId): RideTrackPoint[]`, one row per
   `ride_points` entry with GPS present (`WHERE latitude IS NOT NULL`), ordered by
-  `point_index`, returning `{ pointIndex, lat, lng, distanceMeters, elevationMeters }` (nullable
-  fields omitted per the existing convention in `getRideIdentity.ts`/`listRides.ts`, not
-  emitted as `null`).
-- **MVP simplification worth flagging explicitly, not silently deciding**: rendering a single
-  `LineString` from consecutive GPS-present points draws a straight line across any GPS gap
-  (e.g., a tunnel). This matches the matcher's own gap-tolerance philosophy (`docs/MVP.md`
-  "Allow GPS gaps up to 30 seconds") but is a real visual simplification for longer gaps —
-  acceptable for MVP, flagging so it isn't assumed away.
+  `point_index`, returning `{ pointIndex, timestampMs, lat, lng, distanceMeters,
+  elevationMeters }` (nullable fields omitted per the existing convention, not emitted as
+  `null`). `timestampMs` is required in the output (unlike the nullable-omitted fields) — the
+  gap-splitting below depends on it.
+
+### Gap handling (Codex correction, adopted)
+A single `LineString` across a real GPS gap draws a false straight-line "road" through, e.g.,
+a tunnel. Split into a `MultiLineString`: start a new line segment whenever two consecutive
+GPS-present points are more than 30 seconds apart by `timestampMs` — reusing the exact
+threshold `docs/MVP.md`'s matcher rules already use ("Allow GPS gaps up to 30 seconds"), not a
+new invented constant.
 
 ### New component
-- `src/screens/RouteMapView.tsx` — takes `points: {lat, lng}[]` (plus optional highlighted
-  sub-range for #7's reuse) as props. Renders `<Map>` → `<Camera initialViewState={{bounds:
-  computedBounds}}>` → `<GeoJSONSource data={lineStringFromPoints(points)}><Layer type="line"
-  .../></GeoJSONSource>`. Bounding box computed as a plain min/max reduce over the points — no
-  new dependency needed.
+- `src/screens/RouteMapView.native.tsx` — `<Map>` → `<Camera initialViewState={{bounds:
+  computedBounds}}>` → `<GeoJSONSource data={multiLineStringFromSegments(points)}><Layer
+  type="line" .../></GeoJSONSource>`. Props: `points`, optional `highlightRange:
+  {startPointIndex, endPointIndex}` for #7's reuse (rendered as a second, differently-styled
+  `Layer`). Bounding box: plain min/max reduce over `points`, no new dependency.
+- `src/screens/RouteMapView.web.tsx` — same props, renders a labeled static fallback (no
+  MapLibre import at all, so nothing in the web bundle's import graph touches native-only
+  code).
 - Wire into `RideDetailScreen.tsx`'s "Route" section, replacing the placeholder `View`.
 
 ### Verification
-- `npm run typecheck && npm test && npm run web:smoke` (note: `MapScreen.tsx`'s existing
-  flagged risk — MapLibre's native-only imports never resolve for `web:smoke` today because
-  nothing reachable imports it. The moment `RouteMapView` is wired into `RideDetailScreen`
-  (which the web-reachable entry graph does hit), this risk goes live. **Confirm and fix at
-  implementation time, don't assume it "probably still works."**
-- Real on-device: open the ride detail screen for one of the two already-imported fixtures in
-  the iOS Simulator, confirm the track renders and the camera frames it.
+- `npm run typecheck && npm test && npm run web:smoke` — confirm `web:smoke` actually resolves
+  `RouteMapView.web.tsx` (not the native file) once wired into `RideDetailScreen`; this is the
+  first commit where that risk (flagged since the first plan, never yet live) becomes real.
+- Real on-device: open the ride detail screen for both already-imported fixtures in the iOS
+  Simulator, confirm the track renders (including a visible gap if either fixture has one —
+  check first rather than assume), camera frames it.
 
 ## Part 2 (issue #7): define a segment
 
-### Handle interaction model — flagging for review, not deciding unilaterally
+### Scrubber (Codex correction: distance-based, not index-based)
+GPS sampling density varies with speed and pauses, so an index-linear scrubber gives uneven,
+misleading precision (a stopped rider's points cluster in space; a fast descent's points
+spread out). The scrubber must be driven by **cumulative geographic distance**:
+1. Compute true cumulative haversine distance across GPS-present points (same distance
+   function as the resampler below — one shared implementation, not two).
+2. Each thumb's position maps to a distance value, not an array index.
+3. On release, snap the distance to the nearest actual `ride_points` row, and persist that
+   row's real `pointIndex` (which is `point_index` from `ride_points`, not necessarily
+   contiguous with the other thumb's index if GPS points are sparse in that region).
+4. Show the selected distance and elevation-at-point as scrubber context text.
 
-MVP.md: "Select start and end positions ... using map handles **plus** a distance/elevation
-scrubber for precision." Given MapLibre has no snap-to-line drag primitive and no gesture
-library is installed, two honest options:
+### Resampling
+- `src/segments/resamplePolyline.ts` — `resamplePolyline(points: {lat, lng, elevationMeters?}[],
+  intervalMeters: number): SegmentReferencePoint[]` where `SegmentReferencePoint = {lat, lng,
+  distanceMeters, elevationMeters?}` (structurally a superset of matcher's `ReferencePoint`,
+  so it satisfies `SegmentDefinition.referencePolyline` without narrowing away elevation).
+- Real haversine distance (matchSegment.ts's `toXY`/`distance` are a flat-plane approximation
+  validated only at corridor scale, not over a segment's full length — do not reuse for this).
+- Interpolates `elevationMeters` linearly alongside lat/lng when both bracketing points have
+  it; omits it when either is missing (matches the "missing sensor data stays missing" rule
+  already used throughout `persistImportedRide.ts`).
+- Emits a point at distance 0, then every `intervalMeters` (10m), then the exact final
+  endpoint if the total isn't an exact multiple of 10 — no duplicate-distance points, no
+  zero-length trailing segment.
+- Pure function, fully unit-testable with `node:test` (hand-verifiable against known
+  distances, same pattern as `matchSegment.test.ts`).
 
-**Option A (recommended): scrubber is the precision mechanism, handles are a visual echo.**
-A horizontal scrubber (two thumbs on a single track, standard RN slider composition — no new
-native dependency needed for a basic two-handle range slider on a `View`/`PanResponder`,
-which *is* built into React Native core, no gesture-handler needed) selects the sub-range by
-**point index**, and the map just re-renders the highlighted sub-polyline as visual feedback.
-No native map-gesture code, no line-snapping math, no new dependency. Matches "handles plus a
-scrubber for precision" if "handles" refers to the scrubber's own thumbs rather than literal
-free-drag pins on the map.
+### Fingerprint — verified cross-platform algorithm, not just a described one
 
-**Option B: real map-based dragging.** Add `react-native-gesture-handler`, drag a
-`ViewAnnotation` per handle, project each drag position onto the nearest `ride_points` index
-(haversine nearest-neighbor, not full line-snapping) on every `onDrag` event, update both the
-map highlight and a synced scrubber position. Materially more implementation and native-linking
-risk (new native module → another `expo prebuild --clean` cycle) for a precision benefit the
-scrubber alone likely already covers, since ride points are GPS-frequency (~1/sec), not
-sparse.
+Read `apps/karoo/app/src/main/java/com/gritmap/karoo/importing/SegmentJsonParser.kt` and its
+test directly (not paraphrased from a review comment). The real, already-shipped, already-
+tested contract:
 
-**This plan defaults to Option A** pending review — it's a real UX/scope call, not a foregone
-conclusion.
+**Portable JSON shape** (`SegmentJsonParser.parse`/`SegmentDefinition`/`GeoPoint` in
+`Models.kt`):
+```json
+{
+  "schemaVersion": 1,
+  "id": "...",
+  "name": "...",
+  "direction": "forward",
+  "matching": { "corridorMeters": 30, "requiredCoveragePct": 0.9 },
+  "referencePolyline": [
+    { "lat": 37.0, "lng": -122.0, "distanceMeters": 0, "elevationMeters": 10 },
+    { "lat": 37.001, "lng": -122.0, "distanceMeters": 111, "elevationMeters": 20 }
+  ],
+  "fingerprint": "..."
+}
+```
+`corridorMeters` is an **Int** (30, matching `docs/MVP.md`'s fixed 30m corridor);
+`requiredCoveragePct` a **Double** (0.9, matching the fixed 90% coverage) — both currently
+fixed constants per `SegmentDefinition`'s Kotlin defaults, not yet user-configurable on
+either platform, which simplifies canonicalization (no exotic values to round-trip).
 
-### Resampling (new, nothing existing to reuse)
-- `src/segments/resamplePolyline.ts` — `resamplePolyline(points: {lat,lng}[], intervalMeters:
-  number): ReferencePoint[]`. Needs a **real haversine distance function** — `matchSegment.ts`'s
-  `toXY`/`distance` helpers are an origin-relative flat-plane approximation validated only at
-  corridor scale (tens of meters), not verified accurate over a multi-kilometer segment's full
-  length. Walks the selected point range, accumulates true great-circle distance, and produces
-  a new point every `intervalMeters` (10m per MVP.md) via linear interpolation between the two
-  bracketing source points. Pure function, fully unit-testable with `node:test` — no native
-  dependency, same pattern as `matchSegment.test.ts`.
+**Canonical string** (`SegmentFingerprint.compute`, `SegmentJsonParser.kt` lines 66-79):
+```
+segment-fingerprint-v1\n
+direction=forward\n
+corridorMeters=30\n
+requiredCoveragePct=0.9\n
+<lat>,<lng>,<distanceMeters>,<elevationMeters-or-"null">\n   (repeated per point)
+```
+SHA-256 hex digest of that UTF-8 string, lowercase.
 
-### Fingerprint — a real spec/schema tension to flag, not paper over
-`segments.fingerprint` is `NOT NULL UNIQUE` at the DB level. MVP.md: "overlapping or
-geographically identical segments are allowed" and "deterministic fingerprint (e.g. hash of
-resampled polyline + endpoints)." Taken literally, two geographically-identical segments would
-produce the *same* fingerprint and collide on the UNIQUE constraint — contradicting "allowed."
-Needs a decision before implementation, not an assumption:
-- (a) Fold something disambiguating into the fingerprint (e.g. `source_ride_id` +
-  `source_start_point_index`/`end_point_index`, not just geometry) — then "identical geometry
-  from two different rides" is allowed but "the exact same ride range saved twice" collides
-  (arguably correct — that's a real duplicate, not a new segment).
-  (b) Treat a fingerprint collision as its own "this exact geometry already exists" duplicate
-  flow (mirroring the FIT import duplicate modal) rather than a hard save failure.
-  Recommend (a) as simplest and most consistent with "geographically identical from different
-  rides is allowed, the literal same save twice is not" — but this is exactly the kind of call
-  this repo's process has routed through Codex review before, not decided solo.
+**The exact numeric-formatting gap Codex flagged, now verified rather than assumed**: Kotlin's
+`Double.toString()` on the JVM (which `SegmentFingerprint.compute` calls directly) always
+keeps a trailing `.0` for whole-number values — `37.0`, `-122.0`, `0.0`. JavaScript's
+`Number.prototype.toString()` does not — `(37.0).toString()` gives `"37"`. Confirmed by
+running both the real Java `Double.toString()` (via a standalone `javac`/`java` snippet
+reproducing `SegmentFingerprint.compute`'s exact canonicalization, not a rewrite) and Node's
+`Number.toString()` on the identical input values side by side: digit sequences agree for
+non-whole numbers (`37.001` → `"37.001"` both sides); only the trailing `.0` differs. So the
+TypeScript-side canonicalization needs exactly:
+```ts
+function toJavaDoubleString(value: number): string {
+  return Number.isInteger(value) ? `${value}.0` : value.toString();
+}
+```
+**Known edge case to guard explicitly, not silently**: `Number.isInteger(-0)` is `true` in JS,
+and `${-0}` stringifies to `"0"` (giving `"0.0"`), but Java's `Double.toString(-0.0)` gives
+`"-0.0"`. Normalize any `-0` to `0` before formatting on the TS side (e.g. `value === 0 ?
+0 : value`) so this asymmetry can never surface — cheap to guard, expensive to debug if a
+resampled point ever lands on exactly `-0` from floating-point arithmetic.
+
+**Real conformance fixture, verified against actual JVM execution** (not hand-computed): using
+`SegmentJsonParserTest.kt`'s own existing `valid` fixture (`direction=forward, corridorMeters=
+30, requiredCoveragePct=0.9`, points `[{37.0,-122.0,0,10}, {37.001,-122.0,111,20}]`), the
+canonical string and SHA-256 are:
+```
+segment-fingerprint-v1
+direction=forward
+corridorMeters=30
+requiredCoveragePct=0.9
+37.0,-122.0,0.0,10.0
+37.001,-122.0,111.0,20.0
+
+SHA-256: c2b8492774847a2117a8a045de50aadecb71b9b98017892da38338809772e615
+```
+Implementation must include this exact fixture and hash as a `node:test` assertion in
+`resamplePolyline.test.ts`/a dedicated fingerprint test, so a future accidental
+canonicalization change on the TS side breaks CI immediately instead of silently producing
+segments Karoo can't recognize. If Karoo's algorithm ever needs to change, version it
+(`segment-fingerprint-v2`) rather than silently changing what existing fingerprints mean.
+
+### Fingerprint uniqueness — schema migration required
+`segments.fingerprint` is currently `NOT NULL UNIQUE`. Since the fingerprint is geometry-only
+(no source ride/range), two geographically-identical segments from different rides — which
+`docs/MVP.md` explicitly allows — would collide on that constraint. **New migration**: drop
+`UNIQUE` from `fingerprint`, add a plain (non-unique) index for lookup performance. Segment
+`id` remains the real primary key and stays unique. If exact re-save prevention is wanted
+later, compare `(source_ride_id, source_start_point_index, source_end_point_index)` for a true
+duplicate — a separate concern from fingerprint identity, out of scope for this increment
+unless reviewers want it pulled in now.
 
 ### New persistence
-- `src/segments/insertSegment.ts` — `insertSegment(db, generateId, params): {segmentId}`. One
-  transaction: `segments` row + all `segment_reference_points` rows, mirroring
-  `insertImportedRide.ts`'s pattern (including its `runMany`-based bulk point insert via
-  `toSyncDatabase.ts` — already exists, no adapter changes needed).
+- `src/segments/insertSegment.ts` — `insertSegment(db, generateId, params): {segmentId}`.
+  Validate before opening the transaction (matches `insertImportedRide.ts`'s own practice of
+  computing everything before `BEGIN IMMEDIATE`): at least 2 reference points, first point's
+  `distanceMeters === 0`, strictly increasing `distanceMeters`, finite lat in [-90,90] and lng
+  in [-180,180], finite optional elevation, `sourceStartPointIndex < sourceEndPointIndex`. One
+  transaction: `segments` row + all `segment_reference_points` rows via `runMany` (existing
+  `toSyncDatabase.ts` pattern, no adapter changes needed).
+  - Tests: valid insert, each validation rejection, rollback when a mid-batch point insert
+    fails (same pattern as `runMany`'s existing finalize-on-error test in
+    `toSyncDatabase.test.ts`), and delete-cascades-to-reference-points.
 - `src/db/getSegmentDetail.ts` — read-only query for the segment detail screen.
-- `src/db/listSegments.ts` — for the Segments tab (see screens below).
+- `src/db/listSegments.ts` — for the Segments tab.
+
+### Self-match verification — end-to-end, not just in-memory (Codex correction, adopted)
+Before considering a saved segment correct, a test must: insert it via `insertSegment`, read
+the reference points back from SQLite (not reuse the in-memory pre-insert array — this is the
+whole point, since a bug in the round-trip through SQLite storage/retrieval wouldn't be caught
+by validating data that never left memory), build `SegmentDefinition` from that read-back row,
+feed the *source ride's own* timestamped GPS points (via `toMatcherRidePoints`) into the
+already-tested `matchSegment()`, and assert it accepts a near-100%-coverage traversal. This
+mirrors how PR3's real expo-sqlite mismatch was only caught by testing the actual adapter
+shape, not a hand-copied stand-in — applied here to the new resampling/storage path.
 
 ### New screens
 - `src/screens/DefineSegmentScreen.tsx` — pushed from `RideDetailScreen`'s now-enabled
-  "Create Segment" button. Map (reusing `RouteMapView` with a highlighted sub-range) + range
+  "Create Segment" button. Map (`RouteMapView` with `highlightRange`) + distance-based
   scrubber + name input + Save. On save: resample → fingerprint → `insertSegment` → navigate
-  to the new segment's detail screen.
-- `src/screens/SegmentDetailScreen.tsx` — name, route overview (`RouteMapView` again, no
-  highlight needed), empty "Attempts" section placeholder (matcher output isn't wired to any
-  screen yet — out of scope here, matches issue #7's own "Done when").
-- `src/screens/SegmentsPlaceholderScreen.tsx` → real `SegmentListScreen.tsx` (cheap given
-  `listSegments` already exists for the detail screen's own needs, and completes the tab's
-  loop instead of leaving it a dead-end stub). Not explicitly required by issue #7's "Done
-  when" — flagging as an in-scope-but-not-mandated addition, drop it if reviewers want a
-  tighter scope.
-- `src/navigation/types.ts` — extend `SegmentsStackParamList` with `SegmentList`,
-  `SegmentDetail: {segmentId}`; `RidesStackParamList` gains `DefineSegment: {rideId}`.
+  to the new segment's detail screen (cross-stack, see navigation below).
+- `src/screens/SegmentDetailScreen.tsx` — name, route overview (`RouteMapView`, no highlight),
+  empty "Attempts" section placeholder (matcher output isn't wired to any screen yet — out of
+  scope here, matches issue #7's own "Done when").
+- `src/screens/SegmentListScreen.tsx` — replaces `SegmentsPlaceholderScreen.tsx`. Lists saved
+  segments (`listSegments`), tap → detail, with a delete action (segments are immutable in
+  content but deletable per `docs/MVP.md`: "Deleting a segment permanently removes the
+  definition... but leaves every ride intact").
+
+### Navigation — real stack, typed cross-stack transition (Codex correction, adopted)
+`RootNavigator` currently mounts `SegmentsPlaceholderScreen` directly as a bare tab screen, not
+a stack — there's nowhere for `SegmentDetail` to push to today. Add:
+- `src/navigation/SegmentsStackNavigator.tsx` — native-stack: `SegmentList` → `SegmentDetail`.
+- `RootNavigator.tsx` — `SegmentsTab` now mounts `SegmentsStackNavigator`, not the placeholder.
+- `src/navigation/types.ts` — `RidesStackParamList` gains `DefineSegment: {rideId}`;
+  `SegmentsStackParamList` becomes `{SegmentList: undefined; SegmentDetail: {segmentId}}`.
+- Post-save navigation from `DefineSegmentScreen` (mounted in the Rides stack) to
+  `SegmentDetail` (in the Segments stack) is a cross-stack jump — React Navigation handles
+  this via the root navigator's `navigate("SegmentsTab", {screen: "SegmentDetail", params:
+  {segmentId}})`, not a same-stack `navigation.navigate("SegmentDetail")` call, which would
+  fail silently/type-error since `SegmentDetail` isn't a route in `RidesStackParamList`. Get
+  the typed signature right before writing the screen, not after debugging a runtime failure.
 
 ### Portable JSON representation
-MVP.md/issue #7 also asks for "a versioned portable JSON representation ... for future
-sharing." A simple `toPortableSegmentJson(segment): object` pure function (schema version +
-name + directed polyline + endpoints + corridor + coverage) satisfies this per the issue's own
-"a simple JSON serialization of the stored segment is sufficient for MVP" — no file I/O, no
-UI, just the serialization function, unit-tested.
+`toPortableSegmentJson(segment): object` — produces exactly the JSON shape verified above
+(`schemaVersion`, `id`, `name`, `direction: "forward"`, `matching: {corridorMeters,
+requiredCoveragePct}`, `referencePolyline`, `fingerprint`), so a segment saved on the phone is
+immediately valid input to Karoo's real `SegmentJsonParser.parse()` — this is the actual
+sharing contract, not a hypothetical one. Pure function, unit-tested against the conformance
+fixture above.
 
-## Testing approach (same split as the first increment)
+## Testing approach
 
-**Unit-testable, `node:test`, no native deps**: `resamplePolyline.ts` (pure geometry, easy to
-hand-verify against known distances), `insertSegment.ts`/`getRideTrack.ts`/
-`getSegmentDetail.ts`/`listSegments.ts` (DB logic against `node:sqlite`, same pattern as every
-other `src/db/*.test.ts`), `toPortableSegmentJson.ts`.
+**Unit-testable, `node:test`, no native deps**: `resamplePolyline.ts` (including the
+conformance fixture/hash above), `toJavaDoubleString`/canonicalization, `insertSegment.ts`
+(validation + rollback + cascade-delete), `getRideTrack.ts`/`getSegmentDetail.ts`/
+`listSegments.ts` (DB logic against `node:sqlite`), `toPortableSegmentJson.ts`, the end-to-end
+self-match test (SQLite round-trip → `matchSegment()`).
 
-**Not unit-testable, verify manually on-device**: `RouteMapView.tsx` (MapLibre rendering,
-camera fitting), the scrubber interaction itself, the full define-segment flow end to end.
-Call out exactly what was manually exercised in the PR description, per this repo's standing
-practice — including confirming the resampled/persisted segment's `referencePolyline` actually
-round-trips correctly into `matchSegment()` against a real ride (even though wiring the
-matcher into the UI is out of scope for #7 itself, a quick script-level check that a real
-saved segment's stored polyline produces a sane `matchSegment()` result against its own source
-ride is cheap and would have caught PR3's original expo-sqlite API mismatch class of bug
-early, applied here to the new resampling math instead).
+**Not unit-testable, verify manually on-device**: `RouteMapView.native.tsx` (MapLibre
+rendering, camera fitting, gap rendering), the scrubber interaction, the full define-segment
+flow end to end on a real imported fixture. Call out exactly what was manually exercised in
+each PR description.
 
-## Open questions for review (not decided solo, same as the first plan's Codex round)
+## Commit/PR breakdown
 
-1. Handle interaction model: Option A (scrubber-only precision, recommended) vs Option B (real
-   map dragging, needs a new native dependency).
-2. Fingerprint composition: fold in `source_ride_id` + point-range (recommended), or a
-   geometry-only hash with a duplicate-decision UI like FIT import's.
-3. Whether `SegmentListScreen` (replacing the tab placeholder) is in scope now or deferred.
-4. Confirm the `web:smoke` MapLibre-on-web risk gets addressed as part of #6, not deferred
-   again — it was flagged twice already (PLAN_first_ui_increment.md, then the PR #54 handoff)
-   without ever actually going live until now.
-
-## Commit/PR breakdown (small, single-purpose, matching this repo's convention)
-
-1. `db/ride-track-query` — `getRideTrack.ts` + tests.
-2. `map/route-map-view` — `RouteMapView.tsx`, wired into `RideDetailScreen`, `web:smoke` fix
-   if needed. Verify: web:smoke, manual on-device render of both existing fixture rides.
-3. `segments/resample-and-fingerprint` — `resamplePolyline.ts`, fingerprint function,
-   `toPortableSegmentJson.ts` + tests. Pure logic, no UI yet.
-4. `db/insert-and-query-segments` — `insertSegment.ts`, `getSegmentDetail.ts`,
-   `listSegments.ts` + tests.
-5. `ui/define-segment-screen` — the scrubber UI, `DefineSegmentScreen.tsx`, wired to
-   `RideDetailScreen`'s now-enabled button. Verify manually on-device: define a real segment
-   from an imported fixture, confirm it persists and round-trips into `matchSegment()`
-   sanely.
-6. `ui/segment-detail-and-list` — `SegmentDetailScreen.tsx`, `SegmentListScreen.tsx`,
-   navigation wiring.
+1. `db/ride-track-query` — `getRideTrack.ts` (with `timestampMs`) + gap-detection/cumulative-
+   distance tests.
+2. `map/route-map-view` — `RouteMapView.native.tsx` + `RouteMapView.web.tsx`, wired into
+   `RideDetailScreen`, `MultiLineString` gap rendering. Verify: web:smoke actually resolves
+   the web variant, manual on-device render of both existing fixture rides.
+3. `segments/resample-and-fingerprint` — `resamplePolyline.ts` (with elevation), the shared
+   haversine distance function (reused by the scrubber), `toJavaDoubleString`, fingerprint
+   computation, `toPortableSegmentJson.ts` + the conformance-fixture test. Pure logic, no UI.
+4. `db/insert-and-query-segments` — migration removing `fingerprint UNIQUE` (+ non-unique
+   index), `insertSegment.ts` (validation/rollback/cascade tests), `getSegmentDetail.ts`,
+   `listSegments.ts`, and the end-to-end self-match test.
+5. `ui/define-segment-screen` — distance-based accessible scrubber, non-draggable map pins,
+   `DefineSegmentScreen.tsx`, `RideDetailScreen`'s button enabled. Verify manually on-device:
+   define a real segment from an imported fixture, confirm persistence and a sane
+   `matchSegment()` self-match.
+6. `ui/segment-detail-and-list` — `SegmentsStackNavigator`, `SegmentDetailScreen.tsx`,
+   `SegmentListScreen.tsx`, typed cross-stack post-save navigation.
 
 Each PR reviewed the way this session has reviewed everything else: read the actual diff, run
-the actual tests, verify on-device where native code is involved, don't trust a summary.
+the actual tests, verify on-device where native code is involved, don't trust a summary —
+applied in this plan itself to Codex's own review, not just to future implementation.

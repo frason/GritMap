@@ -1,70 +1,51 @@
-# Handoff: Plan ready for review — render ride track + define segment (issues #6, #7)
+# Handoff: Segment-definition plan revised, one correction — ready for final check
 
-- Updated: `2026-08-18 22:55 PDT`
+- Updated: `2026-08-18 23:11 PDT`
 - Agent: `Claude`
 - Branch: `main`
-- Head: `1097e5f Merge pull request #56 from frason/test/issue-53-expo-sqlite-bootstrap-test`
-- Worktree: clean
+- Head: `44c4074 docs: hand off segment plan review` (Codex's review commit; this update is
+  docs-only, not yet pushed — worktree has this handoff + the revised plan pending commit).
+- Worktree: clean once this commit lands.
 
-## Status: awaiting review, not yet implemented
+## Status: revisions incorporated, one correction from independent verification — please confirm before implementation starts
 
-Per this repo's established process (the first UI increment's plan was reviewed by Codex
-before implementation, see `docs/PLAN_first_ui_increment.md`'s revisions-incorporated
-section), a plan for the next increment is written and ready for review, **not started**:
+Codex reviewed `docs/PLAN_segment_definition_increment.md` and left required revisions
+(scrubber-only handles, geometry-only fingerprint, Segment List in scope now, platform-split
+map module, plus GPS-gap/elevation/navigation/validation corrections). All of them are folded
+into the plan body now — the file is a clean single document again, not a patch-on-patch.
 
-**[`docs/PLAN_segment_definition_increment.md`](../docs/PLAN_segment_definition_increment.md)**
+**One thing was verified independently rather than taken on trust**, per this session's
+standing practice of not trusting a summary for anything checkable: Codex's review said the
+fingerprint must "match Karoo's schema" and be "byte-identical across TypeScript and Kotlin"
+but described the requirement rather than the algorithm. Read `SegmentJsonParser.kt` and
+`SegmentFingerprint.compute` directly, and confirmed the exact canonical string format and the
+numeric-formatting gap by actually running Java's `Double.toString()` (which Kotlin calls
+directly on the JVM — no `kotlinc` needed) side-by-side with Node's `Number.toString()`:
+digit sequences agree for non-whole numbers, but Java always keeps a trailing `.0` on whole
+numbers and JS drops it (`37.0` → `"37.0"` vs `"37"`). The plan now has:
+- The literal canonical string template and the exact `toJavaDoubleString()` fix needed on the
+  TS side, plus a flagged `-0` edge case (`Number.isInteger(-0)` is `true` in JS but Java
+  stringifies `-0.0` differently).
+- A **real conformance fixture with a verified SHA-256**, computed from Karoo's own existing
+  `SegmentJsonParserTest.kt` test data via an actual JVM run (a throwaway `javac`/`java`
+  snippet outside the repo, not committed) — `c2b8492774847a2117a8a045de50aadecb71b9b98017892
+  da38338809772e615` — to be asserted directly in `resamplePolyline.test.ts` so a future
+  canonicalization regression breaks CI immediately instead of silently producing segments
+  Karoo can't recognize.
 
-Covers issues #6 ("Render ride GPS track on MapLibre map") and #7 ("Segment definition: map
-handles + scrubber, persist directed segment") together, since #7 formally `depends_on: #6`
-and #6 isn't done yet — `RideDetailScreen.tsx`'s Route section is still the honest placeholder
-from the first increment.
-
-**Grounded in real source, not assumed**, including a subagent survey of the actual installed
-`@maplibre/maplibre-react-native@11.3.6` API surface (no `ShapeSource`/`LineLayer` — v11 uses
-`GeoJSONSource`+`Layer`; no gesture-handler/reanimated installed; no snap-to-line drag
-primitive exists in the library).
-
-**Four things flagged for review rather than decided solo** (see the plan's "Open questions"
-section for full detail):
-1. **Handle interaction model** — the plan recommends a scrubber-only precision model (no new
-   native dependency) over literal free-drag map pins (would need
-   `react-native-gesture-handler` + hand-rolled line-snapping, another native-linking cycle).
-2. **Fingerprint composition** — `segments.fingerprint` is `NOT NULL UNIQUE` at the schema
-   level, but MVP.md says geographically-identical segments are allowed. A geometry-only hash
-   would collide on that UNIQUE constraint for two identical-route segments from different
-   rides. Plan recommends folding `source_ride_id` + point-range into the fingerprint so only
-   an exact re-save of the same range collides (arguably correct), not real duplicates.
-3. Whether replacing the Segments tab's placeholder with a real list screen is in scope now.
-4. The MapLibre-on-web `web:smoke` risk (flagged twice already, never yet gone live because
-   nothing reachable imported MapLibre) becomes real the moment this increment wires
-   `RouteMapView` into `RideDetailScreen` — confirm it gets fixed as part of this work, not
-   deferred a third time.
-
-## Next safe action
-
-Review `docs/PLAN_segment_definition_increment.md`, resolve the four open questions above (or
-send back requested revisions the way Codex did for the first plan), then implement per the
-commit/PR breakdown at the end of the plan (6 small PRs, same verification discipline as the
-first increment — typecheck/test/web:smoke every PR, real on-device verification for anything
-MapLibre-touching).
-
-## Codex review complete — 2026-08-18 23:02 PDT
-
-- `dccdcf9 docs: review segment definition plan` adds a required-revisions section at the top of
-  `docs/PLAN_segment_definition_increment.md`. The six-commit structure is sound, but Claude
-  should fold these revisions into the body before implementation.
-- Decisions: use a distance-based accessible scrubber with visual non-draggable map pins; keep
-  Segment List in scope; fix web reachability with platform-specific map modules; do **not** put
-  source ride/range into fingerprints.
-- Fingerprints must remain portable directed-geometry/matching identities. Add a migration that
-  removes the root schema's UNIQUE fingerprint constraint and replaces it with a normal index.
-- Required corrections also cover 30-second GPS-gap splitting, elevation-preserving 10 m
-  resampling, shared TypeScript/Kotlin hash conformance, typed cross-stack navigation, strict
-  persistence validation/rollback tests, and self-matching the SQLite round-trip rather than an
-  in-memory array.
-- Next action: Claude revises the main plan text, then begins commit 1 only.
+**Next safe action**: a final look at the revised plan (particularly the fingerprint section,
+since it's the one part this update changed after Codex's own review) before implementation
+begins on commit 1 (`db/ride-track-query`).
 
 ## Recent history (this session, full detail in `handoffs/archive/`)
+
+- Plan round-trip for the segment-definition increment: Claude wrote
+  `docs/PLAN_segment_definition_increment.md`, Codex reviewed it (`dccdcf9`, required
+  revisions: scrubber-only handles, geometry-only fingerprint, Segment List in scope, platform-
+  split map module, plus GPS-gap/elevation/navigation/validation corrections), Claude folded
+  all revisions into the plan body and independently verified the fingerprint algorithm against
+  the real Kotlin source rather than trusting the review's description (see above).
+  (`2026-08-18-2302-codex-segment-plan-review.md` has the pre-fold state.)
 
 - First UI increment (8 PRs: nav shell, dev-client, sqlite adapter, import screens, ride
   list/detail) — complete, pushed, manually verified including the duplicate-decision modal
