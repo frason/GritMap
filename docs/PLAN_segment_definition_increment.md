@@ -1,5 +1,84 @@
 # Second UI increment: render ride track → define segment (issues #6, #7)
 
+## Codex review — revisions required before implementation (2026-08-18)
+
+The six-commit increment and dependency order are sound, but the plan is **approved only after
+the revisions below are incorporated**. These resolve the four open questions and correct
+cross-platform/data-integrity gaps found against the current root and Karoo implementations.
+
+### Decisions on the four open questions
+
+1. **Use Option A: scrubber-driven selection.** Show start/end pins on the map as visual echoes
+   of the two scrubber thumbs, but do not imply that the map pins themselves are draggable.
+   Use React Native `PanResponder`; do not add gesture-handler/reanimated for this increment.
+   Add accessible increment/decrement actions and enforce start < end.
+2. **Do not put source ride identity into the fingerprint.** A fingerprint identifies immutable,
+   directed geography plus matching parameters for phone/Karoo/cloud sharing. Including
+   `source_ride_id` or source indexes would make the same segment hash differently for every
+   user and conflicts with the existing Karoo `SegmentFingerprint` contract. Instead add a
+   migration that removes `UNIQUE` from `segments.fingerprint`; keep a normal fingerprint index.
+   IDs remain unique, while geographically identical definitions may share a fingerprint as
+   the product specification requires. Exact re-save prevention, if desired, should compare the
+   source `(ride_id,start_index,end_index)` separately and must not redefine fingerprint identity.
+3. **Include `SegmentListScreen` now.** A saved immutable segment needs a discoverable home and
+   deletion path; leaving the permanent Segments tab as a placeholder would make the creation
+   loop incomplete.
+4. **Fix web reachability in the map commit.** Use platform-specific modules (for example,
+   `RouteMapView.native.tsx` and `RouteMapView.web.tsx`) so the reachable web graph never imports
+   MapLibre's native implementation. The web version may be a clearly labeled track preview or
+   fallback, but `web:smoke` must exercise the real Ride Detail import graph in that same commit.
+
+### Required technical corrections
+
+- **Preserve GPS gaps instead of drawing false roads.** `getRideTrack` must also return
+  `timestampMs`. Build a `MultiLineString`, splitting whenever consecutive GPS-present points
+  are more than 30 seconds apart. This uses the already-decided matcher continuity threshold and
+  prevents a tunnel/device gap from appearing as a real traversed straight line.
+- **Drive the scrubber by cumulative geographic distance, not array index.** GPS sampling density
+  changes with speed and pauses, so index-linear thumbs produce uneven and misleading precision.
+  Compute cumulative haversine distance across GPS-present points, map each thumb to distance,
+  then snap to a source point while retaining its real (possibly non-contiguous) `pointIndex` for
+  persistence. Display selected distance and elevation context in the scrubber.
+- **Resample elevation as well as coordinates.** The resampler input/output must carry optional
+  `elevationMeters` and linearly interpolate it when both bracketing values exist. Its output can
+  structurally extend matcher `ReferencePoint`; do not narrow it to `{lat,lng}` and silently lose
+  FIT barometric elevation. Emit 0 m, each 10 m station, and the exact final endpoint when the
+  total is not a multiple of 10; avoid duplicate-distance endpoints and consecutive zero-length
+  source legs.
+- **Make the fingerprint byte-identical across TypeScript and Kotlin.** The portable JSON must
+  match Karoo's schema (`schemaVersion`, `id`, `name`, `direction: "forward"`, `matching`, ordered
+  `referencePolyline`, optional `fingerprint`) and include elevation. Add a checked-in conformance
+  fixture with its expected SHA-256 and tests on both sides before relying on sharing. Explicitly
+  define numeric canonicalization—plain JS and Kotlin string conversion differ for values such
+  as `0` versus `0.0`. If the Karoo v1 algorithm must be revised, version the fingerprint
+  algorithm rather than silently changing existing hashes.
+- **Define cross-stack navigation before UI implementation.** `RootNavigator` currently mounts
+  the Segments placeholder directly, not a Segments stack. Add a real `SegmentsStackNavigator`
+  and type the nested tab navigation used after Save (`SegmentsTab` → `SegmentDetail`). Do not
+  assume a screen in the Rides stack can directly navigate to a sibling stack route.
+- **Validate persistence inputs before the transaction.** Require at least two reference points,
+  first distance exactly zero, strict distance increase, finite/in-range coordinates, valid
+  optional elevation, a real source ride/range, and start < end. Inject both ID and clock for
+  deterministic tests. Test rollback on a mid-point insert failure and deletion semantics.
+- **Keep the real self-match check, but make it end-to-end.** Read the newly stored reference
+  points back from SQLite, feed the source ride's timestamped GPS points to `matchSegment`, and
+  assert an accepted near-100% traversal. Do not validate only the in-memory pre-insert array.
+
+### Revised commit implications
+
+- Commit 1 (`db/ride-track-query`) also includes timestamps and gap/cumulative-distance tests.
+- Commit 2 (`map/route-map-view`) includes native/web module separation and MultiLineString gaps.
+- Commit 3 (`segments/resample-and-fingerprint`) includes elevation interpolation, the shared
+  JSON/fingerprint conformance fixture, and numeric-canonicalization tests.
+- Commit 4 (`db/insert-and-query-segments`) begins with the migration removing fingerprint
+  uniqueness while adding a non-unique index, then covers validation/rollback/delete behavior.
+- Commit 5 uses a distance-based accessible scrubber and explicitly non-draggable map pins.
+- Commit 6 adds the actual Segments stack/list/detail and typed cross-tab post-save navigation.
+
+Do not begin implementation from the contradictory recommendations later in this document
+(especially source-derived fingerprints); this review section supersedes them until Claude folds
+the revisions into the main body.
+
 ## Context
 
 The first UI increment (import → ride list → ride detail, `docs/PLAN_first_ui_increment.md`)
