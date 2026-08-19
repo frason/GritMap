@@ -35,7 +35,7 @@
     "ios": "expo run:ios",
     "web": "expo start --web",
     "prebuild": "expo prebuild",
-    "test": "node --test \"src/**/*.test.ts\"",
+    "test": "node --experimental-test-module-mocks --test \"src/**/*.test.ts\"",
     "typecheck": "tsc --noEmit",
     "web:smoke": "expo export --platform web"
   },
