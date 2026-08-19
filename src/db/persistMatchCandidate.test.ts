@@ -88,11 +88,13 @@ describe("persistMatchCandidate", () => {
 
   it("throws instead of persisting when a boundary point_index has no ride_points row", () => {
     using database = createDatabase();
-    const candidate = matchCandidate("accept", { startPointIndex: 1, endPointIndex: 99 });
+    // createDatabase() seeds point_index 0-100 (needed by the overlap-ratio tests below),
+    // so this must reach past that range to genuinely hit a missing row.
+    const candidate = matchCandidate("accept", { startPointIndex: 1, endPointIndex: 999 });
 
     assert.throws(
       () => persistMatchCandidate(database, candidate, context("attempt-missing-row")),
-      /No ride_points row for ride ride-1 at point_index 99/,
+      /No ride_points row for ride ride-1 at point_index 999/,
     );
     assert.equal(count(database, "segment_attempts"), 0);
     assert.equal(count(database, "match_diagnostics"), 0);
