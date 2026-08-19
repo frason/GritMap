@@ -290,3 +290,13 @@ user).
   includes the plan time when available. Missing targets display `Plan --` and are not fabricated.
 - APK is now 0.6.1/versionCode 9. Full JVM tests and assembly passed; the Karoo remains
   disconnected, so installation is pending.
+
+## Parallel Karoo live-demo update — Codex, 2026-08-18 22:29 PDT
+
+- `74150e4 apps/karoo: add live data field demo` adds launcher Start/Stop controls for a
+  process-local, non-persistent 34-second segment simulation.
+- The demo cycles Recover/Hold/Push zones while updating progress, elevation profile, target,
+  three-second power, HR, watts/HR, planned/predicted times, adherence, and completion. It never
+  writes dummy data to Room, and a real detected segment takes control automatically.
+- APK is now 0.7.0/versionCode 10. Full JVM tests and assembly passed. The Karoo remains
+  disconnected, so installation is pending.
