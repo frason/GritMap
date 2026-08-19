@@ -10,6 +10,7 @@ import androidx.core.app.NotificationCompat
 import com.gritmap.karoo.R
 import com.gritmap.karoo.data.DatabaseProvider
 import com.gritmap.karoo.ui.state.LiveUiState
+import com.gritmap.karoo.ui.state.LiveDemoController
 import com.gritmap.karoo.ui.state.LiveUiStore
 import com.gritmap.karoo.ui.state.SensorStatus
 import io.hammerhead.karooext.KarooSystemService
@@ -98,6 +99,7 @@ class LiveSegmentService : Service() {
 
     /** Called by the deterministic matcher when a segment is entered. */
     fun beginAttempt(session: ActiveAttemptSession) {
+        LiveDemoController.stop(clear = false)
         LiveDiagnostics.record(
             this,
             "attempt_started",

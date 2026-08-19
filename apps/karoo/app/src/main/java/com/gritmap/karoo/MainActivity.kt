@@ -25,6 +25,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
@@ -39,6 +40,7 @@ import com.gritmap.karoo.importing.StagedFileSegmentInbox
 import com.gritmap.karoo.importing.TransferPackageRepository
 import com.gritmap.karoo.service.LiveDiagnostics
 import com.gritmap.karoo.service.LiveServiceStarter
+import com.gritmap.karoo.ui.state.LiveDemoController
 import java.io.IOException
 import java.io.File
 import kotlinx.coroutines.Dispatchers
@@ -63,6 +65,7 @@ class MainActivity : ComponentActivity() {
                 mutableStateOf(LiveServiceStarter.hasLocationPermission(this@MainActivity))
             }
             var diagnosticLines by remember { mutableStateOf<List<String>>(emptyList()) }
+            val demoRunning by LiveDemoController.running.collectAsState()
             suspend fun refreshLibrary() {
                 segments = segmentLibrary.list()
             }
@@ -145,6 +148,23 @@ class MainActivity : ComponentActivity() {
                     }) {
                         Text(if (locationGranted) "Location enabled" else "Enable location")
                     }
+                    Button(onClick = {
+                        if (demoRunning) {
+                            LiveDemoController.stop()
+                            status = "Data-field demo stopped"
+                        } else {
+                            LiveDemoController.start()
+                            status = "Data-field demo running; open a Karoo ride page"
+                        }
+                    }) {
+                        Text(if (demoRunning) "Stop data-field demo" else "Start data-field demo")
+                    }
+                    Text(
+                        "Demo mode loops through a compressed planned segment without writing to the database. " +
+                            "A real detected segment automatically takes control.",
+                        color = Color.LightGray,
+                        style = MaterialTheme.typography.bodySmall,
+                    )
                     Button(onClick = {
                         if (hasDocumentPicker()) {
                             segmentPicker.launch(arrayOf("application/json", "text/plain"))
