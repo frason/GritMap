@@ -1,52 +1,14 @@
 # Handoff: First root-app UI increment complete (import → list → detail)
 
-- Updated: `2026-08-18 21:56 PDT`
+- Updated: `2026-08-18 15:39 PDT`
 - Agent: `Claude`
 - Branch: `main`
-- Head: `d8999c8 docs: record manual pass of duplicate-decision modal + batch import` — pushed
-  to `origin/main`, confirmed by the user.
+- Head (root-app work): `895239e scaffold: add MapLibre dependency + minimal MapView screen
+  (closes #47)` — already pushed to `origin/main` as of this update.
+- Local `main` is currently 4 commits ahead of `origin/main`, all of them Codex's parallel
+  `apps/karoo/` work (responsive fields, GM label rename) — not touched or pushed by this
+  update; see the Parallel Karoo sections below and their own archived handoffs.
 - Worktree: clean
-
-## This update: post-push cleanup — 2 stale issues closed, #43 rebased and PR'd
-
-With the root-app increment fully verified and pushed, did a pass over open issues to find
-genuinely next work rather than defaulting to "start something new":
-
-- **Closed #5** (batch FIT import: retention, progress, duplicate handling) — its exact scope
-  shipped this session (PR6 `import/fit-import-screen`, PR5 `import/import-fit-file`), now also
-  manually verified (see the "Manual pass" section below). Closed with a comment mapping each
-  requirement to its commit.
-- **Closed #19** (expo prebuild scaffold + DEV_SETUP.md) — shipped via PR2
-  `scaffold/dev-client-prebuild`, MapLibre re-link done in `895239e`. Closed with a comment.
-- **#43** (matcher overlap-dedup + version-aware rescan) had a stale worktree at
-  `/private/tmp/gritmap-issue43` — its branch forked from `92fdd4e` (Aug 14), before this
-  session's 8 PRs landed on `main`. Rebased it onto current `main`:
-  - Hit a **real, non-mechanical conflict** in `src/db/persistMatchCandidate.ts`: `main` had
-    independently gained a `readRidePointTimestampMs` fix (issue #41, landed Aug 14 also but a
-    different commit) that reads boundary timestamps from `ride_points` instead of trusting the
-    caller; #43's branch had its own rewrite of the same function adding overlap-based dedup
-    (`bestPhysicalTraversalMatch`, `traversalOverlap.ts`) and matcher-version-aware
-    update/duplicate/removed semantics. Both are real, independent correctness fixes to the
-    same code path — resolved by hand: kept `readRidePointTimestampMs` as the sole source of
-    truth for timestamps (called only where a row is actually inserted/updated, not on every
-    call, to satisfy an early-throw test), while keeping #43's overlap dedup and version-rescan
-    branching. Read every relevant test in `persistMatchCandidate.test.ts` first to confirm the
-    merged behavior against both branches' expectations before writing the resolution, rather
-    than guessing.
-  - The rebase's merged test fixture (`createDatabase()`) grew from 5 to 101 seeded
-    `ride_points` (#43's overlap-ratio tests need the larger range), which incidentally made
-    point_index 99 — used by an older "missing row" test — a *valid* row, breaking that test's
-    premise. Fixed by bumping it to 999 (genuinely out of range). This was a test-fixture
-    collision, not a production bug in either branch.
-  - Verified post-resolution: `npm run typecheck` clean, **84/84 tests pass**, `npm run
-    web:smoke` bundles cleanly.
-  - Pushed `fix/issue-43-overlap-rescan` and opened
-    [PR #55](https://github.com/frason/GritMap/pull/55) — CI (`verify`) was still running as of
-    this handoff; check its status before merging.
-- **#53** (stricter SQLite adapter with an automated `mock.module()`-based test) intentionally
-  **not started this update** — flagged to the user as a real, separate gap (this session's
-  `toSyncDatabase.ts` was deliberately left without an automated test, verified on-device only)
-  but the user chose #43 first. Still open, still worth doing.
 
 ## Manual pass: duplicate-decision modal + multi-file batch import — done, both verified
 
@@ -205,20 +167,15 @@ flagged in `docs/PLAN_first_ui_increment.md`) becomes live and will need address
 
 ## Next safe action
 
-1. **Check [PR #55](https://github.com/frason/GritMap/pull/55) CI and merge** if `verify`
-   passes — this closes out issue #43. It was rebased and manually re-verified (typecheck,
-   84/84 tests, web:smoke) but hasn't had a second set of eyes on the
-   `persistMatchCandidate.ts` merge conflict resolution described above; worth a real review
-   given it touches match-persistence correctness.
-2. **#53** (SQLite adapter with an automated `mock.module()` test) — real, unaddressed gap,
-   not yet started.
-3. **Segment-definition work** — now that `src/screens/MapScreen.tsx` exists (not yet wired
-   into navigation; see the flagged `web:smoke` risk above once it is) and #43's matcher fixes
-   are landing, issue #7 (map handles + scrubber, persist directed segment) is unblocked.
+The root-app import→list→detail increment (all 8 PRs, PR #54's MapLibre scaffold, and now the
+manual duplicate/batch-import pass) is fully verified and pushed. Remaining priorities, in no
+particular order: integrating issue #43 from its worktree; handing off issue #53; or starting
+segment-definition work now that a map exists to build on (`src/screens/MapScreen.tsx`, not
+yet wired into navigation — see the flagged `web:smoke` risk above once it is).
 
-Local `main` should be in sync with `origin/main` as of this update (Codex's 4 parallel
-`apps/karoo/` commits + this update's docs commit were pushed together, confirmed by the
-user).
+Note: local `main` is 4 commits ahead of `origin/main` from Codex's parallel `apps/karoo/`
+work (responsive fields + GM label rename) — not this update's to push; confirm with Codex's
+own handoff entries before pushing those.
 
 ## Parallel Karoo field-suite update — Codex, 2026-08-18 13:34 PDT
 
@@ -268,16 +225,3 @@ user).
   Karoo `00442GA241760203` with app data retained.
 - Next device check: preview the three graphical fields at different page sizes and confirm the
   15/30-row breakpoints feel right on hardware.
-
-## Parallel Karoo completion and effort-field update — Codex, 2026-08-18 21:59 PDT
-
-- `3c3955b apps/karoo: add completion and effort fields` adds an eight-second native segment
-  completion summary plus graphical `GM Watts/HR` and `GM Power Balance` fields.
-- Completion detail includes elapsed time, average watts, average HR, and plan adherence when
-  available. It uses Karoo's supported `InRideAlert`, not the screen-covering Android overlay.
-- Power Balance compares a true three-second rolling power value with the pacing target using a
-  colored fill and white target marker. Watts/HR uses that rolling power divided by fresh HR.
-- APK is now 0.6.0/versionCode 8. Full JVM tests and debug assembly passed. The Karoo disconnected,
-  so 0.6.0 is built but not installed; 0.5.0 remains the last confirmed device version.
-- Next action: reconnect and run `adb install -r apps/karoo/app/build/outputs/apk/debug/app-debug.apk`,
-  then validate both editor previews and the completion alert on a real traversal.
