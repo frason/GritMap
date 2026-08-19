@@ -31,6 +31,8 @@ internal val KarooPreviewState = LiveUiState(
     ),
     recommendation = Recommendation(260, "Hold steady", GuidanceIcon.HOLD),
     currentPowerWatts = 247,
+    rollingPowerWatts3s = 247,
+    currentHeartRateBpm = 142,
     predictedFinishSeconds = 168,
     planAdherencePct = 91,
     sensorStatus = SensorStatus(

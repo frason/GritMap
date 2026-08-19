@@ -29,6 +29,23 @@ class SegmentEntryAlertTest {
         assertEquals("260 W · Hold steady", alert.detail)
     }
 
+    @Test
+    fun `completion alert summarizes elapsed time and available effort metrics`() {
+        val session = session(Recommendation(260, "Hold steady", GuidanceIcon.HOLD))
+        val active = session.uiState.copy(
+            sensorStatus = com.gritmap.karoo.ui.state.SensorStatus(power = true),
+        )
+        session.accept(LiveTelemetry(2_000L, powerWatts = 250.0, heartRateBpm = 140.0), active)
+        session.accept(LiveTelemetry(3_000L, powerWatts = 270.0, heartRateBpm = 150.0), active)
+
+        val alert = segmentCompletionAlert(session, completedAtMs = 169_001L)
+
+        assertEquals("Coco Jumbo complete", alert.title)
+        assertEquals("2:49 · Avg 260 W · 145 bpm · 100% on plan", alert.detail)
+        assertEquals(8_000L, alert.autoDismissMs)
+        assertTrue(alert.id.startsWith("gritmap-complete-"))
+    }
+
     private fun session(recommendation: Recommendation? = null) = ActiveAttemptSession(
         attemptId = "attempt-1",
         segmentId = "coco-jumbo",

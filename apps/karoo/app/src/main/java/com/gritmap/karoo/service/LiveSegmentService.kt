@@ -153,6 +153,14 @@ class LiveSegmentService : Service() {
             com.gritmap.karoo.ui.state.MatchStatus.ABANDONED
         }
         session.accept(telemetry, session.uiState.copy(matchStatus = finalStatus))
+        if (reason == "completed") {
+            val alertSent = karooSystem.dispatch(segmentCompletionAlert(session, telemetry.timestampMs))
+            LiveDiagnostics.record(
+                this,
+                "segment_completion_alert",
+                "segment=${session.segmentId} sent=$alertSent",
+            )
+        }
         activeSession = null
         lastInferenceMs = 0L
         scope.launch(Dispatchers.IO) { eventSink.onSegmentExit(session, reason) }
@@ -333,10 +341,32 @@ internal fun enrichLiveMetrics(
     } else {
         null
     }
+    val rollingPower = (session.recentSamples() + sample)
+        .asSequence()
+        .filter { it.timestampMs >= sample.timestampMs - THREE_SECOND_WINDOW_MS }
+        .distinctBy { it.timestampMs }
+        .mapNotNull { it.powerWatts }
+        .averageOrNull()
+        ?.roundToInt()
+        ?.takeIf { state.sensorStatus.power }
     return state.copy(
         currentPowerWatts = sample.powerWatts?.takeIf { state.sensorStatus.power }?.roundToInt(),
+        rollingPowerWatts3s = rollingPower,
+        currentHeartRateBpm = sample.heartRateBpm
+            ?.takeIf { state.sensorStatus.heartRate }
+            ?.roundToInt(),
         predictedFinishSeconds = predictedFinish,
     )
+}
+
+private fun Sequence<Double>.averageOrNull(): Double? {
+    var count = 0
+    var sum = 0.0
+    for (value in this) {
+        sum += value
+        count++
+    }
+    return if (count == 0) null else sum / count
 }
 
 internal fun segmentEntryAlert(session: ActiveAttemptSession): InRideAlert {
@@ -354,3 +384,36 @@ internal fun segmentEntryAlert(session: ActiveAttemptSession): InRideAlert {
         textColor = R.color.gritmap_alert_text,
     )
 }
+
+internal fun segmentCompletionAlert(session: ActiveAttemptSession, completedAtMs: Long): InRideAlert {
+    val elapsedSeconds = ((completedAtMs - session.startedAtMs).coerceAtLeast(0L) / 1_000L).toInt()
+    val metrics = buildList {
+        add(formatAttemptDuration(elapsedSeconds))
+        session.averagePowerWatts?.roundToInt()?.let { add("Avg $it W") }
+        session.averageHeartRateBpm?.roundToInt()?.let { add("$it bpm") }
+        session.planAdherencePct()?.let { add("$it% on plan") }
+    }
+    return InRideAlert(
+        id = "gritmap-complete-${session.attemptId}",
+        icon = R.drawable.karoo_ic_extension,
+        title = "${session.uiState.segmentName.ifBlank { session.segmentId }} complete",
+        detail = metrics.joinToString(" · "),
+        autoDismissMs = 8_000L,
+        backgroundColor = R.color.gritmap_alert_background,
+        textColor = R.color.gritmap_alert_text,
+    )
+}
+
+internal fun formatAttemptDuration(seconds: Int): String {
+    val safe = seconds.coerceAtLeast(0)
+    val hours = safe / 3_600
+    val minutes = (safe % 3_600) / 60
+    val remainingSeconds = safe % 60
+    return if (hours > 0) {
+        "%d:%02d:%02d".format(hours, minutes, remainingSeconds)
+    } else {
+        "%d:%02d".format(minutes, remainingSeconds)
+    }
+}
+
+private const val THREE_SECOND_WINDOW_MS = 3_000L

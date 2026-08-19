@@ -19,8 +19,30 @@ class LiveMetricsTest {
         )
 
         assertEquals(247, result.currentPowerWatts)
+        assertEquals(247, result.rollingPowerWatts3s)
         assertEquals(-13, result.powerDeltaWatts)
         assertEquals(150, result.predictedFinishSeconds)
+    }
+
+    @Test
+    fun `three second power and watts per HR use recent live samples`() {
+        val session = session()
+        val liveState = state(progress = 100.0).copy(
+            sensorStatus = SensorStatus(power = true, heartRate = true),
+        )
+        session.accept(LiveTelemetry(timestampMs = 27_000L, powerWatts = 100.0), liveState)
+        session.accept(LiveTelemetry(timestampMs = 29_000L, powerWatts = 200.0), liveState)
+
+        val result = enrichLiveMetrics(
+            liveState,
+            session,
+            LiveTelemetry(timestampMs = 31_000L, powerWatts = 300.0, heartRateBpm = 150.0),
+        )
+
+        // The 27-second sample falls outside the inclusive 28–31 second rolling window.
+        assertEquals(250, result.rollingPowerWatts3s)
+        assertEquals(150, result.currentHeartRateBpm)
+        assertEquals(1.666, result.wattsPerHeartRate!!, 0.001)
     }
 
     @Test

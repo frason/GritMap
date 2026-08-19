@@ -20,6 +20,8 @@ class GritMapKarooExtension : KarooExtension(EXTENSION_ID, BuildConfig.VERSION_N
             PredictedFinishDataType(extension),
             PacingProfileDataType(extension),
             SegmentPerformanceDataType(extension),
+            WattsPerHeartRateDataType(extension),
+            PowerBalanceDataType(extension),
         )
     }
 

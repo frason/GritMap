@@ -11,7 +11,7 @@ class CombinedDataTypesTest {
 
         assertEquals("Hold steady", text.action)
         assertEquals("260 W", text.target)
-        assertEquals("Actual 247 W · -13 W", text.actual)
+        assertEquals("3s 247 W · -13 W", text.actual)
         assertEquals("Push 295 W in 175 m", text.next)
     }
 

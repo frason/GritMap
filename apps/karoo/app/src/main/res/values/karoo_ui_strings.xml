@@ -15,4 +15,8 @@
     <string name="karoo_predicted_finish_description">Estimated total segment time at the current progress rate</string>
     <string name="karoo_segment_performance_name">GM Segment Performance</string>
     <string name="karoo_segment_performance_description">Predicted finish, plan adherence, and segment progress</string>
+    <string name="karoo_watts_per_hr_name">GM Watts/HR</string>
+    <string name="karoo_watts_per_hr_description">Three-second power divided by current heart rate</string>
+    <string name="karoo_power_balance_name">GM Power Balance</string>
+    <string name="karoo_power_balance_description">Three-second rolling power compared with the current pacing target</string>
 </resources>

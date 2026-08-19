@@ -5,6 +5,7 @@ import android.view.View
 import android.widget.RemoteViews
 import com.gritmap.karoo.R
 import com.gritmap.karoo.service.LiveServiceStarter
+import com.gritmap.karoo.ui.PowerBalanceBitmapRenderer
 import com.gritmap.karoo.ui.state.LiveUiState
 import com.gritmap.karoo.ui.state.LiveUiStore
 import io.hammerhead.karooext.extension.DataTypeImpl
@@ -93,6 +94,68 @@ class SegmentPerformanceDataType(extensionId: String) : StateGraphicDataType(ext
     companion object { const val TYPE_ID = "segment-performance" }
 }
 
+class WattsPerHeartRateDataType(extensionId: String) : StateGraphicDataType(extensionId, TYPE_ID) {
+    override fun remoteViews(context: Context, state: LiveUiState, size: KarooFieldSize): RemoteViews {
+        val ratio = state.wattsPerHeartRate
+        return RemoteViews(context.packageName, R.layout.karoo_watts_per_hr_field).apply {
+            setTextViewText(R.id.karoo_watts_hr_value, ratio?.let { "%.2f".format(it) } ?: "--")
+            setTextViewText(
+                R.id.karoo_watts_hr_detail,
+                if (ratio != null) {
+                    "${state.rollingPowerWatts3s} W / ${state.currentHeartRateBpm} bpm"
+                } else {
+                    "Waiting for power and HR"
+                },
+            )
+            setViewVisibility(
+                R.id.karoo_watts_hr_detail,
+                if (size == KarooFieldSize.SMALL) View.GONE else View.VISIBLE,
+            )
+        }
+    }
+
+    companion object { const val TYPE_ID = "watts-per-hr" }
+}
+
+class PowerBalanceDataType(extensionId: String) : StateGraphicDataType(extensionId, TYPE_ID) {
+    private val barRenderer = PowerBalanceBitmapRenderer()
+
+    override fun remoteViews(context: Context, state: LiveUiState, size: KarooFieldSize): RemoteViews {
+        val target = state.recommendation?.targetPowerWatts
+        val actual = state.rollingPowerWatts3s
+        val delta = state.powerDeltaWatts
+        return RemoteViews(context.packageName, R.layout.karoo_power_balance_field).apply {
+            setTextViewText(
+                R.id.karoo_power_balance_values,
+                if (actual != null && target != null) "$actual / $target W" else "-- / -- W",
+            )
+            setTextViewText(
+                R.id.karoo_power_balance_delta,
+                delta?.let { "${if (it >= 0) "+" else ""}$it W" } ?: "Waiting for plan and power",
+            )
+            setViewVisibility(
+                R.id.karoo_power_balance_title,
+                if (size == KarooFieldSize.SMALL) View.GONE else View.VISIBLE,
+            )
+            setViewVisibility(
+                R.id.karoo_power_balance_delta,
+                if (size == KarooFieldSize.SMALL) View.GONE else View.VISIBLE,
+            )
+            val width = when (size) {
+                KarooFieldSize.SMALL -> 320
+                KarooFieldSize.MEDIUM -> 480
+                KarooFieldSize.LARGE -> 600
+            }
+            setImageViewBitmap(
+                R.id.karoo_power_balance_bar,
+                barRenderer.render(actual, target, width, 48),
+            )
+        }
+    }
+
+    companion object { const val TYPE_ID = "power-balance" }
+}
+
 enum class KarooFieldSize { SMALL, MEDIUM, LARGE }
 
 /** Karoo's page grid is always 60 rows high, independent of device pixel density. */
@@ -116,9 +179,9 @@ internal fun pacingCoachText(state: LiveUiState): PacingCoachText {
     return PacingCoachText(
         action = recommendation?.instruction ?: "Waiting for pacing plan",
         target = recommendation?.targetPowerWatts?.let { "$it W" } ?: "-- W",
-        actual = state.currentPowerWatts?.let { actual ->
+        actual = (state.rollingPowerWatts3s ?: state.currentPowerWatts)?.let { actual ->
             val deltaText = delta?.let { " · ${if (it >= 0) "+" else ""}$it W" }.orEmpty()
-            "Actual $actual W$deltaText"
+            "3s $actual W$deltaText"
         } ?: state.sensorStatus.warning.orEmpty().ifBlank { "Waiting for power" },
         next = next?.let {
             "${it.effort.name.lowercase().replaceFirstChar(Char::uppercase)} ${it.targetPowerWatts} W " +

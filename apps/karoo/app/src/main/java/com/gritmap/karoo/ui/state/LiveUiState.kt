@@ -13,6 +13,8 @@ data class LiveUiState(
     val pacingZones: List<PacingZone> = emptyList(),
     val recommendation: Recommendation? = null,
     val currentPowerWatts: Int? = null,
+    val rollingPowerWatts3s: Int? = null,
+    val currentHeartRateBpm: Int? = null,
     val predictedFinishSeconds: Int? = null,
     val planAdherencePct: Int? = null,
     val sensorStatus: SensorStatus = SensorStatus(),
@@ -26,8 +28,13 @@ data class LiveUiState(
         }
 
     val powerDeltaWatts: Int?
-        get() = currentPowerWatts?.let { actual ->
+        get() = rollingPowerWatts3s?.let { actual ->
             recommendation?.targetPowerWatts?.let { target -> actual - target }
+        }
+
+    val wattsPerHeartRate: Double?
+        get() = rollingPowerWatts3s?.let { power ->
+            currentHeartRateBpm?.takeIf { it > 0 }?.let { heartRate -> power.toDouble() / heartRate }
         }
 
     val nextPacingZone: PacingZone?

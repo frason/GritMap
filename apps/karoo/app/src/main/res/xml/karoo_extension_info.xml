@@ -42,4 +42,16 @@
         description="@string/karoo_segment_performance_description"
         graphical="true"
         icon="@drawable/karoo_ic_extension" />
+    <DataType
+        typeId="watts-per-hr"
+        displayName="@string/karoo_watts_per_hr_name"
+        description="@string/karoo_watts_per_hr_description"
+        graphical="true"
+        icon="@drawable/karoo_ic_extension" />
+    <DataType
+        typeId="power-balance"
+        displayName="@string/karoo_power_balance_name"
+        description="@string/karoo_power_balance_description"
+        graphical="true"
+        icon="@drawable/karoo_ic_extension" />
 </ExtensionInfo>

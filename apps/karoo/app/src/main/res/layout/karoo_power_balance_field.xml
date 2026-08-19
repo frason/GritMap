@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="#121417"
+    android:gravity="center_vertical"
+    android:orientation="vertical"
+    android:padding="8dp">
+
+    <TextView
+        android:id="@+id/karoo_power_balance_title"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="3s power / target"
+        android:textColor="#FFFFFF"
+        android:textSize="13sp"
+        android:textStyle="bold" />
+
+    <TextView
+        android:id="@+id/karoo_power_balance_values"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:textColor="#FFFFFF"
+        android:textSize="18sp"
+        android:textStyle="bold" />
+
+    <ImageView
+        android:id="@+id/karoo_power_balance_bar"
+        android:layout_width="match_parent"
+        android:layout_height="24dp"
+        android:contentDescription="Rolling power compared with target power"
+        android:scaleType="fitXY" />
+
+    <TextView
+        android:id="@+id/karoo_power_balance_delta"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:textColor="#D0D4DA"
+        android:textSize="11sp" />
+</LinearLayout>
