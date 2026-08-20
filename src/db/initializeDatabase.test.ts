@@ -94,7 +94,7 @@ describe("initializeDatabase (real expo-sqlite call shape, mocked module)", () =
     const version = database.prepare("PRAGMA user_version").get() as
       | { user_version?: number }
       | undefined;
-    assert.equal(Number(version?.user_version), 3);
+    assert.equal(Number(version?.user_version), 4);
 
     const tables = (
       database.prepare("SELECT name FROM sqlite_master WHERE type = 'table'").all() as {
@@ -122,7 +122,7 @@ describe("initializeDatabase (real expo-sqlite call shape, mocked module)", () =
     const version = database.prepare("PRAGMA user_version").get() as
       | { user_version?: number }
       | undefined;
-    assert.equal(Number(version?.user_version), 3);
+    assert.equal(Number(version?.user_version), 4);
 
     closeDatabaseConnection(dbName);
   });
@@ -139,7 +139,7 @@ describe("initializeDatabase (real expo-sqlite call shape, mocked module)", () =
     const version = database.prepare("PRAGMA user_version").get() as
       | { user_version?: number }
       | undefined;
-    assert.equal(Number(version?.user_version), 3);
+    assert.equal(Number(version?.user_version), 4);
 
     closeDatabaseConnection(dbName);
   });

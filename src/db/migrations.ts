@@ -187,6 +187,120 @@ export const migrations: readonly Migration[] = [
         CHECK (total_ascent_meters IS NULL OR total_ascent_meters >= 0);
     `,
   },
+  {
+    version: 4,
+    name: "segment_fingerprint_not_unique",
+    sql: `
+      -- A segment's fingerprint is geometry-only (direction + matching params + resampled
+      -- polyline), per docs/PLAN_segment_definition_increment.md -- two geographically
+      -- identical segments defined from different rides (explicitly allowed by docs/MVP.md)
+      -- must be able to share a fingerprint. SQLite has no ALTER TABLE to drop an inline
+      -- UNIQUE constraint, so this rebuilds segments and every table with a foreign key into
+      -- it. Each *_new table's FKs reference the *other* *_new tables by name (not the old
+      -- table names) -- verified empirically that referencing an old name here causes
+      -- DROP TABLE's implicit cascade-delete to silently wipe the newly-copied child rows
+      -- before the rename ever happens. SQLite auto-rewrites a table's FK clauses to follow
+      -- a referenced table through ALTER TABLE RENAME, so after renaming *_new back to the
+      -- original names, every FK ends up pointing at the right table again.
+      CREATE TABLE segments_new (
+        id TEXT PRIMARY KEY,
+        name TEXT NOT NULL CHECK (length(trim(name)) > 0),
+        corridor_meters REAL NOT NULL CHECK (corridor_meters > 0),
+        required_coverage REAL NOT NULL CHECK (
+          required_coverage >= 0 AND required_coverage <= 1
+        ),
+        schema_version INTEGER NOT NULL CHECK (schema_version > 0),
+        fingerprint TEXT NOT NULL,
+        source_ride_id TEXT,
+        source_start_point_index INTEGER,
+        source_end_point_index INTEGER,
+        created_at_ms INTEGER NOT NULL,
+        FOREIGN KEY (source_ride_id) REFERENCES rides(id) ON DELETE SET NULL,
+        CHECK (
+          (source_start_point_index IS NULL AND source_end_point_index IS NULL) OR
+          (
+            source_start_point_index IS NOT NULL AND
+            source_end_point_index IS NOT NULL AND
+            source_start_point_index >= 0 AND
+            source_end_point_index >= source_start_point_index
+          )
+        )
+      ) STRICT;
+
+      CREATE TABLE segment_reference_points_new (
+        segment_id TEXT NOT NULL,
+        point_index INTEGER NOT NULL CHECK (point_index >= 0),
+        latitude REAL NOT NULL,
+        longitude REAL NOT NULL,
+        distance_meters REAL NOT NULL CHECK (distance_meters >= 0),
+        elevation_meters REAL,
+        PRIMARY KEY (segment_id, point_index),
+        FOREIGN KEY (segment_id) REFERENCES segments_new(id) ON DELETE CASCADE
+      ) STRICT;
+
+      CREATE TABLE segment_attempts_new (
+        id TEXT PRIMARY KEY,
+        segment_id TEXT NOT NULL,
+        ride_id TEXT NOT NULL,
+        start_point_index INTEGER NOT NULL CHECK (start_point_index >= 0),
+        end_point_index INTEGER NOT NULL CHECK (end_point_index >= start_point_index),
+        start_timestamp_ms INTEGER NOT NULL,
+        end_timestamp_ms INTEGER NOT NULL CHECK (end_timestamp_ms >= start_timestamp_ms),
+        matcher_version INTEGER NOT NULL CHECK (matcher_version > 0),
+        confidence_score REAL NOT NULL CHECK (
+          confidence_score >= 0 AND confidence_score <= 1
+        ),
+        decision TEXT NOT NULL CHECK (decision IN ('accept', 'borderline')),
+        manually_approved INTEGER NOT NULL DEFAULT 0 CHECK (manually_approved IN (0, 1)),
+        created_at_ms INTEGER NOT NULL,
+        FOREIGN KEY (segment_id) REFERENCES segments_new(id) ON DELETE CASCADE,
+        FOREIGN KEY (ride_id) REFERENCES rides(id) ON DELETE CASCADE,
+        FOREIGN KEY (ride_id, start_point_index)
+          REFERENCES ride_points(ride_id, point_index) ON DELETE CASCADE,
+        FOREIGN KEY (ride_id, end_point_index)
+          REFERENCES ride_points(ride_id, point_index) ON DELETE CASCADE
+      ) STRICT;
+
+      CREATE TABLE match_diagnostics_new (
+        attempt_id TEXT PRIMARY KEY,
+        coverage_pct REAL NOT NULL CHECK (coverage_pct >= 0 AND coverage_pct <= 1),
+        max_deviation_meters REAL NOT NULL CHECK (max_deviation_meters >= 0),
+        median_deviation_meters REAL CHECK (median_deviation_meters >= 0),
+        max_backward_meters REAL NOT NULL CHECK (max_backward_meters >= 0),
+        max_gap_ms INTEGER NOT NULL CHECK (max_gap_ms >= 0),
+        gps_gap_count INTEGER NOT NULL DEFAULT 0 CHECK (gps_gap_count >= 0),
+        confidence_score REAL NOT NULL CHECK (
+          confidence_score >= 0 AND confidence_score <= 1
+        ),
+        reasons_json TEXT NOT NULL DEFAULT '[]' CHECK (json_valid(reasons_json)),
+        created_at_ms INTEGER NOT NULL,
+        FOREIGN KEY (attempt_id) REFERENCES segment_attempts_new(id) ON DELETE CASCADE
+      ) STRICT;
+
+      INSERT INTO segments_new SELECT * FROM segments;
+      INSERT INTO segment_reference_points_new SELECT * FROM segment_reference_points;
+      INSERT INTO segment_attempts_new SELECT * FROM segment_attempts;
+      INSERT INTO match_diagnostics_new SELECT * FROM match_diagnostics;
+
+      DROP TABLE match_diagnostics;
+      DROP TABLE segment_attempts;
+      DROP TABLE segment_reference_points;
+      DROP TABLE segments;
+
+      ALTER TABLE segments_new RENAME TO segments;
+      ALTER TABLE segment_reference_points_new RENAME TO segment_reference_points;
+      ALTER TABLE segment_attempts_new RENAME TO segment_attempts;
+      ALTER TABLE match_diagnostics_new RENAME TO match_diagnostics;
+
+      CREATE INDEX idx_segments_fingerprint ON segments(fingerprint);
+      CREATE INDEX idx_segment_reference_points_distance
+        ON segment_reference_points(segment_id, distance_meters);
+      CREATE INDEX idx_segment_attempts_segment
+        ON segment_attempts(segment_id, start_timestamp_ms);
+      CREATE INDEX idx_segment_attempts_ride_range
+        ON segment_attempts(ride_id, start_point_index, end_point_index);
+    `,
+  },
 ];
 
 export function configureDatabaseConnection(database: MigrationDatabase): void {

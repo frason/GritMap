@@ -24,7 +24,7 @@ describe("SQLite migrations", () => {
       .map((row) => String(row.name));
 
     for (const table of CORE_TABLES) assert.ok(tables.includes(table), `missing ${table}`);
-    assert.equal(Number(database.prepare("PRAGMA user_version").get()?.user_version), 3);
+    assert.equal(Number(database.prepare("PRAGMA user_version").get()?.user_version), 4);
 
     assertColumns(database, "imported_files", [
       "id",
@@ -204,7 +204,7 @@ describe("SQLite migrations", () => {
 
     applyMigrations(database);
 
-    assert.equal(Number(database.prepare("PRAGMA user_version").get()?.user_version), 3);
+    assert.equal(Number(database.prepare("PRAGMA user_version").get()?.user_version), 4);
     assert.deepEqual({ ...database.prepare(`
       SELECT rides.id, imported_files.original_filename,
              imported_files.retained_file_uri, imported_files.file_size_bytes,
@@ -328,7 +328,7 @@ describe("SQLite migrations", () => {
 
     applyMigrations(database);
 
-    assert.equal(Number(database.prepare("PRAGMA user_version").get()?.user_version), 3);
+    assert.equal(Number(database.prepare("PRAGMA user_version").get()?.user_version), 4);
     assert.deepEqual({ ...database.prepare(`
       SELECT total_distance_meters, total_ascent_meters FROM rides WHERE id = 'ride-pre-v3'
     `).get() }, { total_distance_meters: null, total_ascent_meters: null });
@@ -351,6 +351,66 @@ describe("SQLite migrations", () => {
           .run(-1, "ride-pre-v3"),
       /CHECK constraint failed/,
     );
+  });
+
+  it("allows two segments to share a fingerprint (geometry-only identity, no UNIQUE)", () => {
+    using database = migratedDatabase();
+    insertRide(database, "ride-fp", "file-fp");
+    database
+      .prepare(
+        `INSERT INTO segments (
+          id, name, corridor_meters, required_coverage, schema_version, fingerprint,
+          source_ride_id, source_start_point_index, source_end_point_index, created_at_ms
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      )
+      .run("segment-fp-a", "A", 30, 0.9, 1, "same-fingerprint", "ride-fp", 0, 2, 4_000);
+    database
+      .prepare(
+        `INSERT INTO segments (
+          id, name, corridor_meters, required_coverage, schema_version, fingerprint,
+          source_ride_id, source_start_point_index, source_end_point_index, created_at_ms
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      )
+      .run("segment-fp-b", "B", 30, 0.9, 1, "same-fingerprint", "ride-fp", 0, 2, 4_000);
+
+    assert.equal(count(database, "segments"), 2);
+  });
+
+  it("upgrades populated v3 segment/attempt/diagnostic data to v4 without loss, and keeps FKs/cascades working", () => {
+    using database = new DatabaseSync(":memory:");
+    applyMigrations(database, migrations.slice(0, 3));
+    insertRide(database, "ride-pre-v4", "file-pre-v4");
+    insertSegment(database, "segment-pre-v4", "ride-pre-v4");
+    insertAttempt(database, "attempt-pre-v4", "segment-pre-v4", "ride-pre-v4");
+
+    applyMigrations(database);
+
+    assert.equal(Number(database.prepare("PRAGMA user_version").get()?.user_version), 4);
+    assert.equal(count(database, "segments"), 1);
+    assert.equal(count(database, "segment_reference_points"), 2);
+    assert.equal(count(database, "segment_attempts"), 1);
+    assert.equal(count(database, "match_diagnostics"), 1);
+    assert.deepEqual({ ...database.prepare("SELECT * FROM segments WHERE id = 'segment-pre-v4'").get() }, {
+      id: "segment-pre-v4",
+      name: "segment-pre-v4",
+      corridor_meters: 30,
+      required_coverage: 0.9,
+      schema_version: 1,
+      fingerprint: "fingerprint-segment-pre-v4",
+      source_ride_id: "ride-pre-v4",
+      source_start_point_index: 0,
+      source_end_point_index: 2,
+      created_at_ms: 4_000,
+    });
+    assert.equal(Number(database.prepare("PRAGMA foreign_keys").get()?.foreign_keys), 1);
+    assert.deepEqual(database.prepare("PRAGMA foreign_key_check").all(), []);
+
+    // Cascades must still work post-migration, not just on a freshly created v4 database.
+    database.prepare("DELETE FROM segments WHERE id = ?").run("segment-pre-v4");
+    assert.equal(count(database, "segment_reference_points"), 0);
+    assert.equal(count(database, "segment_attempts"), 0);
+    assert.equal(count(database, "match_diagnostics"), 0);
+    assert.equal(rowExists(database, "rides", "ride-pre-v4"), true);
   });
 });
 
