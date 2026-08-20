@@ -3,10 +3,11 @@ import { ScrollView, StyleSheet, Text, View } from "react-native";
 import { useRoute, type RouteProp } from "@react-navigation/native";
 import { useDatabase } from "../db/DatabaseProvider";
 import { getRideDetail, type RideDetail } from "../db/getRideDetail";
+import { getRideTrack, type RideTrackPoint } from "../db/getRideTrack";
 import type { RidesStackParamList } from "../navigation/types";
 import { colors } from "../theme/colors";
-import { Icon } from "../theme/Icon";
 import { radius, spacing } from "../theme/spacing";
+import { RouteMapView } from "./RouteMapView";
 import {
   formatDistanceMiles,
   formatDurationHoursMinutes,
@@ -20,9 +21,11 @@ export function RideDetailScreen() {
   const database = useDatabase();
   const route = useRoute<DetailRoute>();
   const [ride, setRide] = useState<RideDetail | undefined>(undefined);
+  const [track, setTrack] = useState<RideTrackPoint[]>([]);
 
   useEffect(() => {
     setRide(getRideDetail(database, route.params.rideId));
+    setTrack(getRideTrack(database, route.params.rideId));
   }, [database, route.params.rideId]);
 
   if (!ride) {
@@ -43,11 +46,8 @@ export function RideDetailScreen() {
       </View>
 
       <Section title="Route">
-        <View style={styles.routePlaceholder}>
-          <Icon name="route" color="textTertiary" size={28} />
-          <Text style={styles.routePlaceholderText}>
-            Map view — available once segment tooling lands
-          </Text>
+        <View style={styles.routeMap}>
+          <RouteMapView points={track} />
         </View>
       </Section>
 
@@ -138,22 +138,11 @@ const styles = StyleSheet.create({
     fontWeight: "600",
     color: colors.textPrimary,
   },
-  routePlaceholder: {
-    height: 160,
+  routeMap: {
+    height: 220,
     borderRadius: radius.md,
-    borderWidth: 1,
-    borderColor: colors.border,
-    borderStyle: "dashed",
+    overflow: "hidden",
     backgroundColor: colors.surface,
-    alignItems: "center",
-    justifyContent: "center",
-    gap: spacing.space8,
-    paddingHorizontal: spacing.space24,
-  },
-  routePlaceholderText: {
-    fontSize: 13,
-    color: colors.textTertiary,
-    textAlign: "center",
   },
   segmentsEmptyText: {
     fontSize: 14,
