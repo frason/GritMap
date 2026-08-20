@@ -1,3 +1,5 @@
+import type { NavigatorScreenParams } from "@react-navigation/native";
+
 export type RidesStackParamList = {
   RideList: undefined;
   RideDetail: { rideId: string };
@@ -6,10 +8,11 @@ export type RidesStackParamList = {
 };
 
 export type SegmentsStackParamList = {
-  SegmentsPlaceholder: undefined;
+  SegmentList: undefined;
+  SegmentDetail: { segmentId: string };
 };
 
 export type RootTabParamList = {
   RidesTab: undefined;
-  SegmentsTab: undefined;
+  SegmentsTab: NavigatorScreenParams<SegmentsStackParamList> | undefined;
 };

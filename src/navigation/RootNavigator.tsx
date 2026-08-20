@@ -1,8 +1,8 @@
 import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
 import { Icon } from "../theme/Icon";
 import { colors } from "../theme/colors";
-import { SegmentsPlaceholderScreen } from "../screens/SegmentsPlaceholderScreen";
 import { RidesStackNavigator } from "./RidesStackNavigator";
+import { SegmentsStackNavigator } from "./SegmentsStackNavigator";
 import type { RootTabParamList } from "./types";
 
 const Tab = createBottomTabNavigator<RootTabParamList>();
@@ -28,7 +28,7 @@ export function RootNavigator() {
       />
       <Tab.Screen
         name="SegmentsTab"
-        component={SegmentsPlaceholderScreen}
+        component={SegmentsStackNavigator}
         options={{
           title: "Segments",
           tabBarIcon: ({ focused, size }) => (

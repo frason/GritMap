@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Alert, KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from "react-native";
 import { useNavigation, useRoute, type RouteProp } from "@react-navigation/native";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
+import type { BottomTabNavigationProp } from "@react-navigation/bottom-tabs";
 import * as Crypto from "expo-crypto";
 import { useDatabase } from "../db/DatabaseProvider";
 import { getRideTrack, type RideTrackPoint } from "../db/getRideTrack";
@@ -9,7 +10,7 @@ import { insertSegment } from "../db/insertSegment";
 import { computeSegmentFingerprint } from "../segments/segmentFingerprint";
 import { resamplePolyline } from "../segments/resamplePolyline";
 import { computeCumulativeTrackDistance, nearestByDistance } from "../segments/cumulativeTrackDistance";
-import type { RidesStackParamList } from "../navigation/types";
+import type { RidesStackParamList, RootTabParamList } from "../navigation/types";
 import { colors } from "../theme/colors";
 import { radius, spacing } from "../theme/spacing";
 import { RouteMapView } from "./RouteMapView";
@@ -80,7 +81,7 @@ export function DefineSegmentScreen() {
         referencePolyline,
       });
 
-      insertSegment(database, generateId, {
+      const { segmentId } = insertSegment(database, generateId, {
         name: name.trim(),
         corridorMeters: CORRIDOR_METERS,
         requiredCoveragePct: REQUIRED_COVERAGE_PCT,
@@ -93,7 +94,14 @@ export function DefineSegmentScreen() {
         nowMs: Date.now(),
       });
 
+      // Cross-stack: DefineSegment lives in the Rides stack, SegmentDetail in the Segments
+      // stack -- a same-stack navigation.navigate("SegmentDetail") wouldn't type-check (it
+      // isn't a route in RidesStackParamList) and wouldn't work at runtime either. Reach the
+      // root tab navigator via getParent() and navigate through it instead.
       navigation.popToTop();
+      navigation
+        .getParent<BottomTabNavigationProp<RootTabParamList>>()
+        ?.navigate("SegmentsTab", { screen: "SegmentDetail", params: { segmentId } });
     } catch (error) {
       Alert.alert("Couldn't save segment", error instanceof Error ? error.message : String(error));
     } finally {

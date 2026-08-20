@@ -16,6 +16,7 @@ const iconGlyphs = {
   clock: "time-outline",
   route: "bicycle",
   mapPin: "location",
+  trash: "trash-outline",
 } as const satisfies Record<string, ComponentProps<typeof Ionicons>["name"]>;
 
 export type IconName = keyof typeof iconGlyphs;
