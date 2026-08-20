@@ -3,6 +3,7 @@ import { Text, TouchableOpacity } from "react-native";
 import { RideDetailScreen } from "../screens/RideDetailScreen";
 import { RideListScreen } from "../screens/RideListScreen";
 import { ImportScreen } from "../screens/ImportScreen";
+import { DefineSegmentScreen } from "../screens/DefineSegmentScreen";
 import { colors } from "../theme/colors";
 import type { RidesStackParamList } from "./types";
 
@@ -28,6 +29,11 @@ export function RidesStackNavigator() {
         name="Import"
         component={ImportScreen}
         options={{ title: "Import Rides", presentation: "card" }}
+      />
+      <Stack.Screen
+        name="DefineSegment"
+        component={DefineSegmentScreen}
+        options={{ title: "New Segment", presentation: "card" }}
       />
     </Stack.Navigator>
   );

@@ -1,6 +1,7 @@
 import { useEffect, useState, type ReactNode } from "react";
-import { ScrollView, StyleSheet, Text, View } from "react-native";
-import { useRoute, type RouteProp } from "@react-navigation/native";
+import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import { useNavigation, useRoute, type RouteProp } from "@react-navigation/native";
+import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { useDatabase } from "../db/DatabaseProvider";
 import { getRideDetail, type RideDetail } from "../db/getRideDetail";
 import { getRideTrack, type RideTrackPoint } from "../db/getRideTrack";
@@ -16,10 +17,12 @@ import {
 } from "./formatRideStats";
 
 type DetailRoute = RouteProp<RidesStackParamList, "RideDetail">;
+type DetailNavigation = NativeStackNavigationProp<RidesStackParamList, "RideDetail">;
 
 export function RideDetailScreen() {
   const database = useDatabase();
   const route = useRoute<DetailRoute>();
+  const navigation = useNavigation<DetailNavigation>();
   const [ride, setRide] = useState<RideDetail | undefined>(undefined);
   const [track, setTrack] = useState<RideTrackPoint[]>([]);
 
@@ -58,12 +61,21 @@ export function RideDetailScreen() {
       </Section>
 
       <View style={styles.createSegmentSection}>
-        <View style={styles.disabledButton}>
-          <Text style={styles.disabledButtonLabel}>Create Segment</Text>
-        </View>
-        <Text style={styles.createSegmentCaption}>
-          Coming soon — needs map + precision scrubber
-        </Text>
+        {track.length >= 2 ? (
+          <TouchableOpacity
+            style={styles.createSegmentButton}
+            onPress={() => navigation.navigate("DefineSegment", { rideId: route.params.rideId })}
+          >
+            <Text style={styles.createSegmentButtonLabel}>Create Segment</Text>
+          </TouchableOpacity>
+        ) : (
+          <>
+            <View style={styles.disabledButton}>
+              <Text style={styles.disabledButtonLabel}>Create Segment</Text>
+            </View>
+            <Text style={styles.createSegmentCaption}>Not enough GPS data on this ride</Text>
+          </>
+        )}
       </View>
     </ScrollView>
   );
@@ -152,6 +164,18 @@ const styles = StyleSheet.create({
     marginTop: spacing.space24,
     alignItems: "center",
     gap: spacing.space8,
+  },
+  createSegmentButton: {
+    alignSelf: "stretch",
+    alignItems: "center",
+    backgroundColor: colors.brand,
+    borderRadius: radius.md,
+    paddingVertical: spacing.space12,
+  },
+  createSegmentButtonLabel: {
+    color: colors.textOnBrand,
+    fontSize: 15,
+    fontWeight: "600",
   },
   disabledButton: {
     alignSelf: "stretch",
