@@ -6,6 +6,10 @@
     <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_LOCATION" />
+    <!-- Local-network-only: the phone-to-Karoo transfer receiver (importing/HttpSegmentInbox.kt)
+         listens on a plain ServerSocket. Android requires INTERNET even for LAN/localhost
+         sockets, not just outbound internet access. -->
+    <uses-permission android:name="android.permission.INTERNET" />
     <application
         android:allowBackup="false"
         android:dataExtractionRules="@xml/data_extraction_rules"

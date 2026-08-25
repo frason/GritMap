@@ -32,6 +32,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.lifecycleScope
 import com.gritmap.karoo.data.DatabaseProvider
 import com.gritmap.karoo.data.SegmentLibraryRow
+import com.gritmap.karoo.importing.HttpSegmentInbox
 import com.gritmap.karoo.importing.RiderHistoryImportRepository
 import com.gritmap.karoo.importing.SegmentImportRepository
 import com.gritmap.karoo.importing.SegmentInboxProcessor
@@ -46,6 +47,9 @@ import java.io.File
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.jsonObject
+import kotlinx.serialization.json.jsonPrimitive
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -65,6 +69,7 @@ class MainActivity : ComponentActivity() {
                 mutableStateOf(LiveServiceStarter.hasLocationPermission(this@MainActivity))
             }
             var diagnosticLines by remember { mutableStateOf<List<String>>(emptyList()) }
+            var receiveInbox by remember { mutableStateOf<HttpSegmentInbox?>(null) }
             val demoRunning by LiveDemoController.running.collectAsState()
             suspend fun refreshLibrary() {
                 segments = segmentLibrary.list()
@@ -103,12 +108,25 @@ class MainActivity : ComponentActivity() {
                 ActivityResultContracts.OpenDocument(),
             ) { uri ->
                 if (uri != null) lifecycleScope.launch {
-                    status = importText(uri) { segmentImporter.importSegment(it) }.fold(
-                        onSuccess = {
+                    status = importText(uri) { json ->
+                        val packageType = Json.parseToJsonElement(json).jsonObject["packageType"]
+                            ?.jsonPrimitive?.content
+                        if (packageType == "gritmap-transfer") {
+                            val result = transferImporter.importPackage(json)
+                            buildString {
+                                append("Imported guidance package")
+                                result.segmentName?.let { append(" for $it") }
+                            }
+                        } else {
+                            val segment = segmentImporter.importSegment(json)
+                            "Imported segment ${segment.name}"
+                        }
+                    }.fold(
+                        onSuccess = { message ->
                             refreshLibrary()
-                            "Imported segment ${it.name}"
+                            message
                         },
-                        onFailure = { "Segment import failed: ${it.message}" },
+                        onFailure = { "JSON import failed: ${it.message}" },
                     )
                 }
             }
@@ -166,34 +184,86 @@ class MainActivity : ComponentActivity() {
                         style = MaterialTheme.typography.bodySmall,
                     )
                     Button(onClick = {
-                        if (hasDocumentPicker()) {
-                            segmentPicker.launch(arrayOf("application/json", "text/plain"))
-                        } else {
-                            lifecycleScope.launch {
-                                status = runCatching {
-                                    val results = listOf("packages", "segments").map { folder ->
-                                        SegmentInboxProcessor(
-                                            StagedFileSegmentInbox(this@MainActivity, folder),
-                                            segmentLibrary,
-                                            transferImporter,
-                                        ).processAll()
-                                    }
-                                    refreshLibrary()
-                                    val imported = results.sumOf { it.imported.size }
-                                    val duplicates = results.sumOf { it.duplicates.size }
-                                    val failures = results.flatMap { it.failed.entries }
-                                    buildString {
-                                        append("Inbox: $imported imported, $duplicates duplicates")
-                                        if (failures.isNotEmpty()) {
-                                            append(", ${failures.size} failed: ")
-                                            append(failures.joinToString { "${it.key}: ${it.value}" })
+                        lifecycleScope.launch {
+                            status = "Checking GritMap import inbox…"
+                            val inboxResult = runCatching {
+                                val results = listOf("packages", "segments").map { folder ->
+                                    SegmentInboxProcessor(
+                                        StagedFileSegmentInbox(this@MainActivity, folder),
+                                        segmentLibrary,
+                                        transferImporter,
+                                    ).processAll()
+                                }
+                                refreshLibrary()
+                                val imported = results.sumOf { it.imported.size }
+                                val duplicates = results.sumOf { it.duplicates.size }
+                                val failures = results.flatMap { it.failed.entries }
+                                Triple(imported, duplicates, failures)
+                            }
+                            inboxResult.fold(
+                                onSuccess = { (imported, duplicates, failures) ->
+                                    if (imported == 0 && duplicates == 0 && failures.isEmpty() &&
+                                        hasDocumentPicker()
+                                    ) {
+                                        status = "Opening file picker…"
+                                        segmentPicker.launch(arrayOf("application/json", "text/plain"))
+                                    } else {
+                                        status = buildString {
+                                            append("Inbox: $imported imported, $duplicates duplicates")
+                                            if (failures.isNotEmpty()) {
+                                                append(", ${failures.size} failed: ")
+                                                append(failures.joinToString { "${it.key}: ${it.value}" })
+                                            }
                                         }
                                     }
-                                }.getOrElse { "Inbox import failed: ${it.message}" }
-                            }
+                                },
+                                onFailure = { status = "Inbox import failed: ${it.message}" },
+                            )
                         }
                     }) {
                         Text("Import segment JSON")
+                    }
+                    Button(onClick = {
+                        val activeInbox = receiveInbox
+                        if (activeInbox != null) {
+                            activeInbox.stop()
+                            status = "Cancelled"
+                        } else {
+                            val address = HttpSegmentInbox.localIpAddress()
+                            val inbox = HttpSegmentInbox()
+                            receiveInbox = inbox
+                            status = if (address != null) {
+                                "Waiting for phone… send to http://$address:${HttpSegmentInbox.DEFAULT_PORT}/transfer"
+                            } else {
+                                "Waiting for phone… (connect to WiFi to see this Karoo's address)"
+                            }
+                            lifecycleScope.launch {
+                                val result = runCatching {
+                                    val outcome = SegmentInboxProcessor(
+                                        inbox,
+                                        segmentLibrary,
+                                        transferImporter,
+                                    ).processAll()
+                                    refreshLibrary()
+                                    outcome
+                                }
+                                receiveInbox = null
+                                status = result.fold(
+                                    onSuccess = { outcome ->
+                                        when {
+                                            outcome.imported.isNotEmpty() -> "Received ${outcome.imported.joinToString()}"
+                                            outcome.duplicates.isNotEmpty() -> "Received duplicate: ${outcome.duplicates.joinToString()}"
+                                            outcome.failed.isNotEmpty() ->
+                                                "Receive failed: ${outcome.failed.entries.joinToString { "${it.key}: ${it.value}" }}"
+                                            else -> "No phone connected in time"
+                                        }
+                                    },
+                                    onFailure = { "Receive failed: ${it.message}" },
+                                )
+                            }
+                        }
+                    }) {
+                        Text(if (receiveInbox != null) "Cancel receiving" else "Receive from Phone")
                     }
                     Button(onClick = {
                         if (hasDocumentPicker()) {
