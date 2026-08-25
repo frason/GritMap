@@ -32,6 +32,8 @@ export function SegmentDetailScreen() {
   const [sendStatus, setSendStatus] = useState<string | undefined>(undefined);
   const [rerunning, setRerunning] = useState(false);
   const [rerunSummary, setRerunSummary] = useState<MatchRunSummary | undefined>(undefined);
+  const [compareMode, setCompareMode] = useState(false);
+  const [selectedAttemptIds, setSelectedAttemptIds] = useState<string[]>([]);
 
   useFocusEffect(
     useCallback(() => {
@@ -45,6 +47,29 @@ export function SegmentDetailScreen() {
     setRerunSummary(runMatcherForSegment(database, generateId, route.params.segmentId, Date.now()));
     setAttempts(listAttemptsForSegment(database, route.params.segmentId));
     setRerunning(false);
+  }
+
+  function toggleCompareMode() {
+    setCompareMode((wasOn) => !wasOn);
+    setSelectedAttemptIds([]);
+  }
+
+  function toggleAttemptSelected(attemptId: string) {
+    setSelectedAttemptIds((current) => {
+      if (current.includes(attemptId)) {
+        return current.filter((id) => id !== attemptId);
+      }
+      // Cap at two -- MVP.md's comparison screen always compares exactly two attempts.
+      return current.length >= 2 ? current : [...current, attemptId];
+    });
+  }
+
+  function handleCompareSelected() {
+    const [primaryAttemptId, comparisonAttemptId] = selectedAttemptIds;
+    if (primaryAttemptId === undefined || comparisonAttemptId === undefined) return;
+    setCompareMode(false);
+    setSelectedAttemptIds([]);
+    navigation.navigate("AttemptComparison", { primaryAttemptId, comparisonAttemptId });
   }
 
   if (!segment) {
@@ -120,13 +145,38 @@ export function SegmentDetailScreen() {
             here.
           </Text>
         ) : (
-          attempts.map((attempt) => (
-            <AttemptRow
-              key={attempt.attemptId}
-              attempt={attempt}
-              onPress={() => navigation.navigate("AttemptReview", { attemptId: attempt.attemptId })}
-            />
-          ))
+          <>
+            {attempts.length >= 2 && (
+              <TouchableOpacity style={styles.compareToggle} onPress={toggleCompareMode}>
+                <Text style={styles.compareToggleLabel}>
+                  {compareMode ? "Cancel" : "Compare two attempts"}
+                </Text>
+              </TouchableOpacity>
+            )}
+            {compareMode && (
+              <Text style={styles.compareHint}>
+                Select two attempts ({selectedAttemptIds.length}/2)
+              </Text>
+            )}
+            {attempts.map((attempt) => (
+              <AttemptRow
+                key={attempt.attemptId}
+                attempt={attempt}
+                compareMode={compareMode}
+                selected={selectedAttemptIds.includes(attempt.attemptId)}
+                onPress={() =>
+                  compareMode
+                    ? toggleAttemptSelected(attempt.attemptId)
+                    : navigation.navigate("AttemptReview", { attemptId: attempt.attemptId })
+                }
+              />
+            ))}
+            {compareMode && selectedAttemptIds.length === 2 && (
+              <TouchableOpacity style={styles.sendButton} onPress={handleCompareSelected}>
+                <Text style={styles.sendButtonLabel}>Compare Selected</Text>
+              </TouchableOpacity>
+            )}
+          </>
         )}
         <TouchableOpacity
           style={[styles.rerunButton, rerunning && styles.sendButtonDisabled]}
@@ -146,13 +196,26 @@ export function SegmentDetailScreen() {
   );
 }
 
-function AttemptRow({ attempt, onPress }: { attempt: AttemptSummary; onPress: () => void }) {
+function AttemptRow({
+  attempt,
+  onPress,
+  compareMode,
+  selected,
+}: {
+  attempt: AttemptSummary;
+  onPress: () => void;
+  compareMode: boolean;
+  selected: boolean;
+}) {
   const isPositive = attempt.manuallyApproved || attempt.decision === "accept";
   return (
-    <TouchableOpacity style={styles.attemptRow} onPress={onPress}>
+    <TouchableOpacity
+      style={[styles.attemptRow, compareMode && selected && styles.attemptRowSelected]}
+      onPress={onPress}
+    >
       <Icon
-        name={isPositive ? "checkCircle" : "alertTriangle"}
-        color={isPositive ? "statusSuccess" : "statusWarning"}
+        name={compareMode || isPositive ? "checkCircle" : "alertTriangle"}
+        color={compareMode ? (selected ? "brand" : "textTertiary") : isPositive ? "statusSuccess" : "statusWarning"}
         size={20}
       />
       <View style={styles.attemptRowText}>
@@ -298,6 +361,23 @@ const styles = StyleSheet.create({
     borderRadius: radius.md,
     paddingVertical: spacing.space12,
     paddingHorizontal: spacing.space16,
+    borderWidth: 1,
+    borderColor: "transparent",
+  },
+  attemptRowSelected: {
+    borderColor: colors.brand,
+  },
+  compareToggle: {
+    alignSelf: "flex-end",
+  },
+  compareToggleLabel: {
+    color: colors.brand,
+    fontSize: 13,
+    fontWeight: "600",
+  },
+  compareHint: {
+    fontSize: 13,
+    color: colors.textSecondary,
   },
   attemptRowText: {
     flex: 1,

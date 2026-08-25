@@ -11,6 +11,7 @@ export type SegmentsStackParamList = {
   SegmentList: undefined;
   SegmentDetail: { segmentId: string };
   AttemptReview: { attemptId: string };
+  AttemptComparison: { primaryAttemptId: string; comparisonAttemptId: string };
 };
 
 export type RootTabParamList = {
