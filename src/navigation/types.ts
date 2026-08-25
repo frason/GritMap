@@ -10,6 +10,7 @@ export type RidesStackParamList = {
 export type SegmentsStackParamList = {
   SegmentList: undefined;
   SegmentDetail: { segmentId: string };
+  AttemptReview: { attemptId: string };
 };
 
 export type RootTabParamList = {

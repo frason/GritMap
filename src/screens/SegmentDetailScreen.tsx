@@ -1,29 +1,51 @@
-import { useEffect, useState, type ReactNode } from "react";
+import { useCallback, useState, type ReactNode } from "react";
 import { ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from "react-native";
-import { useRoute, type RouteProp } from "@react-navigation/native";
+import { useFocusEffect, useNavigation, useRoute, type RouteProp } from "@react-navigation/native";
+import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
+import * as Crypto from "expo-crypto";
 import { useDatabase } from "../db/DatabaseProvider";
 import { getSegmentDetail, type SegmentDetail } from "../db/getSegmentDetail";
+import { listAttemptsForSegment, type AttemptSummary } from "../db/listAttemptsForSegment";
 import type { RideTrackPoint } from "../db/getRideTrack";
+import { runMatcherForSegment, type MatchRunSummary } from "../matcher/runMatcher";
 import type { SegmentsStackParamList } from "../navigation/types";
 import { sendSegmentToKaroo } from "../karoo/sendSegmentToKaroo";
 import { colors } from "../theme/colors";
+import { Icon } from "../theme/Icon";
 import { radius, spacing } from "../theme/spacing";
 import { RouteMapView } from "./RouteMapView";
-import { formatDistanceMiles, formatElevationFeet } from "./formatRideStats";
+import { formatDistanceMiles, formatDurationHoursMinutes, formatElevationFeet, formatRideDate } from "./formatRideStats";
 
 type SegmentDetailRoute = RouteProp<SegmentsStackParamList, "SegmentDetail">;
+type Navigation = NativeStackNavigationProp<SegmentsStackParamList>;
+
+const generateId = () => Crypto.randomUUID();
 
 export function SegmentDetailScreen() {
   const database = useDatabase();
   const route = useRoute<SegmentDetailRoute>();
+  const navigation = useNavigation<Navigation>();
   const [segment, setSegment] = useState<SegmentDetail | undefined>(undefined);
+  const [attempts, setAttempts] = useState<AttemptSummary[]>([]);
   const [karooAddress, setKarooAddress] = useState("");
   const [sending, setSending] = useState(false);
   const [sendStatus, setSendStatus] = useState<string | undefined>(undefined);
+  const [rerunning, setRerunning] = useState(false);
+  const [rerunSummary, setRerunSummary] = useState<MatchRunSummary | undefined>(undefined);
 
-  useEffect(() => {
-    setSegment(getSegmentDetail(database, route.params.segmentId));
-  }, [database, route.params.segmentId]);
+  useFocusEffect(
+    useCallback(() => {
+      setSegment(getSegmentDetail(database, route.params.segmentId));
+      setAttempts(listAttemptsForSegment(database, route.params.segmentId));
+    }, [database, route.params.segmentId]),
+  );
+
+  function handleRerunMatcher() {
+    setRerunning(true);
+    setRerunSummary(runMatcherForSegment(database, generateId, route.params.segmentId, Date.now()));
+    setAttempts(listAttemptsForSegment(database, route.params.segmentId));
+    setRerunning(false);
+  }
 
   if (!segment) {
     return <View style={styles.container} />;
@@ -92,12 +114,57 @@ export function SegmentDetailScreen() {
       </Section>
 
       <Section title="Attempts">
-        <Text style={styles.attemptsEmptyText}>
-          No attempts detected yet. Import more rides that traverse this segment to see them
-          here.
-        </Text>
+        {attempts.length === 0 ? (
+          <Text style={styles.attemptsEmptyText}>
+            No attempts detected yet. Import more rides that traverse this segment to see them
+            here.
+          </Text>
+        ) : (
+          attempts.map((attempt) => (
+            <AttemptRow
+              key={attempt.attemptId}
+              attempt={attempt}
+              onPress={() => navigation.navigate("AttemptReview", { attemptId: attempt.attemptId })}
+            />
+          ))
+        )}
+        <TouchableOpacity
+          style={[styles.rerunButton, rerunning && styles.sendButtonDisabled]}
+          onPress={handleRerunMatcher}
+          disabled={rerunning}
+        >
+          <Text style={styles.rerunButtonLabel}>{rerunning ? "Rerunning…" : "Rerun matcher"}</Text>
+        </TouchableOpacity>
+        {rerunSummary !== undefined && (
+          <Text style={styles.rerunSummaryText}>
+            {rerunSummary.inserted} new · {rerunSummary.updated} updated ·{" "}
+            {rerunSummary.duplicate} unchanged · {rerunSummary.removed} removed
+          </Text>
+        )}
       </Section>
     </ScrollView>
+  );
+}
+
+function AttemptRow({ attempt, onPress }: { attempt: AttemptSummary; onPress: () => void }) {
+  const isPositive = attempt.manuallyApproved || attempt.decision === "accept";
+  return (
+    <TouchableOpacity style={styles.attemptRow} onPress={onPress}>
+      <Icon
+        name={isPositive ? "checkCircle" : "alertTriangle"}
+        color={isPositive ? "statusSuccess" : "statusWarning"}
+        size={20}
+      />
+      <View style={styles.attemptRowText}>
+        <Text style={styles.attemptRowTitle}>{formatRideDate(attempt.startTimestampMs)}</Text>
+        <Text style={styles.attemptRowSubtitle} numberOfLines={1}>
+          {formatDurationHoursMinutes(attempt.endTimestampMs - attempt.startTimestampMs)} ·{" "}
+          {Math.round(attempt.confidenceScore * 100)}% confidence
+          {attempt.manuallyApproved ? " · Approved" : ""}
+        </Text>
+      </View>
+      <Icon name="chevronRight" color="textSecondary" size={18} />
+    </TouchableOpacity>
   );
 }
 
@@ -222,5 +289,43 @@ const styles = StyleSheet.create({
   attemptsEmptyText: {
     fontSize: 14,
     color: colors.textSecondary,
+  },
+  attemptRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: spacing.space12,
+    backgroundColor: colors.surface,
+    borderRadius: radius.md,
+    paddingVertical: spacing.space12,
+    paddingHorizontal: spacing.space16,
+  },
+  attemptRowText: {
+    flex: 1,
+    gap: spacing.space4 - 2,
+  },
+  attemptRowTitle: {
+    fontSize: 15,
+    fontWeight: "600",
+    color: colors.textPrimary,
+  },
+  attemptRowSubtitle: {
+    fontSize: 13,
+    color: colors.textSecondary,
+  },
+  rerunButton: {
+    backgroundColor: colors.brandSubtle,
+    borderRadius: radius.md,
+    paddingVertical: spacing.space12,
+    alignItems: "center",
+  },
+  rerunButtonLabel: {
+    color: colors.brand,
+    fontSize: 15,
+    fontWeight: "600",
+  },
+  rerunSummaryText: {
+    fontSize: 13,
+    color: colors.textSecondary,
+    textAlign: "center",
   },
 });
