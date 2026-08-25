@@ -10,6 +10,12 @@ describe("matchSegment", () => {
     assert.equal(matchSegment(lineRide(0, 100, 10), segment())[0]?.decision, "accept");
   });
 
+  it("ignores an incomplete traversal that enters the corridor but never reaches the end", () => {
+    // The ride starts the segment and stops partway (e.g. the rider turned off mid-climb) --
+    // this must not surface as any candidate at all, not even a reject.
+    assert.deepEqual(matchSegment(lineRide(0, 60, 10), segment()), []);
+  });
+
   it("rejects a completed reverse traversal", () => {
     const result = matchSegment(lineRide(100, 0, -10), segment());
     assert.equal(result.length, 1);
