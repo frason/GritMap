@@ -9,7 +9,13 @@
     "userInterfaceStyle": "light",
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.gritmap.app"
+      "bundleIdentifier": "com.gritmap.app",
+      "infoPlist": {
+        "NSAppTransportSecurity": {
+          "NSAllowsLocalNetworking": true
+        },
+        "NSLocalNetworkUsageDescription": "GritMap sends segments directly to your Karoo over your local WiFi network."
+      }
     },
     "android": {
       "package": "com.gritmap.app",

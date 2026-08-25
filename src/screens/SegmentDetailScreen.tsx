@@ -1,10 +1,11 @@
 import { useEffect, useState, type ReactNode } from "react";
-import { ScrollView, StyleSheet, Text, View } from "react-native";
+import { ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from "react-native";
 import { useRoute, type RouteProp } from "@react-navigation/native";
 import { useDatabase } from "../db/DatabaseProvider";
 import { getSegmentDetail, type SegmentDetail } from "../db/getSegmentDetail";
 import type { RideTrackPoint } from "../db/getRideTrack";
 import type { SegmentsStackParamList } from "../navigation/types";
+import { sendSegmentToKaroo } from "../karoo/sendSegmentToKaroo";
 import { colors } from "../theme/colors";
 import { radius, spacing } from "../theme/spacing";
 import { RouteMapView } from "./RouteMapView";
@@ -16,6 +17,9 @@ export function SegmentDetailScreen() {
   const database = useDatabase();
   const route = useRoute<SegmentDetailRoute>();
   const [segment, setSegment] = useState<SegmentDetail | undefined>(undefined);
+  const [karooAddress, setKarooAddress] = useState("");
+  const [sending, setSending] = useState(false);
+  const [sendStatus, setSendStatus] = useState<string | undefined>(undefined);
 
   useEffect(() => {
     setSegment(getSegmentDetail(database, route.params.segmentId));
@@ -26,6 +30,26 @@ export function SegmentDetailScreen() {
   }
 
   const totalDistanceMeters = segment.referencePolyline.at(-1)?.distanceMeters ?? 0;
+
+  async function handleSend() {
+    if (!segment) return;
+    const trimmed = karooAddress.trim();
+    if (trimmed.length === 0) {
+      setSendStatus("Enter the Karoo's address (shown on its \"Receive from Phone\" screen)");
+      return;
+    }
+    setSending(true);
+    setSendStatus("Sending…");
+    const result = await sendSegmentToKaroo(segment, trimmed);
+    setSending(false);
+    setSendStatus(
+      result.ok
+        ? "Sent — check the Karoo screen to confirm it imported"
+        : `Send failed${result.statusCode ? ` (HTTP ${result.statusCode})` : ""}${
+            result.message ? `: ${result.message}` : ""
+          }`,
+    );
+  }
 
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>
@@ -41,6 +65,30 @@ export function SegmentDetailScreen() {
         <View style={styles.routeMap}>
           <RouteMapView points={toRouteMapPoints(segment)} />
         </View>
+      </Section>
+
+      <Section title="Send to Karoo">
+        <Text style={styles.sendHint}>
+          On the Karoo, tap "Receive from Phone" and type the address it shows below.
+        </Text>
+        <TextInput
+          style={styles.addressInput}
+          placeholder="192.168.1.42:8734"
+          placeholderTextColor={colors.textTertiary}
+          value={karooAddress}
+          onChangeText={setKarooAddress}
+          autoCapitalize="none"
+          autoCorrect={false}
+          keyboardType="url"
+        />
+        <TouchableOpacity
+          style={[styles.sendButton, sending && styles.sendButtonDisabled]}
+          onPress={handleSend}
+          disabled={sending}
+        >
+          <Text style={styles.sendButtonLabel}>{sending ? "Sending…" : "Send to Karoo"}</Text>
+        </TouchableOpacity>
+        {sendStatus !== undefined && <Text style={styles.sendStatusText}>{sendStatus}</Text>}
       </Section>
 
       <Section title="Attempts">
@@ -138,6 +186,38 @@ const styles = StyleSheet.create({
     borderRadius: radius.md,
     overflow: "hidden",
     backgroundColor: colors.surface,
+  },
+  sendHint: {
+    fontSize: 13,
+    color: colors.textSecondary,
+  },
+  addressInput: {
+    backgroundColor: colors.surface,
+    borderRadius: radius.md,
+    borderWidth: 1,
+    borderColor: colors.border,
+    paddingHorizontal: spacing.space16,
+    paddingVertical: spacing.space12,
+    fontSize: 15,
+    color: colors.textPrimary,
+  },
+  sendButton: {
+    backgroundColor: colors.brand,
+    borderRadius: radius.md,
+    paddingVertical: spacing.space12,
+    alignItems: "center",
+  },
+  sendButtonDisabled: {
+    opacity: 0.6,
+  },
+  sendButtonLabel: {
+    color: colors.textOnBrand,
+    fontSize: 15,
+    fontWeight: "600",
+  },
+  sendStatusText: {
+    fontSize: 13,
+    color: colors.textSecondary,
   },
   attemptsEmptyText: {
     fontSize: 14,
