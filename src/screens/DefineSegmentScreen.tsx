@@ -7,6 +7,7 @@ import * as Crypto from "expo-crypto";
 import { useDatabase } from "../db/DatabaseProvider";
 import { getRideTrack, type RideTrackPoint } from "../db/getRideTrack";
 import { insertSegment } from "../db/insertSegment";
+import { runMatcherForSegment } from "../matcher/runMatcher";
 import { computeSegmentFingerprint } from "../segments/segmentFingerprint";
 import { resamplePolyline } from "../segments/resamplePolyline";
 import { computeCumulativeTrackDistance, nearestByDistance } from "../segments/cumulativeTrackDistance";
@@ -93,6 +94,8 @@ export function DefineSegmentScreen() {
         sourceEndPointIndex: endPoint.pointIndex,
         nowMs: Date.now(),
       });
+
+      runMatcherForSegment(database, generateId, segmentId, Date.now());
 
       // Cross-stack: DefineSegment lives in the Rides stack, SegmentDetail in the Segments
       // stack -- a same-stack navigation.navigate("SegmentDetail") wouldn't type-check (it

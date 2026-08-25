@@ -9,6 +9,7 @@ import { computeFileHash } from "../import/computeFileHash";
 import type { DuplicateRule } from "../import/findDuplicate";
 import { importFitFile, type ImportFitFileInput } from "../import/importFitFile";
 import { deleteRetainedFile, retainFitFile } from "../import/retainFitFile";
+import { runMatcherForRide } from "../matcher/runMatcher";
 import { colors } from "../theme/colors";
 import { Icon } from "../theme/Icon";
 import { radius, spacing } from "../theme/spacing";
@@ -76,6 +77,7 @@ export function ImportScreen() {
       const result = importFitFile(database, generateId, input);
 
       if (result.status === "imported") {
+        runMatcherForRide(database, generateId, result.rideId, Date.now());
         updateRow(rowId, { status: "imported" });
         return;
       }
@@ -107,6 +109,7 @@ export function ImportScreen() {
         if (replaceResult.previousRetainedFileUri) {
           deleteRetainedFile(replaceResult.previousRetainedFileUri);
         }
+        runMatcherForRide(database, generateId, replaceResult.rideId, Date.now());
         updateRow(rowId, { status: "replaced" });
       } else {
         deleteRetainedFile(retained.uri);
