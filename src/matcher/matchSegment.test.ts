@@ -57,6 +57,69 @@ describe("matchSegment", () => {
     assert.ok(accepted[0].endPointIndex < accepted[1].startPointIndex);
   });
 
+  it("rejects a genuine mid-ride reversal on a plain straight segment", () => {
+    // No self-proximate geometry here -- confirms the hairpin fix below doesn't also mask
+    // a real rider actually turning around and riding backward.
+    const ride = [
+      ridePoint(0, 0, 0),
+      ridePoint(20, 0, 1_000),
+      ridePoint(40, 0, 2_000),
+      ridePoint(60, 0, 3_000),
+      ridePoint(40, 0, 4_000),
+      ridePoint(20, 0, 5_000),
+      ridePoint(10, 0, 6_000),
+    ];
+    const result = matchSegment(ride, segment());
+    assert.equal(result[0]?.decision, "reject");
+    assert.deepEqual(result[0]?.reasons, ["backward-progress"]);
+  });
+
+  it("does not reject a real switchback that briefly projects onto an earlier, nearby leg", () => {
+    // Diagnosed against a real climbing segment with a real hairpin: the matcher's own
+    // source ride was rejected as backward-progress even though the rider never left the
+    // corridor, because the globally-nearest-point search occasionally snapped onto the
+    // wrong (spatially close but sequentially earlier) leg of the switchback. This fixture
+    // reproduces that class of route -- a loop that returns within half a meter of its own
+    // earlier path before continuing on -- using synthetic coordinates.
+    //
+    // Verified this reproduces the actual bug: reverting projectOntoPolyline's
+    // previousProgressMeters bias makes this same fixture reject with backward-progress
+    // (maxBackwardMeters ~147) instead of accepting cleanly.
+    const loopSegment: SegmentDefinition = {
+      id: "switchback-segment",
+      corridorMeters: 30,
+      requiredCoveragePct: 0.9,
+      referencePolyline: [
+        loopPoint(0, 0, 0),
+        loopPoint(0, 50, 50),
+        loopPoint(50, 50, 100),
+        loopPoint(50, 0, 150),
+        loopPoint(0.5, 3, 200), // the switchback: close to, but not on, the up-leg's line
+        loopPoint(0.5, 80, 277),
+      ],
+    };
+    const ride: RidePoint[] = [
+      loopRidePoint(0, 0, 0),
+      loopRidePoint(0, 25, 1),
+      loopRidePoint(0, 50, 2),
+      loopRidePoint(50, 50, 3),
+      loopRidePoint(50, 0, 4),
+      // 0.1m from the up-leg's line but 0.4m from the true (later) point -- the globally
+      // nearest search alone would pick the up-leg (wrong, low progress) here.
+      loopRidePoint(0.1, 3, 5),
+      loopRidePoint(0.5, 40, 6),
+      loopRidePoint(0.5, 80, 7),
+    ];
+
+    const result = matchSegment(ride, loopSegment);
+
+    assert.equal(result.length, 1);
+    assert.equal(result[0]?.decision, "accept");
+    assert.equal(result[0]?.startPointIndex, 0);
+    assert.equal(result[0]?.endPointIndex, 7);
+    assert.equal(result[0]?.maxBackwardMeters, 0);
+  });
+
   it("reports original source indexes across a non-GPS gap inside the matched region", () => {
     // 11 points along the reference line (0..100m), but index 5 (50m) has no GPS fix --
     // simulating a dropped record that a caller filtered out before calling matchSegment,
@@ -100,6 +163,15 @@ function segment(corridorMeters = 30): SegmentDefinition {
       distanceMeters: index * 10,
     })),
   };
+}
+
+/** x/y meters -> lat/lng, for the switchback fixture's two-dimensional loop shape. */
+function loopPoint(xMeters: number, yMeters: number, distanceMeters: number) {
+  return { lat: degrees(yMeters), lng: degrees(xMeters), distanceMeters };
+}
+
+function loopRidePoint(xMeters: number, yMeters: number, indexSeconds: number): RidePoint {
+  return { lat: degrees(yMeters), lng: degrees(xMeters), timestampMs: indexSeconds * 1_000 };
 }
 
 function lineRide(start: number, end: number, step: number, timeOffset = 0): RidePoint[] {

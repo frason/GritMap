@@ -164,6 +164,10 @@ function evaluateForward(
   let maximumDeviation = 0;
   let offCorridorTravel = 0;
   let previousIndex = startIndex;
+  // A candidate always starts near the segment's own beginning (the outer loop only calls
+  // evaluateForward when the ride point is within corridorMeters of referenceXY[0]), so 0 is
+  // a safe expectation for the very first projection too, not just a "no hint yet" sentinel.
+  let previousProgressMeters = 0;
   const projections: Projection[] = [];
 
   for (let index = startIndex; index < ride.length; index += 1) {
@@ -171,7 +175,9 @@ function evaluateForward(
       rideXY[index],
       referenceXY,
       segment.referencePolyline,
+      previousProgressMeters,
     );
+    previousProgressMeters = projection.progressMeters;
     projections.push(projection);
     maximumDeviation = Math.max(maximumDeviation, projection.deviationMeters);
 
@@ -300,33 +306,73 @@ function findReverseTraversals(
   return results;
 }
 
+/**
+ * A route that passes close to itself -- a hairpin or switchback, common on climbing
+ * segments -- can put two very different progress values within a couple of meters of each
+ * other. Picking the single globally nearest point is ambiguous right at the turn: it can
+ * snap onto the wrong leg even though the rider never left the corridor, producing a large
+ * spurious backward (or forward) jump. Diagnosed against a real climb with a real switchback
+ * (see matchSegment.test.ts's hairpin fixture) before this constant was chosen.
+ */
+const PROJECTION_AMBIGUITY_MARGIN_METERS = 5;
+
 function projectOntoPolyline(
   point: XY,
   polyline: readonly XY[],
   reference: readonly ReferencePoint[],
+  previousProgressMeters?: number,
 ): Projection {
-  let bestDeviation = Number.POSITIVE_INFINITY;
-  let bestProgress = 0;
+  let best: Projection = { deviationMeters: Number.POSITIVE_INFINITY, progressMeters: 0 };
 
   for (let index = 0; index < polyline.length - 1; index += 1) {
-    const start = polyline[index];
-    const end = polyline[index + 1];
-    const dx = end.x - start.x;
-    const dy = end.y - start.y;
-    const lengthSquared = dx * dx + dy * dy;
-    const rawT = lengthSquared === 0 ? 0 : ((point.x - start.x) * dx + (point.y - start.y) * dy) / lengthSquared;
-    const t = Math.max(0, Math.min(1, rawT));
-    const projected = { x: start.x + t * dx, y: start.y + t * dy };
-    const deviation = distance(point, projected);
-    if (deviation < bestDeviation) {
-      bestDeviation = deviation;
-      bestProgress =
-        reference[index].distanceMeters +
-        t * (reference[index + 1].distanceMeters - reference[index].distanceMeters);
+    const candidate = projectOntoSegment(point, polyline[index], polyline[index + 1], reference[index], reference[index + 1]);
+    if (candidate.deviationMeters < best.deviationMeters) {
+      best = candidate;
     }
   }
 
-  return { deviationMeters: bestDeviation, progressMeters: bestProgress };
+  if (previousProgressMeters === undefined) {
+    return best;
+  }
+
+  // Among every near-tied candidate (within the ambiguity margin of the closest one),
+  // prefer the one that continues smoothly from the previous point's progress instead of
+  // the merely closest one -- this is what actually resolves the hairpin ambiguity above.
+  let biased = best;
+  let biasedProgressGap = Math.abs(best.progressMeters - previousProgressMeters);
+  for (let index = 0; index < polyline.length - 1; index += 1) {
+    const candidate = projectOntoSegment(point, polyline[index], polyline[index + 1], reference[index], reference[index + 1]);
+    if (candidate.deviationMeters > best.deviationMeters + PROJECTION_AMBIGUITY_MARGIN_METERS) continue;
+    const progressGap = Math.abs(candidate.progressMeters - previousProgressMeters);
+    if (progressGap < biasedProgressGap) {
+      biasedProgressGap = progressGap;
+      biased = candidate;
+    }
+  }
+  return biased;
+}
+
+function projectOntoSegment(
+  point: XY,
+  segmentStart: XY,
+  segmentEnd: XY,
+  referenceStart: ReferencePoint,
+  referenceEnd: ReferencePoint,
+): Projection {
+  const dx = segmentEnd.x - segmentStart.x;
+  const dy = segmentEnd.y - segmentStart.y;
+  const lengthSquared = dx * dx + dy * dy;
+  const rawT =
+    lengthSquared === 0
+      ? 0
+      : ((point.x - segmentStart.x) * dx + (point.y - segmentStart.y) * dy) / lengthSquared;
+  const t = Math.max(0, Math.min(1, rawT));
+  const projected = { x: segmentStart.x + t * dx, y: segmentStart.y + t * dy };
+  return {
+    deviationMeters: distance(point, projected),
+    progressMeters:
+      referenceStart.distanceMeters + t * (referenceEnd.distanceMeters - referenceStart.distanceMeters),
+  };
 }
 
 function calculateCoverage(
