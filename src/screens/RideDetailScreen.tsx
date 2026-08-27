@@ -1,12 +1,15 @@
-import { useEffect, useState, type ReactNode } from "react";
+import { useCallback, useState, type ReactNode } from "react";
 import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from "react-native";
-import { useNavigation, useRoute, type RouteProp } from "@react-navigation/native";
+import { useFocusEffect, useNavigation, useRoute, type RouteProp } from "@react-navigation/native";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
+import type { BottomTabNavigationProp } from "@react-navigation/bottom-tabs";
 import { useDatabase } from "../db/DatabaseProvider";
 import { getRideDetail, type RideDetail } from "../db/getRideDetail";
 import { getRideTrack, type RideTrackPoint } from "../db/getRideTrack";
-import type { RidesStackParamList } from "../navigation/types";
+import { listAttemptsForRide, type RideAttemptSummary } from "../db/listAttemptsForRide";
+import type { RidesStackParamList, RootTabParamList } from "../navigation/types";
 import { colors } from "../theme/colors";
+import { Icon } from "../theme/Icon";
 import { radius, spacing } from "../theme/spacing";
 import { RouteMapView } from "./RouteMapView";
 import {
@@ -25,11 +28,21 @@ export function RideDetailScreen() {
   const navigation = useNavigation<DetailNavigation>();
   const [ride, setRide] = useState<RideDetail | undefined>(undefined);
   const [track, setTrack] = useState<RideTrackPoint[]>([]);
+  const [attempts, setAttempts] = useState<RideAttemptSummary[]>([]);
 
-  useEffect(() => {
-    setRide(getRideDetail(database, route.params.rideId));
-    setTrack(getRideTrack(database, route.params.rideId));
-  }, [database, route.params.rideId]);
+  useFocusEffect(
+    useCallback(() => {
+      setRide(getRideDetail(database, route.params.rideId));
+      setTrack(getRideTrack(database, route.params.rideId));
+      setAttempts(listAttemptsForRide(database, route.params.rideId));
+    }, [database, route.params.rideId]),
+  );
+
+  function openAttemptReview(attemptId: string) {
+    navigation
+      .getParent<BottomTabNavigationProp<RootTabParamList>>()
+      ?.navigate("SegmentsTab", { screen: "AttemptReview", params: { attemptId } });
+  }
 
   if (!ride) {
     return <View style={styles.container} />;
@@ -55,9 +68,20 @@ export function RideDetailScreen() {
       </Section>
 
       <Section title="Detected segments">
-        <Text style={styles.segmentsEmptyText}>
-          No segments defined yet. Create one from this ride to start tracking traversals.
-        </Text>
+        {attempts.length === 0 ? (
+          <Text style={styles.segmentsEmptyText}>
+            No traversals detected yet. Define a segment (from this ride or another) that
+            overlaps this route to see them here.
+          </Text>
+        ) : (
+          attempts.map((attempt) => (
+            <AttemptRow
+              key={attempt.attemptId}
+              attempt={attempt}
+              onPress={() => openAttemptReview(attempt.attemptId)}
+            />
+          ))
+        )}
       </Section>
 
       <View style={styles.createSegmentSection}>
@@ -78,6 +102,34 @@ export function RideDetailScreen() {
         )}
       </View>
     </ScrollView>
+  );
+}
+
+function AttemptRow({
+  attempt,
+  onPress,
+}: {
+  attempt: RideAttemptSummary;
+  onPress: () => void;
+}) {
+  const isPositive = attempt.manuallyApproved || attempt.decision === "accept";
+  return (
+    <TouchableOpacity style={styles.attemptRow} onPress={onPress}>
+      <Icon
+        name={isPositive ? "checkCircle" : "alertTriangle"}
+        color={isPositive ? "statusSuccess" : "statusWarning"}
+        size={20}
+      />
+      <View style={styles.attemptRowText}>
+        <Text style={styles.attemptRowTitle}>{attempt.segmentName}</Text>
+        <Text style={styles.attemptRowSubtitle} numberOfLines={1}>
+          {formatDurationHoursMinutes(attempt.endTimestampMs - attempt.startTimestampMs)} ·{" "}
+          {Math.round(attempt.confidenceScore * 100)}% confidence
+          {attempt.manuallyApproved ? " · Approved" : ""}
+        </Text>
+      </View>
+      <Icon name="chevronRight" color="textSecondary" size={18} />
+    </TouchableOpacity>
   );
 }
 
@@ -158,6 +210,29 @@ const styles = StyleSheet.create({
   },
   segmentsEmptyText: {
     fontSize: 14,
+    color: colors.textSecondary,
+  },
+  attemptRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: spacing.space12,
+    backgroundColor: colors.surface,
+    borderRadius: radius.md,
+    paddingVertical: spacing.space12,
+    paddingHorizontal: spacing.space16,
+    marginBottom: spacing.space8,
+  },
+  attemptRowText: {
+    flex: 1,
+    gap: spacing.space4 - 2,
+  },
+  attemptRowTitle: {
+    fontSize: 15,
+    fontWeight: "600",
+    color: colors.textPrimary,
+  },
+  attemptRowSubtitle: {
+    fontSize: 13,
     color: colors.textSecondary,
   },
   createSegmentSection: {
