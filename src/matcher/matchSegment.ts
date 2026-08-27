@@ -102,6 +102,9 @@ interface XY {
 interface Projection {
   deviationMeters: number;
   progressMeters: number;
+  /** Index of the polyline segment (start point) this projection landed on -- internal-only,
+   *  used to window the next point's search instead of rescanning the whole polyline. */
+  segmentIndex: number;
 }
 
 interface EvaluatedCandidate extends MatchCandidate {
@@ -168,6 +171,7 @@ function evaluateForward(
   // evaluateForward when the ride point is within corridorMeters of referenceXY[0]), so 0 is
   // a safe expectation for the very first projection too, not just a "no hint yet" sentinel.
   let previousProgressMeters = 0;
+  let previousSegmentIndex = 0;
   const projections: Projection[] = [];
 
   for (let index = startIndex; index < ride.length; index += 1) {
@@ -175,9 +179,11 @@ function evaluateForward(
       rideXY[index],
       referenceXY,
       segment.referencePolyline,
+      previousSegmentIndex,
       previousProgressMeters,
     );
     previousProgressMeters = projection.progressMeters;
+    previousSegmentIndex = projection.segmentIndex;
     projections.push(projection);
     maximumDeviation = Math.max(maximumDeviation, projection.deviationMeters);
 
@@ -269,16 +275,8 @@ function findReverseTraversals(
 
     for (let end = start + 1; end < ride.length; end += 1) {
       if (distance(rideXY[end], referenceXY[0]) > segment.corridorMeters) continue;
-      const startProjection = projectOntoPolyline(
-        rideXY[start],
-        referenceXY,
-        segment.referencePolyline,
-      );
-      const endProjection = projectOntoPolyline(
-        rideXY[end],
-        referenceXY,
-        segment.referencePolyline,
-      );
+      const startProjection = projectOntoPolyline(rideXY[start], referenceXY, segment.referencePolyline);
+      const endProjection = projectOntoPolyline(rideXY[end], referenceXY, segment.referencePolyline);
       if (startProjection.progressMeters < totalLength - segment.corridorMeters) continue;
       if (endProjection.progressMeters > segment.corridorMeters) continue;
 
@@ -313,66 +311,109 @@ function findReverseTraversals(
  * snap onto the wrong leg even though the rider never left the corridor, producing a large
  * spurious backward (or forward) jump. Diagnosed against a real climb with a real switchback
  * (see matchSegment.test.ts's hairpin fixture) before this constant was chosen.
+ *
+ * This margin must stay tight (a few meters, not corridorMeters-wide): on any ordinary
+ * stretch of route, consecutive resampled reference points can be within corridorMeters of
+ * each other too, just because they're close together along the same line -- a wide margin
+ * mistakes that for hairpin ambiguity and blocks genuine backward-progress detection
+ * (matchSegment.test.ts's "genuine mid-ride reversal" case). A tight absolute margin only
+ * catches the case this exists for: near-zero-deviation candidates at very different
+ * progress values, which only happens when the route is truly close to itself.
  */
 const PROJECTION_AMBIGUITY_MARGIN_METERS = 5;
+
+/**
+ * How many polyline segments on either side of the previous point's match to search before
+ * falling back to a full scan. Generous enough to absorb a real GPS gap: even at a fast
+ * 20 m/s with a 30s dropout (the matcher's own gap tolerance), the rider covers ~600m, i.e.
+ * ~60 resampled 10m reference points -- this leaves more than double that as slack.
+ */
+const PROJECTION_WINDOW_RADIUS = 150;
 
 function projectOntoPolyline(
   point: XY,
   polyline: readonly XY[],
   reference: readonly ReferencePoint[],
+  previousSegmentIndex?: number,
   previousProgressMeters?: number,
 ): Projection {
-  let best: Projection = { deviationMeters: Number.POSITIVE_INFINITY, progressMeters: 0 };
-
-  for (let index = 0; index < polyline.length - 1; index += 1) {
-    const candidate = projectOntoSegment(point, polyline[index], polyline[index + 1], reference[index], reference[index + 1]);
-    if (candidate.deviationMeters < best.deviationMeters) {
-      best = candidate;
+  // A real ride/segment pair can be thousands of points long on each side; scanning the
+  // *entire* reference polyline for every single ride point is the actual cost that made
+  // "Rerun matcher" freeze the app on a real device (measured: 8563 ride points x 4066
+  // reference points, ~35M inner iterations per matched ride, taking 2-13s depending on the
+  // exact algorithm -- far too slow for a button tap on a phone's JS thread). Searching only
+  // a window around where the previous point landed cuts that by ~25x for a 4000+ point
+  // segment, with a full-scan fallback if nothing plausible turns up in the window (a real
+  // gap bigger than PROJECTION_WINDOW_RADIUS allows, or the very first point of a scan).
+  if (previousSegmentIndex !== undefined) {
+    const lowIndex = Math.max(0, previousSegmentIndex - PROJECTION_WINDOW_RADIUS);
+    const highIndex = Math.min(polyline.length - 2, previousSegmentIndex + PROJECTION_WINDOW_RADIUS);
+    const windowed = scanRange(point, polyline, reference, lowIndex, highIndex, previousProgressMeters);
+    if (windowed.deviationMeters <= PROJECTION_AMBIGUITY_MARGIN_METERS) {
+      return windowed;
     }
+    // Nothing plausible in the window -- a real gap moved the rider further than expected,
+    // or this segment genuinely isn't near where the previous point was. Fall through to a
+    // full scan rather than silently returning a wrong, merely-in-window candidate.
   }
-
-  if (previousProgressMeters === undefined) {
-    return best;
-  }
-
-  // Among every near-tied candidate (within the ambiguity margin of the closest one),
-  // prefer the one that continues smoothly from the previous point's progress instead of
-  // the merely closest one -- this is what actually resolves the hairpin ambiguity above.
-  let biased = best;
-  let biasedProgressGap = Math.abs(best.progressMeters - previousProgressMeters);
-  for (let index = 0; index < polyline.length - 1; index += 1) {
-    const candidate = projectOntoSegment(point, polyline[index], polyline[index + 1], reference[index], reference[index + 1]);
-    if (candidate.deviationMeters > best.deviationMeters + PROJECTION_AMBIGUITY_MARGIN_METERS) continue;
-    const progressGap = Math.abs(candidate.progressMeters - previousProgressMeters);
-    if (progressGap < biasedProgressGap) {
-      biasedProgressGap = progressGap;
-      biased = candidate;
-    }
-  }
-  return biased;
+  return scanRange(point, polyline, reference, 0, polyline.length - 2, previousProgressMeters);
 }
 
-function projectOntoSegment(
+/** Scans polyline segments [lowIndex, highIndex] inclusive; allocation-free per iteration. */
+function scanRange(
   point: XY,
-  segmentStart: XY,
-  segmentEnd: XY,
-  referenceStart: ReferencePoint,
-  referenceEnd: ReferencePoint,
+  polyline: readonly XY[],
+  reference: readonly ReferencePoint[],
+  lowIndex: number,
+  highIndex: number,
+  previousProgressMeters: number | undefined,
 ): Projection {
-  const dx = segmentEnd.x - segmentStart.x;
-  const dy = segmentEnd.y - segmentStart.y;
-  const lengthSquared = dx * dx + dy * dy;
-  const rawT =
-    lengthSquared === 0
-      ? 0
-      : ((point.x - segmentStart.x) * dx + (point.y - segmentStart.y) * dy) / lengthSquared;
-  const t = Math.max(0, Math.min(1, rawT));
-  const projected = { x: segmentStart.x + t * dx, y: segmentStart.y + t * dy };
-  return {
-    deviationMeters: distance(point, projected),
-    progressMeters:
-      referenceStart.distanceMeters + t * (referenceEnd.distanceMeters - referenceStart.distanceMeters),
-  };
+  let bestDeviation = Number.POSITIVE_INFINITY;
+  let bestProgress = 0;
+  let bestIndex = lowIndex;
+  let biasedDeviation = Number.POSITIVE_INFINITY;
+  let biasedProgress = 0;
+  let biasedIndex = lowIndex;
+  let biasedProgressGap = Number.POSITIVE_INFINITY;
+  let hasBiasedCandidate = false;
+
+  for (let index = lowIndex; index <= highIndex; index += 1) {
+    const start = polyline[index];
+    const end = polyline[index + 1];
+    const dx = end.x - start.x;
+    const dy = end.y - start.y;
+    const lengthSquared = dx * dx + dy * dy;
+    const rawT =
+      lengthSquared === 0 ? 0 : ((point.x - start.x) * dx + (point.y - start.y) * dy) / lengthSquared;
+    const t = Math.max(0, Math.min(1, rawT));
+    const deviation = Math.hypot(point.x - (start.x + t * dx), point.y - (start.y + t * dy));
+
+    // progress is only computed when actually needed (a new best, or a candidate within the
+    // ambiguity margin) -- both are rare within any given window, so this avoids the
+    // multiply-add on most iterations.
+    if (deviation < bestDeviation) {
+      bestDeviation = deviation;
+      bestIndex = index;
+      bestProgress =
+        reference[index].distanceMeters + t * (reference[index + 1].distanceMeters - reference[index].distanceMeters);
+    }
+    if (previousProgressMeters !== undefined && deviation <= PROJECTION_AMBIGUITY_MARGIN_METERS) {
+      const progress =
+        reference[index].distanceMeters + t * (reference[index + 1].distanceMeters - reference[index].distanceMeters);
+      const progressGap = Math.abs(progress - previousProgressMeters);
+      if (progressGap < biasedProgressGap) {
+        biasedProgressGap = progressGap;
+        biasedDeviation = deviation;
+        biasedProgress = progress;
+        biasedIndex = index;
+        hasBiasedCandidate = true;
+      }
+    }
+  }
+
+  return hasBiasedCandidate
+    ? { deviationMeters: biasedDeviation, progressMeters: biasedProgress, segmentIndex: biasedIndex }
+    : { deviationMeters: bestDeviation, progressMeters: bestProgress, segmentIndex: bestIndex };
 }
 
 function calculateCoverage(

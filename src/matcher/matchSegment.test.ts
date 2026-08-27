@@ -45,6 +45,34 @@ describe("matchSegment", () => {
     assert.ok(result[0]?.reasons.includes("gps-gap"));
   });
 
+  it("still matches correctly when a real GPS gap jumps further than the search window", () => {
+    // The windowed search (added to keep matching fast on a real several-thousand-point
+    // segment) only looks a bounded distance around where the previous point landed before
+    // falling back to a full scan. This ride jumps 2000m across a real gap -- far beyond
+    // that window on a 400-point (4000m) reference line -- and must still resolve correctly
+    // via the fallback, not silently mismatch or miss the segment's actual end.
+    const longSegment = segment();
+    longSegment.referencePolyline = Array.from({ length: 401 }, (_, index) => ({
+      lat: 0,
+      lng: degrees(index * 10),
+      distanceMeters: index * 10,
+    }));
+    const ride = [
+      ridePoint(0, 0, 0),
+      ridePoint(500, 0, 1_000), // 500m in, then a real dropout
+      ridePoint(2_500, 0, 32_000), // resumes 2000m further along after 31s -- past the window
+      ridePoint(3_000, 0, 33_000),
+      ridePoint(4_000, 0, 34_000), // reaches the true end
+    ];
+
+    const result = matchSegment(ride, longSegment);
+
+    assert.equal(result.length, 1);
+    assert.equal(result[0]?.startPointIndex, 0);
+    assert.equal(result[0]?.endPointIndex, 4);
+    assert.ok(result[0]?.maxDeviationMeters < 1, "should land exactly on the line, not a stale window match");
+  });
+
   it("marks a sparse but same-route traversal below 90% coverage borderline", () => {
     const ride = [ridePoint(0, 0, 0), ridePoint(50, 0, 10_000), ridePoint(100, 0, 20_000)];
     const result = matchSegment(ride, segment(8));
