@@ -359,11 +359,14 @@ describe("persistMatchCandidate", () => {
       medianDeviationMeters: 15,
       corridorMeters: 30,
       maxBackwardMeters: 15,
-      maxGapMs: 45_000,
+      // 30 m/s is 10 m/s (half of PLAUSIBLE_GAP_SPEED_METERS_PER_SEC=20) past the plausible
+      // ceiling, giving continuity=0.5 -- same shape as the raw-duration version this
+      // replaced, just keyed to implied speed instead of gap length.
+      maxGapImpliedSpeedMetersPerSec: 30,
     };
     const byDecision: Record<MatchDecision, number> = {
       accept: calculateConfidenceScore({ ...common, reasons: [] }),
-      borderline: calculateConfidenceScore({ ...common, reasons: ["gps-gap"] }),
+      borderline: calculateConfidenceScore({ ...common, reasons: ["implausible-gap-speed"] }),
       reject: calculateConfidenceScore({ ...common, reasons: ["backward-progress"] }),
     };
 

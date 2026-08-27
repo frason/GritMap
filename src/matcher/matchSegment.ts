@@ -55,22 +55,32 @@ export interface ConfidenceScoreInput {
   medianDeviationMeters: number;
   corridorMeters: number;
   maxBackwardMeters: number;
-  maxGapMs: number;
+  maxGapImpliedSpeedMetersPerSec: number;
   reasons: readonly string[];
 }
 
 /** Bump whenever matching decisions, diagnostics, or confidence scoring change. */
-export const MATCHER_VERSION = 2;
+export const MATCHER_VERSION = 3;
 
 const EARTH_RADIUS_METERS = 6_371_008.8;
 const MAX_BACKWARD_METERS = 30;
 const MAX_GAP_MS = 30_000;
 
 /**
+ * A gap's raw duration says little about whether it's actually suspicious: a five-minute
+ * dropout under tree cover that resumes exactly where a normal cycling pace would put the
+ * rider is benign, while a much shorter one that implies an impossible jump is a real red
+ * flag. 20 m/s (72 km/h) is a generous ceiling even for a fast descent -- full credit below
+ * it, fully zeroed out at double this (144 km/h, clearly not a bike).
+ */
+const PLAUSIBLE_GAP_SPEED_METERS_PER_SEC = 20;
+
+/**
  * Produces a diagnostic confidence fraction from five independently bounded components:
  * coverage (35%), direction/order (20%), corridor adherence (20%), backward movement
- * (10%), and GPS continuity (15%). Match decisions remain authoritative and are not
- * derived from this score.
+ * (10%), and GPS continuity (15%, based on gap *plausibility* -- see
+ * PLAUSIBLE_GAP_SPEED_METERS_PER_SEC -- not raw gap duration). Match decisions remain
+ * authoritative and are not derived from this score.
  */
 export function calculateConfidenceScore(input: ConfidenceScoreInput): number {
   const coverageTarget = input.requiredCoveragePct > 0 ? input.requiredCoveragePct : 1;
@@ -82,8 +92,10 @@ export function calculateConfidenceScore(input: ConfidenceScoreInput): number {
   const maximumAdherence = 1 - clamp01(input.maxDeviationMeters / (input.corridorMeters * 2));
   const corridor = (medianAdherence + maximumAdherence) / 2;
   const backward = 1 - clamp01(input.maxBackwardMeters / MAX_BACKWARD_METERS);
-  const continuity =
-    1 - clamp01(Math.max(0, input.maxGapMs - MAX_GAP_MS) / MAX_GAP_MS);
+  const continuity = 1 - clamp01(
+    Math.max(0, input.maxGapImpliedSpeedMetersPerSec - PLAUSIBLE_GAP_SPEED_METERS_PER_SEC) /
+      PLAUSIBLE_GAP_SPEED_METERS_PER_SEC,
+  );
 
   return roundScore(
     0.35 * coverage +
@@ -164,6 +176,7 @@ function evaluateForward(
   let maximumBackward = 0;
   let maximumGap = 0;
   let gpsGapCount = 0;
+  let maximumGapImpliedSpeed = 0;
   let maximumDeviation = 0;
   let offCorridorTravel = 0;
   let previousIndex = startIndex;
@@ -175,6 +188,7 @@ function evaluateForward(
   const projections: Projection[] = [];
 
   for (let index = startIndex; index < ride.length; index += 1) {
+    const progressBeforeThisPoint = previousProgressMeters;
     const projection = projectOntoPolyline(
       rideXY[index],
       referenceXY,
@@ -190,7 +204,16 @@ function evaluateForward(
     if (index > startIndex) {
       const gapMs = ride[index].timestampMs - ride[previousIndex].timestampMs;
       maximumGap = Math.max(maximumGap, gapMs);
-      if (gapMs > MAX_GAP_MS) gpsGapCount += 1;
+      if (gapMs > MAX_GAP_MS) {
+        gpsGapCount += 1;
+        // How fast the rider would have had to travel to cover this progress during the
+        // gap -- a long dropout that resumes right where a normal cycling pace would put
+        // the rider (e.g. under tree cover or in a tunnel) is much less suspicious than a
+        // short one that implies an impossible jump. See calculateConfidenceScore's
+        // continuity term, which penalizes this instead of raw gap duration.
+        const impliedSpeed = Math.abs(projection.progressMeters - progressBeforeThisPoint) / (gapMs / 1000);
+        maximumGapImpliedSpeed = Math.max(maximumGapImpliedSpeed, impliedSpeed);
+      }
       if (projection.deviationMeters > segment.corridorMeters) {
         offCorridorTravel += distance(rideXY[previousIndex], rideXY[index]);
       }
@@ -208,6 +231,7 @@ function evaluateForward(
         maxBackwardMeters: maximumBackward,
         maxGapMs: maximumGap,
         gpsGapCount,
+        maxGapImpliedSpeedMetersPerSec: maximumGapImpliedSpeed,
         deviationsMeters: projections.map((item) => item.deviationMeters),
         reasons: ["backward-progress"],
         segment,
@@ -231,6 +255,7 @@ function evaluateForward(
           maxBackwardMeters: maximumBackward,
           maxGapMs: maximumGap,
           gpsGapCount,
+          maxGapImpliedSpeedMetersPerSec: maximumGapImpliedSpeed,
           deviationsMeters: projections.map((item) => item.deviationMeters),
           reasons: ["different-route"],
           segment,
@@ -240,7 +265,11 @@ function evaluateForward(
 
       const reasons: string[] = [];
       if (coveragePct < segment.requiredCoveragePct) reasons.push("insufficient-coverage");
-      if (maximumGap > MAX_GAP_MS) reasons.push("gps-gap");
+      // A gap is only flagged as a reason for uncertainty when it implies an unreasonable
+      // pace, not merely because it was long -- a real dropout under tree cover or in a
+      // tunnel that resumes right where a normal cycling speed would put the rider isn't
+      // actually suspicious, however long it lasted.
+      if (maximumGapImpliedSpeed > PLAUSIBLE_GAP_SPEED_METERS_PER_SEC) reasons.push("implausible-gap-speed");
 
       return createCandidate({
         decision: reasons.length === 0 ? "accept" : "borderline",
@@ -250,6 +279,7 @@ function evaluateForward(
         maxBackwardMeters: maximumBackward,
         maxGapMs: maximumGap,
         gpsGapCount,
+        maxGapImpliedSpeedMetersPerSec: maximumGapImpliedSpeed,
         deviationsMeters: projections.map((item) => item.deviationMeters),
         reasons,
         segment,
@@ -293,6 +323,10 @@ function findReverseTraversals(
         maxBackwardMeters: totalLength,
         maxGapMs: gapStats.maxGapMs,
         gpsGapCount: gapStats.gpsGapCount,
+        // Reverse-traversal candidates are always rejected and never persisted (see
+        // persistMatchCandidate.ts), so their confidence score is never actually read --
+        // not worth computing implied gap speed for a value nothing consumes.
+        maxGapImpliedSpeedMetersPerSec: 0,
         deviationsMeters: projections.map((item) => item.deviationMeters),
         reasons: ["reverse-traversal"],
         segment,
@@ -469,6 +503,7 @@ interface CandidateMetrics {
   maxBackwardMeters: number;
   maxGapMs: number;
   gpsGapCount: number;
+  maxGapImpliedSpeedMetersPerSec: number;
   deviationsMeters: readonly number[];
   reasons: string[];
   segment: SegmentDefinition;
@@ -485,7 +520,7 @@ function createCandidate(metrics: CandidateMetrics): EvaluatedCandidate {
     medianDeviationMeters,
     corridorMeters: metrics.segment.corridorMeters,
     maxBackwardMeters: metrics.maxBackwardMeters,
-    maxGapMs: metrics.maxGapMs,
+    maxGapImpliedSpeedMetersPerSec: metrics.maxGapImpliedSpeedMetersPerSec,
     reasons: metrics.reasons,
   });
 

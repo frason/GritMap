@@ -37,12 +37,36 @@ describe("matchSegment", () => {
     assert.ok(result[0]?.reasons.includes("different-route"));
   });
 
-  it("marks an otherwise clean traversal with a >30 second GPS gap borderline", () => {
+  it("does not flag a long GPS gap as suspicious when it implies a normal cycling pace", () => {
+    // Gap here is 32s, but the rider only covered 10m across it -- a real dropout under
+    // tree cover or a tunnel that resumes right where a normal pace would put them isn't
+    // suspicious just because it was long.
     const ride = lineRide(0, 100, 10);
     for (let index = 6; index < ride.length; index += 1) ride[index].timestampMs += 31_000;
     const result = matchSegment(ride, segment());
+    assert.equal(result[0]?.decision, "accept");
+    assert.deepEqual(result[0]?.reasons, []);
+  });
+
+  it("flags a gap as a reason for uncertainty when it implies an unreasonably fast pace", () => {
+    const longSegment = segment();
+    longSegment.referencePolyline = Array.from({ length: 101 }, (_, index) => ({
+      lat: 0,
+      lng: degrees(index * 10),
+      distanceMeters: index * 10,
+    }));
+    const ride = [
+      ridePoint(0, 0, 0),
+      ridePoint(10, 0, 1_000),
+      ridePoint(900, 0, 36_000), // 35s gap covering 890m -> ~25.4 m/s, over the 20 m/s ceiling
+      ridePoint(910, 0, 37_000),
+      ridePoint(1_000, 0, 38_000),
+    ];
+
+    const result = matchSegment(ride, longSegment);
+
     assert.equal(result[0]?.decision, "borderline");
-    assert.ok(result[0]?.reasons.includes("gps-gap"));
+    assert.ok(result[0]?.reasons.includes("implausible-gap-speed"));
   });
 
   it("still matches correctly when a real GPS gap jumps further than the search window", () => {
