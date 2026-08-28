@@ -43,6 +43,17 @@ export LC_ALL=en_US.UTF-8
 
 or exporting them inline for a single command: `LANG=en_US.UTF-8 LC_ALL=en_US.UTF-8 npm run ios`.
 
+## Map tiles
+
+`RouteMapView.native.tsx` renders real OpenStreetMap-based vector tiles via
+[OpenFreeMap](https://openfreemap.org) (`https://tiles.openfreemap.org/styles/liberty`) — no
+API key or account required, no rate limit at this app's personal/local scale. If OpenFreeMap
+ever needs to be swapped for a different provider (e.g. one of `docs/Grip-Map-app-spec.md`'s
+"Map & Elevation Data Stack" alternatives, Stadia Maps or MapTiler), those require a free-tier
+API key: sign up on their site, then set the key wherever the new style URL is constructed in
+`RouteMapView.native.tsx` (an env var read at build time, not committed to the repo, if a key
+is ever introduced).
+
 ## Why not Expo Go
 
 Expo Go bundles a fixed set of native modules and can't load a project's own native
