@@ -60,6 +60,11 @@ export function DefineSegmentScreen() {
       ? { startPointIndex: startPoint.pointIndex, endPointIndex: endPoint.pointIndex }
       : undefined;
 
+  function handleRangeChange(range: { startDistanceMeters: number; endDistanceMeters: number }) {
+    setStartDistanceMeters(range.startDistanceMeters);
+    setEndDistanceMeters(range.endDistanceMeters);
+  }
+
   async function handleSave() {
     if (name.trim().length === 0) {
       Alert.alert("Name required", "Give this segment a name before saving.");
@@ -119,18 +124,35 @@ export function DefineSegmentScreen() {
     >
       <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
         <View style={styles.mapContainer}>
-          <RouteMapView points={track} highlightRange={highlightRange} />
+          <RouteMapView
+            points={track}
+            highlightRange={highlightRange}
+            editableRange={
+              startPoint !== undefined && endPoint !== undefined && totalDistanceMeters > 0
+                ? {
+                    startDistanceMeters,
+                    endDistanceMeters: resolvedEndDistanceMeters,
+                    totalDistanceMeters,
+                    startLatLng: startPoint,
+                    endLatLng: endPoint,
+                    track: distanceIndexed,
+                    onChange: handleRangeChange,
+                  }
+                : undefined
+            }
+          />
         </View>
+
+        {totalDistanceMeters > 0 && (
+          <Text style={styles.mapHint}>Drag the pins on the map, or use the sliders below</Text>
+        )}
 
         {totalDistanceMeters > 0 && (
           <DistanceRangeScrubber
             totalDistanceMeters={totalDistanceMeters}
             startDistanceMeters={startDistanceMeters}
             endDistanceMeters={resolvedEndDistanceMeters}
-            onChange={(range) => {
-              setStartDistanceMeters(range.startDistanceMeters);
-              setEndDistanceMeters(range.endDistanceMeters);
-            }}
+            onChange={handleRangeChange}
             elevationAtDistance={(distanceMeters) =>
               nearestByDistance(distanceIndexed, distanceMeters)?.elevationMeters
             }
@@ -171,6 +193,12 @@ const styles = StyleSheet.create({
     borderRadius: radius.md,
     overflow: "hidden",
     backgroundColor: colors.surface,
+  },
+  mapHint: {
+    fontSize: 12,
+    color: colors.textTertiary,
+    textAlign: "center",
+    marginTop: -spacing.space12,
   },
   nameInput: {
     backgroundColor: colors.surface,

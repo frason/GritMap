@@ -7,6 +7,8 @@ import { radius, spacing } from "../theme/spacing";
 export interface RouteMapViewProps {
   points: RideTrackPoint[];
   highlightRange?: { startPointIndex: number; endPointIndex: number };
+  /** Not supported on web -- MapLibre's native module doesn't resolve here (see below). */
+  editableRange?: unknown;
 }
 
 /**
