@@ -3,49 +3,31 @@ import {
   GeoJSONSource,
   Layer,
   Map,
+  type CameraRef,
   type LngLatBounds,
   type MapRef,
 } from "@maplibre/maplibre-react-native";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import {
-  PanResponder,
-  StyleSheet,
-  View,
-  type GestureResponderEvent,
-  type PanResponderGestureState,
-} from "react-native";
+import { StyleSheet, TouchableOpacity, View } from "react-native";
 import type { RideTrackPoint } from "../db/getRideTrack";
-import {
-  clampRangeEnd,
-  clampRangeStart,
-  SEGMENT_RANGE_STEP_METERS,
-} from "../segments/clampSegmentRange.ts";
-import {
-  nearestScreenSnapCandidate,
-  sampleForHandleSnapping,
-  type ScreenPoint,
-  type ScreenSnapCandidate,
-} from "../segments/screenSnap.ts";
 import { colors } from "../theme/colors";
-import { formatDistanceMiles } from "./formatRideStats.ts";
 
 export interface RouteMapViewProps {
   points: RideTrackPoint[];
   /** Renders a second, differently-styled line over this point-index sub-range (issue #7). */
   highlightRange?: { startPointIndex: number; endPointIndex: number };
-  /** Draggable start/end handles directly on the map, for defining a segment (issue #58). */
+  /** Tap-to-place start/end pins directly on the map, for defining a segment (issue #58). */
   editableRange?: EditableSegmentRange;
 }
 
 export interface EditableSegmentRange {
-  startDistanceMeters: number;
-  endDistanceMeters: number;
-  totalDistanceMeters: number;
   startLatLng: { lat: number; lng: number };
   endLatLng: { lat: number; lng: number };
-  /** The full track, distance-indexed -- sampled down before projecting (see screenSnap.ts). */
-  track: readonly { lat: number; lng: number; distanceMeters: number }[];
-  onChange: (range: { startDistanceMeters: number; endDistanceMeters: number }) => void;
+  /** Which pin the next map tap moves; tapping a pin also selects it. */
+  activeHandle: "start" | "end";
+  onSelectHandle: (handle: "start" | "end") => void;
+  /** Fires with the tapped map coordinate; the caller snaps it onto the real track. */
+  onMapTap: (latLng: { lat: number; lng: number }) => void;
 }
 
 /**
@@ -67,21 +49,50 @@ const MAP_STYLE_URL = "https://tiles.openfreemap.org/styles/liberty";
  */
 const GPS_GAP_THRESHOLD_MS = 30_000;
 
-/**
- * Caps how many track points get projected to screen coordinates (via MapLibre's native
- * project() bridge call) whenever the map viewport settles. Bounded regardless of ride
- * length so a multi-hour ride's thousands of GPS points never mean thousands of native round
- * trips -- see screenSnap.ts's sampleForHandleSnapping doc.
- */
-const MAX_SNAP_CANDIDATES = 250;
-
 const HANDLE_SIZE = 28;
+
+/**
+ * Zoom level a tap-to-place eases the camera to -- close enough to place a pin precisely
+ * against a 30m corridor without the user needing to manually pinch-zoom first.
+ */
+const EDIT_ZOOM_LEVEL = 17;
 
 export function RouteMapView({ points, highlightRange, editableRange }: RouteMapViewProps) {
   const mapRef = useRef<MapRef>(null);
-  // Bumped on every onRegionDidChange so RangeHandles knows when it's safe to re-project its
-  // handles' screen positions (see RangeHandles' doc comment).
+  const cameraRef = useRef<CameraRef>(null);
+  // Bumped on every onRegionDidChange (settled) and, throttled, on onRegionIsChanging (live
+  // pan/zoom) so EditableHandles knows when it's safe to re-project its pins' screen
+  // positions (see EditableHandles' doc comment).
   const [regionChangeTick, setRegionChangeTick] = useState(0);
+  const lastLiveReprojectAtRef = useRef(0);
+
+  // Eases the camera to whichever pin just became active -- covers both the Start/End
+  // toggle buttons and tapping a pin directly to select it (both just change
+  // editableRange.activeHandle). Deliberately skips the very first time editableRange
+  // appears, so loading this screen doesn't immediately zoom away from the initial
+  // whole-route view before the user has done anything.
+  const previousActiveHandleRef = useRef<"start" | "end" | undefined>(undefined);
+  useEffect(() => {
+    if (editableRange === undefined) {
+      previousActiveHandleRef.current = undefined;
+      return;
+    }
+    if (
+      previousActiveHandleRef.current !== undefined &&
+      previousActiveHandleRef.current !== editableRange.activeHandle
+    ) {
+      const target =
+        editableRange.activeHandle === "start" ? editableRange.startLatLng : editableRange.endLatLng;
+      cameraRef.current?.easeTo({ center: [target.lng, target.lat], zoom: EDIT_ZOOM_LEVEL, duration: 350 });
+    }
+    previousActiveHandleRef.current = editableRange.activeHandle;
+  }, [
+    editableRange?.activeHandle,
+    editableRange?.startLatLng.lat,
+    editableRange?.startLatLng.lng,
+    editableRange?.endLatLng.lat,
+    editableRange?.endLatLng.lng,
+  ]);
 
   if (points.length === 0) {
     return <Map ref={mapRef} style={styles.map} mapStyle={MAP_STYLE_URL} />;
@@ -106,15 +117,32 @@ export function RouteMapView({ points, highlightRange, editableRange }: RouteMap
         ref={mapRef}
         style={styles.map}
         mapStyle={MAP_STYLE_URL}
-        // Locked while editing a segment: a rotated/tilted view would still project
-        // correctly (project() asks the native map itself, not our own math), but keeping
-        // the map north-up and flat makes it much easier to place a precise handle without
-        // accidentally rotating out from under your finger.
+        // Locked while editing a segment: keeping the map north-up and flat makes it much
+        // easier to judge where a tap will land relative to the route.
         touchRotate={editableRange === undefined}
         touchPitch={editableRange === undefined}
         onRegionDidChange={() => setRegionChangeTick((tick) => tick + 1)}
+        // Without this, a pin stays frozen at its old screen position for the whole
+        // duration of a manual pan/zoom and only jumps to the correct spot once the
+        // gesture settles (onRegionDidChange alone). Throttled to ~10/sec so a fast pan
+        // doesn't flood MapLibre's native project() bridge call with a request per frame.
+        onRegionIsChanging={() => {
+          const now = Date.now();
+          if (now - lastLiveReprojectAtRef.current < 100) return;
+          lastLiveReprojectAtRef.current = now;
+          setRegionChangeTick((tick) => tick + 1);
+        }}
+        onPress={
+          editableRange === undefined
+            ? undefined
+            : (event) => {
+                const [lng, lat] = event.nativeEvent.lngLat;
+                cameraRef.current?.easeTo({ center: [lng, lat], zoom: EDIT_ZOOM_LEVEL, duration: 350 });
+                editableRange.onMapTap({ lat, lng });
+              }
+        }
       >
-        <Camera initialViewState={{ bounds }} />
+        <Camera ref={cameraRef} initialViewState={{ bounds }} />
         <GeoJSONSource id="route-track" data={trackGeoJson}>
           {/* A white casing beneath the line keeps it legible over the basemap's own varied
               colors (roads, water, parks) -- unnecessary on the old flat demo-tile background,
@@ -146,24 +174,31 @@ export function RouteMapView({ points, highlightRange, editableRange }: RouteMap
         )}
       </Map>
       {editableRange !== undefined && (
-        <RangeHandles mapRef={mapRef} range={editableRange} regionChangeTick={regionChangeTick} />
+        <EditableHandles mapRef={mapRef} range={editableRange} regionChangeTick={regionChangeTick} />
       )}
     </View>
   );
 }
 
+interface ScreenPoint {
+  x: number;
+  y: number;
+}
+
 /**
- * Two draggable handles overlaid on top of the map, for picking a segment's start/end
- * directly at the real-world spot instead of via a linear distance scrubber divorced from
- * the map (issue #58). Dragging is snapped to the actual route: each handle's live drag
- * position is matched, in screen space, against a bounded sample of the track's own
- * projected points (screenSnap.ts) -- entirely in JS once the sample is projected, so a drag
- * gesture never waits on MapLibre's native project()/unproject() bridge mid-frame. That
- * projection only happens when the map viewport settles (onRegionDidChange, surfaced here as
- * regionChangeTick) or the range changes from elsewhere (e.g. this screen's own +/- stepper
- * buttons), not per drag frame.
+ * Two tappable pins overlaid on top of the map for picking a segment's start/end (issue
+ * #58) -- replacing an earlier continuous-drag design that turned out to be unreliable
+ * nested inside DefineSegmentScreen's ScrollView (the ScrollView's native scroll gesture
+ * would sometimes win the touch mid-drag). A tap is a much simpler, more robust gesture in
+ * that context, and pairs naturally with an auto-zoom (see RouteMapView's onPress) for
+ * precise placement, plus DistanceRangeScrubber's existing +/- steppers for fine-tuning.
+ *
+ * Pin screen positions are projected via MapLibre's native project() bridge call, refreshed
+ * whenever the map viewport settles (onRegionDidChange, surfaced as regionChangeTick) or the
+ * target lat/lng changes -- cheap here since it's two calls, not the whole-track batch a
+ * continuous drag would have needed.
  */
-function RangeHandles({
+function EditableHandles({
   mapRef,
   range,
   regionChangeTick,
@@ -172,248 +207,92 @@ function RangeHandles({
   range: EditableSegmentRange;
   regionChangeTick: number;
 }) {
-  const [candidates, setCandidates] = useState<ScreenSnapCandidate[]>([]);
   const [startScreen, setStartScreen] = useState<ScreenPoint | undefined>(undefined);
   const [endScreen, setEndScreen] = useState<ScreenPoint | undefined>(undefined);
-  const [liveDrag, setLiveDrag] = useState<
-    ({ handle: "start" | "end" } & ScreenPoint) | undefined
-  >(undefined);
-
-  const snapSample = useMemo(
-    () => sampleForHandleSnapping(range.track, MAX_SNAP_CANDIDATES),
-    [range.track],
-  );
 
   const reproject = useCallback(async () => {
     const map = mapRef.current;
     if (map === null) return;
     try {
-      const [start, end, ...sampled] = await Promise.all([
+      const [start, end] = await Promise.all([
         map.project([range.startLatLng.lng, range.startLatLng.lat]),
         map.project([range.endLatLng.lng, range.endLatLng.lat]),
-        ...snapSample.map((point) => map.project([point.lng, point.lat])),
       ]);
       setStartScreen({ x: start[0], y: start[1] });
       setEndScreen({ x: end[0], y: end[1] });
-      setCandidates(
-        sampled.map((screen, index) => ({
-          x: screen[0],
-          y: screen[1],
-          distanceMeters: snapSample[index]!.distanceMeters,
-        })),
-      );
     } catch {
       // The native map isn't ready yet (style/layout still loading) -- the next
-      // onRegionDidChange will try again. Leaving the last-known handle positions in place
-      // is preferable to clearing them to nothing.
+      // onRegionDidChange (or the retry burst below) will try again. Leaving the last-known
+      // pin positions in place is preferable to clearing them to nothing.
     }
-  }, [mapRef, range.startLatLng.lat, range.startLatLng.lng, range.endLatLng.lat, range.endLatLng.lng, snapSample]);
+  }, [mapRef, range.startLatLng.lat, range.startLatLng.lng, range.endLatLng.lat, range.endLatLng.lng]);
 
-  // Re-projects whenever the map viewport settles (regionChangeTick, bumped by the sibling
-  // <Map>'s onRegionDidChange) or the handles' own target lat/lng or candidate sample
-  // changes for a reason other than a drag on this component (e.g. the +/- stepper buttons,
-  // or the track finishing its DB load).
   useEffect(() => {
     void reproject();
   }, [reproject, regionChangeTick]);
 
   // Defensive retry burst on mount/range-change: it's not verified against a live device
   // whether the initial programmatic camera-to-bounds fit itself fires onRegionDidChange, so
-  // this hedges with a short bounded retry rather than leaving the handles stuck invisible
+  // this hedges with a short bounded retry rather than leaving the pins stuck invisible
   // until the user happens to pan or zoom.
   useEffect(() => {
     const timers = [200, 600, 1_200].map((delay) => setTimeout(() => void reproject(), delay));
     return () => timers.forEach(clearTimeout);
   }, [reproject]);
 
-  function screenFor(handle: "start" | "end"): ScreenPoint | undefined {
-    if (liveDrag?.handle === handle) return liveDrag;
-    return handle === "start" ? startScreen : endScreen;
-  }
-
-  function handleDragMove(handle: "start" | "end", point: ScreenPoint) {
-    const match = nearestScreenSnapCandidate(candidates, point);
-    if (match === undefined) return;
-    setLiveDrag({ handle, x: match.x, y: match.y });
-    if (handle === "start") {
-      range.onChange({
-        startDistanceMeters: clampRangeStart(match.distanceMeters, range.endDistanceMeters),
-        endDistanceMeters: range.endDistanceMeters,
-      });
-    } else {
-      range.onChange({
-        startDistanceMeters: range.startDistanceMeters,
-        endDistanceMeters: clampRangeEnd(
-          match.distanceMeters,
-          range.startDistanceMeters,
-          range.totalDistanceMeters,
-        ),
-      });
-    }
-  }
-
-  function handleDragEnd(handle: "start" | "end") {
-    // Keep the exact screen position the drag already snapped to -- no need to wait for an
-    // async re-projection of the same point (avoids a visible flicker/jump on release).
-    if (liveDrag?.handle === handle) {
-      if (handle === "start") setStartScreen(liveDrag);
-      else setEndScreen(liveDrag);
-    }
-    setLiveDrag(undefined);
-  }
-
-  const startPanHandlers = useHandleDragPanResponder(
-    () => screenFor("start") ?? { x: 0, y: 0 },
-    (point) => handleDragMove("start", point),
-    () => handleDragEnd("start"),
-  );
-  const endPanHandlers = useHandleDragPanResponder(
-    () => screenFor("end") ?? { x: 0, y: 0 },
-    (point) => handleDragMove("end", point),
-    () => handleDragEnd("end"),
-  );
-
   return (
-    <View
-      style={StyleSheet.absoluteFill}
-      pointerEvents="box-none"
-      onLayout={() => void reproject()}
-    >
-      {screenFor("start") !== undefined && (
-        <Handle
+    <View style={StyleSheet.absoluteFill} pointerEvents="box-none" onLayout={() => void reproject()}>
+      {startScreen !== undefined && (
+        <Pin
           label="Start"
-          point={screenFor("start")!}
-          panHandlers={startPanHandlers}
-          valueText={formatDistanceMiles(range.startDistanceMeters)}
-          onIncrement={() =>
-            range.onChange({
-              startDistanceMeters: clampRangeStart(
-                range.startDistanceMeters + SEGMENT_RANGE_STEP_METERS,
-                range.endDistanceMeters,
-              ),
-              endDistanceMeters: range.endDistanceMeters,
-            })
-          }
-          onDecrement={() =>
-            range.onChange({
-              startDistanceMeters: clampRangeStart(
-                range.startDistanceMeters - SEGMENT_RANGE_STEP_METERS,
-                range.endDistanceMeters,
-              ),
-              endDistanceMeters: range.endDistanceMeters,
-            })
-          }
+          point={startScreen}
+          active={range.activeHandle === "start"}
+          onPress={() => range.onSelectHandle("start")}
         />
       )}
-      {screenFor("end") !== undefined && (
-        <Handle
+      {endScreen !== undefined && (
+        <Pin
           label="End"
-          point={screenFor("end")!}
-          panHandlers={endPanHandlers}
-          valueText={formatDistanceMiles(range.endDistanceMeters)}
-          onIncrement={() =>
-            range.onChange({
-              startDistanceMeters: range.startDistanceMeters,
-              endDistanceMeters: clampRangeEnd(
-                range.endDistanceMeters + SEGMENT_RANGE_STEP_METERS,
-                range.startDistanceMeters,
-                range.totalDistanceMeters,
-              ),
-            })
-          }
-          onDecrement={() =>
-            range.onChange({
-              startDistanceMeters: range.startDistanceMeters,
-              endDistanceMeters: clampRangeEnd(
-                range.endDistanceMeters - SEGMENT_RANGE_STEP_METERS,
-                range.startDistanceMeters,
-                range.totalDistanceMeters,
-              ),
-            })
-          }
+          point={endScreen}
+          active={range.activeHandle === "end"}
+          onPress={() => range.onSelectHandle("end")}
         />
       )}
     </View>
   );
 }
 
-function Handle({
+function Pin({
   label,
   point,
-  panHandlers,
-  valueText,
-  onIncrement,
-  onDecrement,
+  active,
+  onPress,
 }: {
   label: "Start" | "End";
   point: ScreenPoint;
-  panHandlers: ReturnType<typeof PanResponder.create>["panHandlers"];
-  valueText: string;
-  onIncrement: () => void;
-  onDecrement: () => void;
+  active: boolean;
+  onPress: () => void;
 }) {
+  const size = active ? HANDLE_SIZE + 6 : HANDLE_SIZE;
   return (
-    <View
-      {...panHandlers}
+    <TouchableOpacity
+      onPress={onPress}
       style={[
         styles.handle,
-        { left: point.x - HANDLE_SIZE / 2, top: point.y - HANDLE_SIZE / 2 },
+        active && styles.handleActive,
+        {
+          width: size,
+          height: size,
+          borderRadius: size / 2,
+          left: point.x - size / 2,
+          top: point.y - size / 2,
+        },
       ]}
-      accessible
-      accessibilityRole="adjustable"
-      accessibilityLabel={`${label} of segment range`}
-      accessibilityValue={{ text: valueText }}
-      accessibilityActions={[
-        { name: "increment", label: "Move further" },
-        { name: "decrement", label: "Move back" },
-      ]}
-      onAccessibilityAction={(event) => {
-        if (event.nativeEvent.actionName === "increment") onIncrement();
-        if (event.nativeEvent.actionName === "decrement") onDecrement();
-      }}
+      accessibilityRole="button"
+      accessibilityLabel={`${label} of segment range${active ? ", selected" : ""}`}
+      accessibilityHint="Tap elsewhere on the map to move it here"
     />
   );
-}
-
-function useHandleDragPanResponder(
-  getOrigin: () => ScreenPoint,
-  onMove: (point: ScreenPoint) => void,
-  onEnd: () => void,
-): ReturnType<typeof PanResponder.create>["panHandlers"] {
-  // getOrigin/onMove/onEnd close over live state and are fresh every render, but
-  // PanResponder.create must be called once and stay stable for the component's lifetime --
-  // recreating it mid-drag would drop the in-progress gesture (same pattern as
-  // DistanceRangeScrubber.tsx's useDragPanResponder, generalized to 2D).
-  const getOriginRef = useRef(getOrigin);
-  getOriginRef.current = getOrigin;
-  const onMoveRef = useRef(onMove);
-  onMoveRef.current = onMove;
-  const onEndRef = useRef(onEnd);
-  onEndRef.current = onEnd;
-
-  const dragOrigin = useRef<ScreenPoint>({ x: 0, y: 0 });
-  const responder = useMemo(
-    () =>
-      PanResponder.create({
-        onStartShouldSetPanResponder: () => true,
-        onPanResponderGrant: () => {
-          dragOrigin.current = getOriginRef.current();
-        },
-        onPanResponderMove: (
-          _event: GestureResponderEvent,
-          gestureState: PanResponderGestureState,
-        ) => {
-          onMoveRef.current({
-            x: dragOrigin.current.x + gestureState.dx,
-            y: dragOrigin.current.y + gestureState.dy,
-          });
-        },
-        onPanResponderRelease: () => onEndRef.current(),
-        onPanResponderTerminate: () => onEndRef.current(),
-      }),
-    [],
-  );
-  return responder.panHandlers;
 }
 
 function computeBounds(points: readonly RideTrackPoint[]): LngLatBounds {
@@ -462,8 +341,11 @@ const styles = StyleSheet.create({
     width: HANDLE_SIZE,
     height: HANDLE_SIZE,
     borderRadius: HANDLE_SIZE / 2,
-    backgroundColor: colors.brand,
+    backgroundColor: colors.brandSubtle,
     borderWidth: 3,
     borderColor: colors.surface,
+  },
+  handleActive: {
+    backgroundColor: colors.brand,
   },
 });
