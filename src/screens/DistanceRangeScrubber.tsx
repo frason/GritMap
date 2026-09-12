@@ -8,6 +8,7 @@ import {
   type LayoutChangeEvent,
   type PanResponderGestureState,
 } from "react-native";
+import { clampRangeEnd, clampRangeStart, SEGMENT_RANGE_STEP_METERS } from "../segments/clampSegmentRange.ts";
 import { colors } from "../theme/colors";
 import { radius, spacing } from "../theme/spacing";
 import { formatDistanceMiles, formatElevationFeet } from "./formatRideStats";
@@ -21,8 +22,6 @@ export interface DistanceRangeScrubberProps {
 }
 
 const THUMB_SIZE = 28;
-const STEP_METERS = 10;
-const MIN_GAP_METERS = 10;
 
 /**
  * Distance-driven (not index-driven) two-thumb range selector, built on React Native's
@@ -56,13 +55,17 @@ export function DistanceRangeScrubber({
   }
 
   function moveStart(nextDistanceMeters: number) {
-    const clamped = clamp(nextDistanceMeters, 0, endDistanceMeters - MIN_GAP_METERS);
-    onChange({ startDistanceMeters: clamped, endDistanceMeters });
+    onChange({
+      startDistanceMeters: clampRangeStart(nextDistanceMeters, endDistanceMeters),
+      endDistanceMeters,
+    });
   }
 
   function moveEnd(nextDistanceMeters: number) {
-    const clamped = clamp(nextDistanceMeters, startDistanceMeters + MIN_GAP_METERS, totalDistanceMeters);
-    onChange({ startDistanceMeters, endDistanceMeters: clamped });
+    onChange({
+      startDistanceMeters,
+      endDistanceMeters: clampRangeEnd(nextDistanceMeters, startDistanceMeters, totalDistanceMeters),
+    });
   }
 
   const startPanResponder = useDragPanResponder(
@@ -99,16 +102,16 @@ export function DistanceRangeScrubber({
           x={selectedLeft}
           label="Start"
           panHandlers={startPanResponder}
-          onIncrement={() => moveStart(startDistanceMeters + STEP_METERS)}
-          onDecrement={() => moveStart(startDistanceMeters - STEP_METERS)}
+          onIncrement={() => moveStart(startDistanceMeters + SEGMENT_RANGE_STEP_METERS)}
+          onDecrement={() => moveStart(startDistanceMeters - SEGMENT_RANGE_STEP_METERS)}
           valueText={formatDistanceMiles(startDistanceMeters)}
         />
         <Thumb
           x={distanceToX(endDistanceMeters)}
           label="End"
           panHandlers={endPanResponder}
-          onIncrement={() => moveEnd(endDistanceMeters + STEP_METERS)}
-          onDecrement={() => moveEnd(endDistanceMeters - STEP_METERS)}
+          onIncrement={() => moveEnd(endDistanceMeters + SEGMENT_RANGE_STEP_METERS)}
+          onDecrement={() => moveEnd(endDistanceMeters - SEGMENT_RANGE_STEP_METERS)}
           valueText={formatDistanceMiles(endDistanceMeters)}
         />
       </View>
@@ -203,10 +206,6 @@ function useDragPanResponder(
     [],
   );
   return responder.panHandlers;
-}
-
-function clamp(value: number, min: number, max: number): number {
-  return Math.min(Math.max(value, min), max);
 }
 
 const styles = StyleSheet.create({

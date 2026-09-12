@@ -11,6 +11,8 @@ import { runMatcherForSegment } from "../matcher/runMatcher";
 import { computeSegmentFingerprint } from "../segments/segmentFingerprint";
 import { resamplePolyline } from "../segments/resamplePolyline";
 import { computeCumulativeTrackDistance, nearestByDistance } from "../segments/cumulativeTrackDistance";
+import { clampRangeEnd, clampRangeStart } from "../segments/clampSegmentRange";
+import { nearestTrackPointByLatLng } from "../segments/nearestTrackPoint";
 import type { RidesStackParamList, RootTabParamList } from "../navigation/types";
 import { colors } from "../theme/colors";
 import { radius, spacing } from "../theme/spacing";
@@ -38,6 +40,8 @@ export function DefineSegmentScreen() {
   const [startDistanceMeters, setStartDistanceMeters] = useState(0);
   const [endDistanceMeters, setEndDistanceMeters] = useState<number | undefined>(undefined);
   const [saving, setSaving] = useState(false);
+  // Which pin the next map tap moves (issue #58) -- tapping a pin also selects it.
+  const [activeHandle, setActiveHandle] = useState<"start" | "end">("start");
 
   useEffect(() => {
     setTrack(getRideTrack(database, route.params.rideId));
@@ -59,6 +63,21 @@ export function DefineSegmentScreen() {
     startPoint !== undefined && endPoint !== undefined
       ? { startPointIndex: startPoint.pointIndex, endPointIndex: endPoint.pointIndex }
       : undefined;
+
+  function handleRangeChange(range: { startDistanceMeters: number; endDistanceMeters: number }) {
+    setStartDistanceMeters(range.startDistanceMeters);
+    setEndDistanceMeters(range.endDistanceMeters);
+  }
+
+  function handleMapTap(latLng: { lat: number; lng: number }) {
+    const nearest = nearestTrackPointByLatLng(distanceIndexed, latLng);
+    if (nearest === undefined) return;
+    if (activeHandle === "start") {
+      setStartDistanceMeters(clampRangeStart(nearest.distanceMeters, resolvedEndDistanceMeters));
+    } else {
+      setEndDistanceMeters(clampRangeEnd(nearest.distanceMeters, startDistanceMeters, totalDistanceMeters));
+    }
+  }
 
   async function handleSave() {
     if (name.trim().length === 0) {
@@ -119,18 +138,45 @@ export function DefineSegmentScreen() {
     >
       <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
         <View style={styles.mapContainer}>
-          <RouteMapView points={track} highlightRange={highlightRange} />
+          <RouteMapView
+            points={track}
+            highlightRange={highlightRange}
+            editableRange={
+              startPoint !== undefined && endPoint !== undefined
+                ? {
+                    startLatLng: startPoint,
+                    endLatLng: endPoint,
+                    activeHandle,
+                    onSelectHandle: setActiveHandle,
+                    onMapTap: handleMapTap,
+                  }
+                : undefined
+            }
+          />
         </View>
+
+        {totalDistanceMeters > 0 && (
+          <View style={styles.handleToggleRow}>
+            <HandleToggleButton
+              label="Start"
+              active={activeHandle === "start"}
+              onPress={() => setActiveHandle("start")}
+            />
+            <HandleToggleButton
+              label="End"
+              active={activeHandle === "end"}
+              onPress={() => setActiveHandle("end")}
+            />
+            <Text style={styles.mapHint}>Tap the map to move the selected pin</Text>
+          </View>
+        )}
 
         {totalDistanceMeters > 0 && (
           <DistanceRangeScrubber
             totalDistanceMeters={totalDistanceMeters}
             startDistanceMeters={startDistanceMeters}
             endDistanceMeters={resolvedEndDistanceMeters}
-            onChange={(range) => {
-              setStartDistanceMeters(range.startDistanceMeters);
-              setEndDistanceMeters(range.endDistanceMeters);
-            }}
+            onChange={handleRangeChange}
             elevationAtDistance={(distanceMeters) =>
               nearestByDistance(distanceIndexed, distanceMeters)?.elevationMeters
             }
@@ -157,6 +203,28 @@ export function DefineSegmentScreen() {
   );
 }
 
+function HandleToggleButton({
+  label,
+  active,
+  onPress,
+}: {
+  label: "Start" | "End";
+  active: boolean;
+  onPress: () => void;
+}) {
+  return (
+    <TouchableOpacity
+      style={[styles.handleToggle, active && styles.handleToggleActive]}
+      onPress={onPress}
+      accessibilityRole="button"
+      accessibilityLabel={`Edit ${label}`}
+      accessibilityState={{ selected: active }}
+    >
+      <Text style={[styles.handleToggleLabel, active && styles.handleToggleLabelActive]}>{label}</Text>
+    </TouchableOpacity>
+  );
+}
+
 const styles = StyleSheet.create({
   container: {
     flex: 1,
@@ -171,6 +239,35 @@ const styles = StyleSheet.create({
     borderRadius: radius.md,
     overflow: "hidden",
     backgroundColor: colors.surface,
+  },
+  handleToggleRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: spacing.space8,
+  },
+  handleToggle: {
+    borderRadius: radius.pill,
+    borderWidth: 1,
+    borderColor: colors.border,
+    paddingHorizontal: spacing.space16,
+    paddingVertical: spacing.space8,
+  },
+  handleToggleActive: {
+    backgroundColor: colors.brand,
+    borderColor: colors.brand,
+  },
+  handleToggleLabel: {
+    fontSize: 13,
+    fontWeight: "600",
+    color: colors.textSecondary,
+  },
+  handleToggleLabelActive: {
+    color: colors.textOnBrand,
+  },
+  mapHint: {
+    fontSize: 12,
+    color: colors.textTertiary,
+    flexShrink: 1,
   },
   nameInput: {
     backgroundColor: colors.surface,
