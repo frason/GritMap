@@ -15,6 +15,11 @@ class AdditionalNumericDataTypesTest {
     }
 
     @Test
+    fun `predicted finish converts domain seconds to Karoo elapsed-time milliseconds`() {
+        assertEquals(168_000.0, predictedFinishElapsedTimeValue(KarooPreviewState)!!, 0.0)
+    }
+
+    @Test
     fun `missing active metric is unavailable`() {
         assertSame(StreamState.NotAvailable, numericStreamState(null, MatchStatus.ACTIVE, "metric"))
     }

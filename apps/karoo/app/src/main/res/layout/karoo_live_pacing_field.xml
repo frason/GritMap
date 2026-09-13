@@ -2,38 +2,61 @@
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="#121417"
+    android:background="@color/gm_field_background"
     android:orientation="vertical"
     android:padding="8dp">
 
-    <TextView
-        android:id="@+id/karoo_segment_name"
+    <LinearLayout
+        android:id="@+id/karoo_profile_header"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:ellipsize="end"
-        android:maxLines="1"
-        android:textColor="#FFFFFF"
-        android:textSize="16sp"
-        android:textStyle="bold" />
+        android:gravity="center_vertical"
+        android:orientation="horizontal">
 
-    <TextView
-        android:id="@+id/karoo_profile_status"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:ellipsize="end"
-        android:maxLines="1"
-        android:textColor="#D0D4DA"
-        android:textSize="12sp" />
+        <TextView
+            android:id="@+id/karoo_segment_name"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:ellipsize="end"
+            android:maxLines="1"
+            android:textColor="@color/gm_field_primary_text"
+            android:textSize="16sp"
+            android:textStyle="bold" />
 
-    <TextView
-        android:id="@+id/karoo_profile_guidance"
+        <TextView
+            android:id="@+id/karoo_profile_status"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:ellipsize="end"
+            android:maxLines="1"
+            android:textColor="@color/gm_field_secondary_text"
+            android:textSize="12sp" />
+    </LinearLayout>
+
+    <LinearLayout
+        android:id="@+id/karoo_profile_guidance_badge"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:ellipsize="end"
-        android:maxLines="1"
-        android:textColor="#20AA5B"
-        android:textSize="12sp"
-        android:textStyle="bold" />
+        android:layout_marginTop="2dp"
+        android:layout_marginBottom="2dp"
+        android:gravity="center_vertical"
+        android:paddingLeft="6dp"
+        android:paddingTop="1dp"
+        android:paddingRight="6dp"
+        android:paddingBottom="1dp">
+
+        <TextView
+            android:id="@+id/karoo_profile_guidance"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:ellipsize="end"
+            android:gravity="center"
+            android:maxLines="2"
+        android:textColor="@color/gm_field_primary_text"
+            android:textSize="16sp"
+            android:textStyle="bold" />
+    </LinearLayout>
 
     <ImageView
         android:id="@+id/karoo_profile_image"
@@ -41,5 +64,33 @@
         android:layout_height="0dp"
         android:layout_weight="1"
         android:contentDescription="@string/karoo_profile_content_description"
-        android:scaleType="fitXY" />
+        android:scaleType="fitCenter" />
+
+    <LinearLayout
+        android:id="@+id/karoo_profile_footer"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:gravity="center_vertical"
+        android:orientation="horizontal">
+
+        <TextView
+            android:id="@+id/karoo_profile_execution"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:ellipsize="end"
+            android:maxLines="1"
+            android:textColor="@color/gm_field_primary_text"
+            android:textSize="12sp"
+            android:textStyle="bold" />
+
+        <TextView
+            android:id="@+id/karoo_profile_remaining"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:ellipsize="end"
+            android:maxLines="1"
+            android:textColor="@color/gm_field_secondary_text"
+            android:textSize="12sp" />
+    </LinearLayout>
 </LinearLayout>

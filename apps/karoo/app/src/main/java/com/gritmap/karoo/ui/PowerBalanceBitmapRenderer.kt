@@ -7,11 +7,19 @@ import android.graphics.Paint
 import kotlin.math.max
 
 /** Renders rolling power as a filled bar with a fixed white target marker. */
-class PowerBalanceBitmapRenderer {
-    private val background = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = Color.rgb(48, 53, 60) }
+class PowerBalanceBitmapRenderer(
+    palette: KarooVisualPalette = KarooVisualPalette.Dark,
+) {
+    private val background = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        color = if (palette == KarooVisualPalette.Dark) {
+            Color.rgb(48, 53, 60)
+        } else {
+            Color.rgb(218, 222, 227)
+        }
+    }
     private val fill = Paint(Paint.ANTI_ALIAS_FLAG)
     private val targetMarker = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-        color = Color.WHITE
+        color = palette.primaryText
         strokeWidth = 4f
     }
 
@@ -23,10 +31,22 @@ class PowerBalanceBitmapRenderer {
         canvas.drawRoundRect(0f, 0f, safeWidth.toFloat(), safeHeight.toFloat(), 12f, 12f, background)
         if (actualWatts == null || targetWatts == null || targetWatts <= 0) return bitmap
 
-        val maximum = max(targetWatts * 1.5, actualWatts.toDouble()).coerceAtLeast(1.0)
+        // A stable 0-150% target scale prevents the target marker from jumping when power changes.
+        val maximum = (targetWatts * 1.5).coerceAtLeast(1.0)
         val targetX = (targetWatts / maximum * safeWidth).toFloat().coerceIn(0f, safeWidth.toFloat())
         val actualX = (actualWatts / maximum * safeWidth).toFloat().coerceIn(0f, safeWidth.toFloat())
         val tolerance = max(15.0, targetWatts * 0.1)
+        val lowerX = ((targetWatts - tolerance) / maximum * safeWidth).toFloat().coerceAtLeast(0f)
+        val upperX = ((targetWatts + tolerance) / maximum * safeWidth).toFloat()
+            .coerceAtMost(safeWidth.toFloat())
+        fill.alpha = 72
+        fill.color = Color.rgb(29, 125, 220)
+        canvas.drawRoundRect(0f, 0f, lowerX, safeHeight.toFloat(), 12f, 12f, fill)
+        fill.color = Color.rgb(32, 170, 91)
+        canvas.drawRect(lowerX, 0f, upperX, safeHeight.toFloat(), fill)
+        fill.color = Color.rgb(231, 91, 64)
+        canvas.drawRoundRect(upperX, 0f, safeWidth.toFloat(), safeHeight.toFloat(), 12f, 12f, fill)
+        fill.alpha = 210
         fill.color = when {
             actualWatts < targetWatts - tolerance -> Color.rgb(29, 125, 220)
             actualWatts > targetWatts + tolerance -> Color.rgb(231, 91, 64)
@@ -34,6 +54,7 @@ class PowerBalanceBitmapRenderer {
         }
         canvas.drawRoundRect(0f, 0f, actualX, safeHeight.toFloat(), 12f, 12f, fill)
         canvas.drawLine(targetX, 0f, targetX, safeHeight.toFloat(), targetMarker)
+        canvas.drawCircle(actualX.coerceIn(6f, safeWidth - 6f), safeHeight / 2f, 6f, targetMarker)
         return bitmap
     }
 }

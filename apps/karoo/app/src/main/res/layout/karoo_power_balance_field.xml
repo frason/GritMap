@@ -2,7 +2,7 @@
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="#121417"
+    android:background="@color/gm_field_background"
     android:gravity="center_vertical"
     android:orientation="vertical"
     android:padding="8dp">
@@ -12,7 +12,7 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:text="3s power / target"
-        android:textColor="#FFFFFF"
+        android:textColor="@color/gm_field_primary_text"
         android:textSize="13sp"
         android:textStyle="bold" />
 
@@ -20,21 +20,22 @@
         android:id="@+id/karoo_power_balance_values"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:textColor="#FFFFFF"
+        android:textColor="@color/gm_field_primary_text"
         android:textSize="18sp"
         android:textStyle="bold" />
 
     <ImageView
         android:id="@+id/karoo_power_balance_bar"
         android:layout_width="match_parent"
-        android:layout_height="24dp"
+        android:layout_height="0dp"
+        android:layout_weight="1"
         android:contentDescription="Rolling power compared with target power"
-        android:scaleType="fitXY" />
+        android:scaleType="fitCenter" />
 
     <TextView
         android:id="@+id/karoo_power_balance_delta"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:textColor="#D0D4DA"
+        android:textColor="@color/gm_field_secondary_text"
         android:textSize="11sp" />
 </LinearLayout>

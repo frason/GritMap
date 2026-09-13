@@ -2,7 +2,7 @@
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="#121417"
+    android:background="@color/gm_field_background"
     android:orientation="vertical"
     android:padding="8dp">
 
@@ -12,7 +12,7 @@
         android:layout_height="wrap_content"
         android:ellipsize="end"
         android:maxLines="1"
-        android:textColor="#FFFFFF"
+        android:textColor="@color/gm_field_primary_text"
         android:textSize="14sp"
         android:textStyle="bold" />
 
@@ -28,9 +28,16 @@
         android:id="@+id/karoo_performance_finish"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:textColor="#FFFFFF"
+        android:textColor="@color/gm_field_primary_text"
         android:textSize="22sp"
         android:textStyle="bold" />
+
+    <ImageView
+        android:id="@+id/karoo_performance_graph"
+        android:layout_width="match_parent"
+        android:layout_height="38dp"
+        android:contentDescription="Predicted finish compared with plan and segment progress"
+        android:scaleType="fitCenter" />
 
     <TextView
         android:id="@+id/karoo_performance_adherence"
@@ -43,6 +50,6 @@
         android:id="@+id/karoo_performance_progress"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:textColor="#D0D4DA"
+        android:textColor="@color/gm_field_secondary_text"
         android:textSize="12sp" />
 </LinearLayout>

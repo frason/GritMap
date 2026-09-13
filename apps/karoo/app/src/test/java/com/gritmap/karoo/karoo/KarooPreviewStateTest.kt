@@ -1,41 +1,36 @@
 package com.gritmap.karoo.karoo
 
-import com.gritmap.karoo.ui.state.Effort
-import com.gritmap.karoo.ui.state.LiveUiState
-import io.hammerhead.karooext.models.DataType
-import io.hammerhead.karooext.models.StreamState
+import com.gritmap.karoo.ui.state.GuidanceIcon
 import org.junit.Assert.assertEquals
-import org.junit.Assert.assertSame
+import org.junit.Assert.assertNotEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class KarooPreviewStateTest {
     @Test
-    fun `preview has a complete representative pacing profile`() {
-        val preview = stateForKarooView(LiveUiState.Idle, preview = true)
+    fun `preview advances progress sensors predictions and drift`() {
+        val early = karooPreviewStateAt(0)
+        val late = karooPreviewStateAt(10)
 
-        assertEquals("Coco Jumbo", preview.segmentName)
-        assertEquals(533.0, preview.totalDistanceMeters, 0.0)
-        assertTrue(preview.elevationProfile.size >= 2)
-        assertEquals(listOf(Effort.RECOVER, Effort.HOLD, Effort.PUSH), preview.pacingZones.map { it.effort })
-        assertEquals(260, preview.recommendation?.targetPowerWatts)
+        assertTrue(late.progressMeters > early.progressMeters)
+        assertNotEquals(late.rollingPowerWatts3s, early.rollingPowerWatts3s)
+        assertTrue(requireNotNull(late.currentHeartRateBpm) > requireNotNull(early.currentHeartRateBpm))
+        assertTrue(requireNotNull(early.cardiacDriftPct) < 0.0)
+        assertTrue(requireNotNull(late.cardiacDriftPct) > 0.0)
+        assertTrue(late.cardiacDriftHistory.size > early.cardiacDriftHistory.size)
+        assertNotEquals(late.predictedFinishSeconds, early.predictedFinishSeconds)
     }
 
     @Test
-    fun `numeric preview emits representative watts`() {
-        val stream = targetPowerStreamState(KarooPreviewState, DATA_TYPE_ID) as StreamState.Streaming
-
-        assertEquals(mapOf(DataType.Field.SINGLE to 260.0), stream.dataPoint.values)
+    fun `preview traverses recover hold and push zones`() {
+        assertEquals(GuidanceIcon.RECOVER, karooPreviewStateAt(0).recommendation?.icon)
+        assertEquals(GuidanceIcon.HOLD, karooPreviewStateAt(5).recommendation?.icon)
+        assertEquals(GuidanceIcon.PUSH, karooPreviewStateAt(23).recommendation?.icon)
     }
 
     @Test
-    fun `non-preview uses unchanged live state`() {
-        val live = LiveUiState(segmentName = "Live segment")
-
-        assertSame(live, stateForKarooView(live, preview = false))
-    }
-
-    private companion object {
-        const val DATA_TYPE_ID = "gritmap-live-pacing:target-power"
+    fun `preview loop wraps deterministically`() {
+        assertEquals(karooPreviewStateAt(0), karooPreviewStateAt(24))
+        assertEquals(karooPreviewStateAt(1), karooPreviewStateAt(25))
     }
 }

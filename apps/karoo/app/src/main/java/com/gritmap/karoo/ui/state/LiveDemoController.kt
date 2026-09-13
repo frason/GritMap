@@ -60,10 +60,34 @@ internal fun demoPlanState(tick: Int): LiveUiState {
     val rollingPower = (zone.targetPowerWatts + powerOffsets[safeTick % powerOffsets.size])
         .coerceAtLeast(0)
     val heartRate = (128 + progressFraction * 38).roundToInt()
+    val driftHistory = (0..activeTick).map { point ->
+        val pointProgress = point.toFloat() / DEMO_COMPLETION_TICK
+        CardiacDriftSample(pointProgress, -0.5 + pointProgress * 7.0)
+    }
+    val executionHistory = (0..activeTick).map { point ->
+        val pointProgress = point.toDouble() / DEMO_COMPLETION_TICK
+        val pointDistance = pointProgress * DEMO_DISTANCE_METERS
+        val pointZone = zones.firstOrNull {
+            pointDistance >= it.startDistanceMeters && pointDistance < it.endDistanceMeters
+        } ?: zones.last()
+        PowerExecutionSample(
+            distanceMeters = pointDistance,
+            actualWatts = (pointZone.targetPowerWatts + powerOffsets[point % powerOffsets.size])
+                .coerceAtLeast(0),
+            targetWatts = pointZone.targetPowerWatts,
+        )
+    }
     val instruction = when (zone.effort) {
         Effort.RECOVER -> "Settle and breathe"
         Effort.HOLD -> "Hold steady"
         Effort.PUSH -> "Push to the summit"
+    }
+    val targetGapMeters = when (safeTick) {
+        in 0..6 -> doubleArrayOf(8.0, 5.0, 2.0, 0.0, -2.0, -5.0, -8.0)[safeTick]
+        in 7..13 -> 120.0 - (safeTick - 7) * 4.0
+        in 14..20 -> doubleArrayOf(8.0, 5.0, 2.0, 0.0, -2.0, -5.0, -8.0)[safeTick - 14]
+        in 21..27 -> -120.0 + (safeTick - 21) * 4.0
+        else -> 0.0
     }
     return LiveUiState(
         segmentName = "GM Demo Climb",
@@ -79,7 +103,12 @@ internal fun demoPlanState(tick: Int): LiveUiState {
         currentPowerWatts = rollingPower,
         rollingPowerWatts3s = rollingPower,
         currentHeartRateBpm = heartRate,
+        powerExecutionHistory = executionHistory,
+        cardiacDriftPct = driftHistory.last().driftPct,
+        cardiacDriftHistory = driftHistory,
         plannedFinishSeconds = 160,
+        elapsedAttemptSeconds = 160.0 *
+            ((progress + targetGapMeters) / DEMO_DISTANCE_METERS).coerceIn(0.0, 1.0),
         predictedFinishSeconds = 168 - (safeTick % 9),
         planAdherencePct = (82 + safeTick % 12).coerceAtMost(93),
         sensorStatus = SensorStatus(

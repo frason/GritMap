@@ -93,6 +93,9 @@ interface PacingDao {
     @Query("SELECT * FROM pacing_plans WHERE segmentId = :segmentId AND isBaseline = 1 LIMIT 1")
     suspend fun baseline(segmentId: String): PacingPlanEntity?
 
+    @Query("SELECT * FROM pacing_zones WHERE planId = :planId ORDER BY startDistanceMeters")
+    suspend fun zones(planId: String): List<PacingZoneEntity>
+
     @Transaction
     suspend fun replacePlan(plan: PacingPlanEntity, zones: List<PacingZoneEntity>) {
         if (plan.isBaseline) deleteBaseline(plan.segmentId)

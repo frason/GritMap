@@ -130,12 +130,24 @@ KarooSystemService streams (1 Hz)
 Room writes: entry, material plan change, 30 s checkpoint, exit only
 ```
 
-The extension exposes two deliberately focused Karoo fields:
+Sensor callbacks only replace the latest in-memory values. The GPS cadence supplies the
+authoritative physical telemetry tick; values older than the freshness window are changed to
+missing before matching, aggregates, cardiac drift, or adaptive guidance see them. Each tick
+timestamp can be admitted only once, and plan/UI/completion transitions update state without
+incrementing sensor sample counts.
 
-- **GritMap Target Power** is a standard numeric field containing only the current
-  recommended watt target.
-- **GritMap Pacing Profile** is a graphical `RemoteViews` field containing the elevation
-  profile, recover/hold/push color regions, and current-position marker.
+The extension exposes nine Karoo fields: **GM Pacing Coach**, **GM Target Power**,
+**GM Power Delta**, **GM Predicted Finish**, **GM Pacing Profile**, **GM Segment
+Performance**, **GM Watts/HR**, **GM Power Balance**, and **GM Cardiac Drift**. Target,
+delta, and predicted finish are compact numeric fields; the others use graphical
+`RemoteViews` to combine related information without trying to inject Compose into Karoo.
+
+GM Cardiac Drift waits 45 seconds for heart-rate response, freezes the first complete
+30-second rolling power/HR efficiency window as its baseline, then plots the percentage
+change over segment progress. Positive drift means the current rolling power-to-HR ratio has
+fallen relative to that baseline. The field calls this a live trend rather than formal
+aerobic decoupling because short climbs, variable pacing, temperature, and HR lag limit the
+physiological interpretation.
 
 The profile retains the original `live-pacing` type ID so existing page configurations
 upgrade to the dedicated graph. Graphical updates are limited to at most one per second and

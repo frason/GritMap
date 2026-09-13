@@ -2,4 +2,7 @@
 <resources>
     <color name="gritmap_alert_background">#173F2A</color>
     <color name="gritmap_alert_text">#FFFFFF</color>
+    <color name="gm_field_background">#F7F8FA</color>
+    <color name="gm_field_primary_text">#121417</color>
+    <color name="gm_field_secondary_text">#4C535C</color>
 </resources>

@@ -19,8 +19,8 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.collect
+import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
 
 abstract class PreviewNumericDataType(
@@ -37,14 +37,17 @@ abstract class PreviewNumericDataType(
     override fun startStream(emitter: Emitter<StreamState>) {
         val scope = CoroutineScope(Job() + Dispatchers.Default)
         scope.launch {
-            combine(state, previewActive) { liveState, preview ->
-                val displayState = stateForKarooView(liveState, preview)
-                numericStreamState(
-                    value(displayState),
-                    displayState.matchStatus,
-                    dataTypeId,
-                )
-            }.collect(emitter::onNext)
+            previewActive.collectLatest { preview ->
+                (if (preview) karooPreviewFlow() else state).collect { displayState ->
+                    emitter.onNext(
+                        numericStreamState(
+                            value(displayState),
+                            displayState.matchStatus,
+                            dataTypeId,
+                        ),
+                    )
+                }
+            }
         }
         emitter.setCancellable { scope.cancel() }
     }
@@ -79,9 +82,26 @@ class PredictedFinishDataType(extensionId: String) : PreviewNumericDataType(
     TYPE_ID,
     DataType.Type.ELAPSED_TIME,
 ) {
-    override fun value(state: LiveUiState): Double? = state.predictedFinishSeconds?.toDouble()
+    override fun value(state: LiveUiState): Double? = predictedFinishElapsedTimeValue(state)
 
     companion object { const val TYPE_ID = "predicted-finish" }
+}
+
+/** Karoo's native elapsed-time formatter consumes milliseconds, while domain state uses seconds. */
+internal fun predictedFinishElapsedTimeValue(state: LiveUiState): Double? =
+    state.predictedFinishSeconds?.times(1_000.0)
+
+/** Native Karoo numeric treatment for GritMap's calculated power-to-heart-rate ratio. */
+class WattsPerHeartRateDataType(extensionId: String) : PreviewNumericDataType(
+    extensionId,
+    TYPE_ID,
+    // Intensity factor supplies the native decimal precision needed by this unitless ratio.
+    // The extension field name communicates the W/bpm meaning; Karoo has no custom-unit API.
+    DataType.Type.INTENSITY_FACTOR,
+) {
+    override fun value(state: LiveUiState): Double? = state.wattsPerHeartRate
+
+    companion object { const val TYPE_ID = "watts-per-hr" }
 }
 
 internal fun numericStreamState(

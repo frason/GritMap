@@ -20,6 +20,9 @@ class LiveDemoControllerTest {
         assertTrue(hold.currentHeartRateBpm != null)
         assertTrue(hold.wattsPerHeartRate != null)
         assertTrue(hold.planAdherencePct != null)
+        assertEquals(13, hold.powerExecutionHistory.size)
+        assertEquals(hold.progressMeters, hold.powerExecutionHistory.last().distanceMeters, 0.001)
+        assertTrue(hold.powerExecutionHistory.all { it.actualWatts > 0 && it.targetWatts > 0 })
     }
 
     @Test
@@ -31,5 +34,16 @@ class LiveDemoControllerTest {
         assertEquals(1f, complete.progressFraction)
         assertEquals(MatchStatus.ACTIVE, restarted.matchStatus)
         assertEquals(0f, restarted.progressFraction)
+    }
+
+    @Test
+    fun `demo exposes close and far virtual pacer phases`() {
+        val close = demoPlanState(3)
+        val farAhead = demoPlanState(7)
+        val farBehind = demoPlanState(21)
+
+        assertEquals(0.0, requireNotNull(close.targetProgressMeters) - close.progressMeters, 0.001)
+        assertEquals(120.0, requireNotNull(farAhead.targetProgressMeters) - farAhead.progressMeters, 0.001)
+        assertEquals(-120.0, requireNotNull(farBehind.targetProgressMeters) - farBehind.progressMeters, 0.001)
     }
 }

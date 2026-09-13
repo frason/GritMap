@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="gm_field_background">#121417</color>
+    <color name="gm_field_primary_text">#FFFFFF</color>
+    <color name="gm_field_secondary_text">#D0D4DA</color>
+</resources>

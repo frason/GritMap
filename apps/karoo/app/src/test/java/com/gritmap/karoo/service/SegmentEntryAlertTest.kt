@@ -35,8 +35,8 @@ class SegmentEntryAlertTest {
         val active = session.uiState.copy(
             sensorStatus = com.gritmap.karoo.ui.state.SensorStatus(power = true),
         )
-        session.accept(LiveTelemetry(2_000L, powerWatts = 250.0, heartRateBpm = 140.0), active)
-        session.accept(LiveTelemetry(3_000L, powerWatts = 270.0, heartRateBpm = 150.0), active)
+        session.recordTelemetryTick(LiveTelemetry(2_000L, powerWatts = 250.0, heartRateBpm = 140.0), active)
+        session.recordTelemetryTick(LiveTelemetry(3_000L, powerWatts = 270.0, heartRateBpm = 150.0), active)
 
         val alert = segmentCompletionAlert(session, completedAtMs = 169_001L)
 

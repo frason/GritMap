@@ -131,7 +131,7 @@ class LiveSegmentService : Service() {
     /** Called only after a validated plan materially changes. */
     fun publishPlanChange(state: LiveUiState) {
         val session = activeSession ?: return
-        session.accept(telemetry, state)
+        session.updateUiState(state)
         publish(state)
         scope.launch(Dispatchers.IO) { eventSink.onPlanChanged(session) }
     }
@@ -154,7 +154,7 @@ class LiveSegmentService : Service() {
         } else {
             com.gritmap.karoo.ui.state.MatchStatus.ABANDONED
         }
-        session.accept(telemetry, session.uiState.copy(matchStatus = finalStatus))
+        session.updateUiState(session.uiState.copy(matchStatus = finalStatus))
         if (reason == "completed") {
             val alertSent = karooSystem.dispatch(segmentCompletionAlert(session, telemetry.timestampMs))
             LiveDiagnostics.record(
@@ -238,9 +238,10 @@ class LiveSegmentService : Service() {
     private fun onTelemetry() {
         if (!recording) return
         val sensors = SensorFreshness.status(telemetry)
+        val sample = telemetry.sanitized(sensors)
         scope.launch {
             try {
-                coordinator.process(telemetry, sensors)
+                coordinator.process(sample, sensors)
             } catch (error: Exception) {
                 LiveDiagnostics.record(
                     this@LiveSegmentService,
@@ -254,9 +255,16 @@ class LiveSegmentService : Service() {
     private fun updateAttempt(sample: LiveTelemetry, state: LiveUiState, maxDeviationMeters: Double) {
         val session = activeSession ?: return
         session.recordDeviation(maxDeviationMeters)
-        val enriched = enrichLiveMetrics(state, session, sample)
-        session.accept(sample, enriched)
-        val published = enriched.copy(planAdherencePct = session.planAdherencePct())
+        val drift = session.recordCardiacDrift(sample, state.progressFraction)
+        val enriched = enrichLiveMetrics(state, session, sample).copy(
+            cardiacDriftPct = drift.driftPct,
+            cardiacDriftHistory = drift.history,
+        )
+        session.recordTelemetryTick(sample, enriched)
+        val published = enriched.copy(
+            planAdherencePct = session.planAdherencePct(),
+            powerExecutionHistory = session.powerExecutionSamples(),
+        )
         session.updateUiState(published)
         publish(published)
         if (sample.timestampMs - lastCheckpointMs >= CHECKPOINT_INTERVAL_MS) {
@@ -358,6 +366,8 @@ internal fun enrichLiveMetrics(
             ?.takeIf { state.sensorStatus.heartRate }
             ?.roundToInt(),
         predictedFinishSeconds = predictedFinish,
+        elapsedAttemptSeconds = elapsedSeconds,
+        wPrime = session.updateWPrime(sample, state),
     )
 }
 

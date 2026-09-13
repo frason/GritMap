@@ -19,7 +19,7 @@ import kotlinx.coroutines.cancel
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.collect
-import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
 import java.util.concurrent.atomic.AtomicInteger
 
@@ -34,9 +34,11 @@ class TargetPowerDataType(
     override fun startStream(emitter: Emitter<StreamState>) {
         val scope = CoroutineScope(Job() + Dispatchers.Default)
         scope.launch {
-            combine(state, previewActive) { liveState, preview ->
-                targetPowerStreamState(stateForKarooView(liveState, preview), dataTypeId)
-            }.collect(emitter::onNext)
+            previewActive.collectLatest { preview ->
+                (if (preview) karooPreviewFlow() else state).collect { displayState ->
+                    emitter.onNext(targetPowerStreamState(displayState, dataTypeId))
+                }
+            }
         }
         emitter.setCancellable { scope.cancel() }
     }

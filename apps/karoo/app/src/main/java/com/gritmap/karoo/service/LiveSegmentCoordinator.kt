@@ -2,6 +2,7 @@ package com.gritmap.karoo.service
 
 import com.gritmap.karoo.data.KarooDatabase
 import com.gritmap.karoo.data.SegmentEntity
+import com.gritmap.karoo.data.PacingZoneEntity
 import com.gritmap.karoo.domain.GeoPoint
 import com.gritmap.karoo.domain.SegmentDefinition
 import com.gritmap.karoo.matching.CandidateScore
@@ -37,6 +38,7 @@ class LiveSegmentCoordinator(
         val matcher: DirectedLiveMatcher,
         val ftpWatts: Int?,
         val plannedFinishSeconds: Int?,
+        val baselineZones: List<PacingZoneEntity>,
     )
 
     private val mutex = Mutex()
@@ -137,11 +139,13 @@ class LiveSegmentCoordinator(
             val matcher = DirectedLiveMatcher(definition)
             if (matcher.canStart(lat, lng)) {
                 val baselinePlan = database.pacingDao().baseline(entity.id)
+                val baselineZones = baselinePlan?.let { database.pacingDao().zones(it.id) }.orEmpty()
                 candidates[entity.id] = Candidate(
                     definition,
                     matcher,
                     ftpWatts,
                     baselinePlan?.targetFinishTimeSeconds,
+                    baselineZones,
                 )
                 diagnostic("candidate_discovered", "segment=${entity.id} nearby=${nearby.size}")
             }
@@ -183,18 +187,32 @@ class LiveSegmentCoordinator(
         val profile = definition.referencePolyline.map {
             ElevationSample(it.distanceMeters, it.elevationMeters ?: 0.0)
         }
-        val provisional = candidate.ftpWatts?.let {
+        val provisional = if (candidate.baselineZones.isEmpty()) candidate.ftpWatts?.let {
             ProvisionalPacingPlanner.create(SegmentPacingInput(total, it))
+        } else null
+        val zones = if (candidate.baselineZones.isNotEmpty()) {
+            candidate.baselineZones.map {
+                PacingZone(
+                    it.startDistanceMeters,
+                    it.endDistanceMeters,
+                    it.targetPowerWatts,
+                    Effort.valueOf(it.classification.uppercase()),
+                )
+            }
+        } else {
+            provisional?.zones.orEmpty().map {
+                PacingZone(
+                    it.startDistanceMeters,
+                    it.endDistanceMeters,
+                    it.targetPowerWatts,
+                    Effort.valueOf(it.classification.name),
+                )
+            }
         }
-        val zones = provisional?.zones.orEmpty().map {
-            PacingZone(
-                it.startDistanceMeters,
-                it.endDistanceMeters,
-                it.targetPowerWatts,
-                Effort.valueOf(it.classification.name),
-            )
+        val baselineCurrent = candidate.baselineZones.firstOrNull {
+            progressMeters >= it.startDistanceMeters && progressMeters <= it.endDistanceMeters
         }
-        val current = provisional?.zones?.firstOrNull {
+        val provisionalCurrent = provisional?.zones?.firstOrNull {
             progressMeters >= it.startDistanceMeters && progressMeters <= it.endDistanceMeters
         }
         return LiveUiState(
@@ -203,7 +221,13 @@ class LiveSegmentCoordinator(
             totalDistanceMeters = total,
             elevationProfile = profile,
             pacingZones = zones,
-            recommendation = current?.let {
+            recommendation = baselineCurrent?.let {
+                Recommendation(
+                    it.targetPowerWatts,
+                    it.instruction,
+                    GuidanceIcon.valueOf(it.icon.uppercase()),
+                )
+            } ?: provisionalCurrent?.let {
                 Recommendation(
                     it.targetPowerWatts,
                     it.instruction,
