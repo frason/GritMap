@@ -7,8 +7,8 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { useDatabase } from "../db/DatabaseProvider";
 import { computeFileHash } from "../import/computeFileHash";
 import type { DuplicateRule } from "../import/findDuplicate";
-import { importFitFile, type ImportFitFileInput } from "../import/importFitFile";
-import { deleteRetainedFile, retainFitFile } from "../import/retainFitFile";
+import { importRideFile, type ImportRideFileInput } from "../import/importRideFile";
+import { deleteRetainedFile, retainRideFile } from "../import/retainFitFile";
 import { runMatcherForRide } from "../matcher/runMatcher";
 import { colors } from "../theme/colors";
 import { Icon } from "../theme/Icon";
@@ -63,9 +63,9 @@ export function ImportScreen() {
     try {
       const bytes = await new File(uri).bytes();
       const contentHash = await computeFileHash(bytes);
-      retained = retainFitFile(uri, generateId);
+      retained = retainRideFile(uri, filename, generateId);
 
-      const input: ImportFitFileInput = {
+      const input: ImportRideFileInput = {
         bytes,
         filename,
         contentHash,
@@ -74,7 +74,7 @@ export function ImportScreen() {
         nowMs: Date.now(),
       };
 
-      const result = importFitFile(database, generateId, input);
+      const result = importRideFile(database, generateId, input);
 
       if (result.status === "imported") {
         runMatcherForRide(database, generateId, result.rideId, Date.now());
@@ -88,7 +88,7 @@ export function ImportScreen() {
         return;
       }
       if (result.status !== "duplicate") {
-        // Unreachable in practice: importFitFile only returns duplicate-kept/replaced when a
+        // Unreachable in practice: importRideFile only returns duplicate-kept/replaced when a
         // resolution was passed, and this is the first, resolution-less call -- handled
         // defensively rather than assumed away.
         deleteRetainedFile(retained.uri);
@@ -104,7 +104,7 @@ export function ImportScreen() {
         return;
       }
 
-      const replaceResult = importFitFile(database, generateId, input, "replace");
+      const replaceResult = importRideFile(database, generateId, input, "replace");
       if (replaceResult.status === "replaced") {
         if (replaceResult.previousRetainedFileUri) {
           deleteRetainedFile(replaceResult.previousRetainedFileUri);
@@ -159,7 +159,7 @@ export function ImportScreen() {
       {rows.length === 0 ? (
         <View style={styles.emptyState}>
           <Icon name="file" color="textTertiary" size={40} />
-          <Text style={styles.emptyTitle}>Select FIT files to import</Text>
+          <Text style={styles.emptyTitle}>Select FIT or GPX files to import</Text>
           <TouchableOpacity
             style={styles.primaryButton}
             onPress={handleImportPress}

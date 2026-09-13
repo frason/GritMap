@@ -6,9 +6,9 @@ import { describe, it } from "node:test";
 
 import { applyMigrations } from "../db/migrations.ts";
 import type { SyncDatabase } from "../db/types.ts";
-import { importFitFile } from "./importFitFile.ts";
+import { importRideFile } from "./importRideFile.ts";
 
-/** Mirrors toSyncDatabase.ts's shape, same pattern as importFitFile.test.ts. */
+/** Mirrors toSyncDatabase.ts's shape, same pattern as importRideFile.test.ts. */
 function toTestSyncDatabase(database: DatabaseSync): SyncDatabase {
   return {
     exec: (sql) => database.exec(sql),
@@ -57,7 +57,7 @@ describe("batch import at MVP acceptance scale", () => {
     const startedAtMs = Date.now();
     for (const file of batch) {
       const contentHash = createHash("sha256").update(file.bytes).digest("hex");
-      const result = importFitFile(database, generateId, {
+      const result = importRideFile(database, generateId, {
         bytes: file.bytes,
         filename: file.filename,
         contentHash,

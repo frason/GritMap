@@ -1,4 +1,5 @@
-import { PARSER_VERSION, parseFitFile } from "../fit/parseFitFile.ts";
+import { PARSER_VERSION, parseFitFile, type ParsedRide } from "../fit/parseFitFile.ts";
+import { GPX_PARSER_VERSION, looksLikeGpx, parseGpxFile } from "../gpx/parseGpxFile.ts";
 import type { RideIdentityDatabase } from "../db/getRideIdentity.ts";
 import { listRideIdentities } from "../db/getRideIdentity.ts";
 import {
@@ -10,7 +11,7 @@ import type { SyncDatabase } from "../db/types.ts";
 import { findDuplicate, type CandidateRideIdentity, type DuplicateRule } from "./findDuplicate.ts";
 import { extractRideIdentity } from "./fitIdentity.ts";
 
-export interface ImportFitFileInput {
+export interface ImportRideFileInput {
   bytes: ArrayBuffer | Uint8Array;
   filename: string;
   contentHash: string;
@@ -19,7 +20,7 @@ export interface ImportFitFileInput {
   nowMs: number;
 }
 
-export type ImportFitFileResult =
+export type ImportRideFileResult =
   | { status: "imported"; rideId: string }
   | { status: "duplicate"; matchedRideId: string; matchedRule: DuplicateRule }
   | { status: "duplicate-kept"; matchedRideId: string }
@@ -29,24 +30,32 @@ export type ImportFitFileResult =
 type ImportDatabase = SyncDatabase & RideIdentityDatabase;
 
 /**
- * Parses, deduplicates, and persists one FIT file. Deliberately has no filesystem access --
- * retaining the picked file (and cleaning it up on failure/duplicate/replace) is the caller's
- * job, since that's a platform-specific concern this function shouldn't need to be tested
- * against (see the Import screen, which owns that ordering).
+ * Parses, deduplicates, and persists one ride file (FIT or GPX -- distinguished by content,
+ * not the picked filename/extension, via looksLikeGpx). Deliberately has no filesystem access
+ * -- retaining the picked file (and cleaning it up on failure/duplicate/replace) is the
+ * caller's job, since that's a platform-specific concern this function shouldn't need to be
+ * tested against (see the Import screen, which owns that ordering).
  *
  * With no `resolution`, a duplicate is detected but nothing is written -- detection and
  * writing are cleanly separated so nothing is transactional until a resolution is known.
  */
-export function importFitFile(
+export function importRideFile(
   database: ImportDatabase,
   generateId: () => string,
-  input: ImportFitFileInput,
+  input: ImportRideFileInput,
   resolution?: "keep" | "replace",
-): ImportFitFileResult {
-  let parsed: ReturnType<typeof parseFitFile>;
+): ImportRideFileResult {
+  let parsed: ParsedRide;
+  let parserVersion: number;
   let identity: ReturnType<typeof extractRideIdentity>;
   try {
-    parsed = parseFitFile(input.bytes);
+    if (looksLikeGpx(input.bytes)) {
+      parsed = parseGpxFile(input.bytes);
+      parserVersion = GPX_PARSER_VERSION;
+    } else {
+      parsed = parseFitFile(input.bytes);
+      parserVersion = PARSER_VERSION;
+    }
     identity = extractRideIdentity(parsed);
   } catch (error) {
     return { status: "failed", error: messageOf(error) };
@@ -67,7 +76,7 @@ export function importFitFile(
     retainedFileUri: input.retainedFileUri,
     fileSizeBytes: input.fileSizeBytes,
     points: parsed.points,
-    parserVersion: PARSER_VERSION,
+    parserVersion,
     deviceMetadataJson: JSON.stringify(parsed.deviceMetadata),
     startTimestampMs: identity.startTimestampMs,
     durationMs: identity.durationMs,
