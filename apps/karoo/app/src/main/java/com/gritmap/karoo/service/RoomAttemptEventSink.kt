@@ -21,7 +21,7 @@ class RoomAttemptEventSink(private val database: KarooDatabase) : AttemptEventSi
                 outcome = "ACTIVE",
                 outcomeReason = null,
                 matcherVersion = LIVE_MATCHER_VERSION,
-                pacingPlanId = null,
+                pacingPlanId = session.pacingPlanId,
                 averagePowerWatts = null,
                 averageHeartRateBpm = null,
                 averageCadenceRpm = null,
@@ -59,7 +59,7 @@ class RoomAttemptEventSink(private val database: KarooDatabase) : AttemptEventSi
                 progressMeters = session.uiState.progressMeters,
                 coveragePct = session.uiState.progressFraction.toDouble(),
                 maxDeviationMeters = session.maxDeviationMeters,
-                pacingPlanId = null,
+                pacingPlanId = session.pacingPlanId,
             ),
         )
     }
