@@ -6,10 +6,11 @@ import { createHash } from "node:crypto";
 
 import { applyMigrations } from "../db/migrations.ts";
 import type { SyncDatabase } from "../db/types.ts";
-import { importFitFile, type ImportFitFileInput } from "./importFitFile.ts";
+import { importRideFile, type ImportRideFileInput } from "./importRideFile.ts";
 
 const FIXTURE_A = "fixtures/fit/Karoo-Morning_Ride-2026-08-02-0837.fit";
 const FIXTURE_B = "fixtures/fit/Karoo-Morning_Ride-2026-08-09-0844.fit";
+const GPX_FIXTURE = "fixtures/gpx/Tilden_Inspiration_1_5_Bears_turnaround_repeat.gpx";
 
 /** Mirrors toSyncDatabase.ts's shape; node:sqlite statements don't need manual finalization. */
 function toTestSyncDatabase(database: DatabaseSync): SyncDatabase {
@@ -45,7 +46,7 @@ function hashOf(bytes: Uint8Array): string {
   return createHash("sha256").update(bytes).digest("hex");
 }
 
-function inputFor(path: string, overrides: Partial<ImportFitFileInput> = {}): ImportFitFileInput {
+function inputFor(path: string, overrides: Partial<ImportRideFileInput> = {}): ImportRideFileInput {
   const bytes = new Uint8Array(readFileSync(path));
   return {
     bytes,
@@ -58,10 +59,10 @@ function inputFor(path: string, overrides: Partial<ImportFitFileInput> = {}): Im
   };
 }
 
-describe("importFitFile", () => {
+describe("importRideFile", () => {
   it("imports a fresh real Karoo fixture end to end", () => {
     const database = migratedDatabase();
-    const result = importFitFile(database, sequentialIdFactory("id"), inputFor(FIXTURE_A));
+    const result = importRideFile(database, sequentialIdFactory("id"), inputFor(FIXTURE_A));
 
     assert.equal(result.status, "imported");
     if (result.status !== "imported") return;
@@ -76,9 +77,9 @@ describe("importFitFile", () => {
   it("detects a re-import of the same bytes as a content-hash duplicate, without writing", () => {
     const database = migratedDatabase();
     const generateId = sequentialIdFactory("id");
-    importFitFile(database, generateId, inputFor(FIXTURE_A));
+    importRideFile(database, generateId, inputFor(FIXTURE_A));
 
-    const result = importFitFile(database, generateId, inputFor(FIXTURE_A));
+    const result = importRideFile(database, generateId, inputFor(FIXTURE_A));
     assert.equal(result.status, "duplicate");
     if (result.status !== "duplicate") return;
     assert.equal(result.matchedRule, "content-hash");
@@ -91,10 +92,10 @@ describe("importFitFile", () => {
   it("'keep' resolution leaves the existing ride untouched and writes nothing new", () => {
     const database = migratedDatabase();
     const generateId = sequentialIdFactory("id");
-    const first = importFitFile(database, generateId, inputFor(FIXTURE_A));
+    const first = importRideFile(database, generateId, inputFor(FIXTURE_A));
     assert.equal(first.status, "imported");
 
-    const result = importFitFile(database, generateId, inputFor(FIXTURE_A), "keep");
+    const result = importRideFile(database, generateId, inputFor(FIXTURE_A), "keep");
     assert.equal(result.status, "duplicate-kept");
 
     assert.equal(
@@ -106,7 +107,7 @@ describe("importFitFile", () => {
   it("'replace' resolution updates the existing ride and returns the superseded file URI", () => {
     const database = migratedDatabase();
     const generateId = sequentialIdFactory("id");
-    const first = importFitFile(
+    const first = importRideFile(
       database,
       generateId,
       inputFor(FIXTURE_A, { retainedFileUri: "file:///fit-imports/original.fit" }),
@@ -114,7 +115,7 @@ describe("importFitFile", () => {
     assert.equal(first.status, "imported");
     if (first.status !== "imported") return;
 
-    const result = importFitFile(
+    const result = importRideFile(
       database,
       generateId,
       inputFor(FIXTURE_A, { retainedFileUri: "file:///fit-imports/replacement.fit", nowMs: 2_000 }),
@@ -132,10 +133,10 @@ describe("importFitFile", () => {
     );
   });
 
-  it("returns 'failed' for bytes that aren't a valid FIT file, without writing", () => {
+  it("returns 'failed' for bytes that aren't a valid FIT or GPX file, without writing", () => {
     const database = migratedDatabase();
     const bytes = new Uint8Array([1, 2, 3, 4]);
-    const result = importFitFile(database, sequentialIdFactory("id"), {
+    const result = importRideFile(database, sequentialIdFactory("id"), {
       bytes,
       filename: "not-a-fit-file.fit",
       contentHash: hashOf(bytes),
@@ -157,8 +158,8 @@ describe("importFitFile", () => {
     const badBytes = new Uint8Array([9, 9, 9]);
 
     const results = [
-      importFitFile(database, generateId, inputFor(FIXTURE_A)),
-      importFitFile(database, generateId, {
+      importRideFile(database, generateId, inputFor(FIXTURE_A)),
+      importRideFile(database, generateId, {
         bytes: badBytes,
         filename: "corrupt.fit",
         contentHash: hashOf(badBytes),
@@ -166,7 +167,7 @@ describe("importFitFile", () => {
         fileSizeBytes: badBytes.byteLength,
         nowMs: 1_000,
       }),
-      importFitFile(database, generateId, inputFor(FIXTURE_B)),
+      importRideFile(database, generateId, inputFor(FIXTURE_B)),
     ];
 
     assert.deepEqual(
@@ -182,11 +183,70 @@ describe("importFitFile", () => {
   it("distinguishes two different real rides as separate, non-duplicate imports", () => {
     const database = migratedDatabase();
     const generateId = sequentialIdFactory("id");
-    const first = importFitFile(database, generateId, inputFor(FIXTURE_A));
-    const second = importFitFile(database, generateId, inputFor(FIXTURE_B));
+    const first = importRideFile(database, generateId, inputFor(FIXTURE_A));
+    const second = importRideFile(database, generateId, inputFor(FIXTURE_B));
 
     assert.equal(first.status, "imported");
     assert.equal(second.status, "imported");
+    assert.equal(
+      (database.prepare("SELECT count(*) AS n FROM rides").get() as { n: number }).n,
+      2,
+    );
+  });
+
+  it("imports a real GPX file end to end, routed by content not filename", () => {
+    const database = migratedDatabase();
+    // Filename deliberately says ".fit" -- looksLikeGpx must sniff the real GPX content, not
+    // trust the picked filename/extension, since a picker can hand back any name.
+    const result = importRideFile(
+      database,
+      sequentialIdFactory("id"),
+      inputFor(GPX_FIXTURE, { filename: "mislabeled.fit" }),
+    );
+
+    assert.equal(result.status, "imported");
+    if (result.status !== "imported") return;
+
+    const ride = database
+      .prepare(
+        "SELECT parser_version, total_distance_meters, duration_ms FROM rides WHERE id = ?",
+      )
+      .get(result.rideId) as {
+      parser_version: number;
+      total_distance_meters: number;
+      duration_ms: number;
+    };
+    assert.equal(ride.parser_version, 1); // GPX_PARSER_VERSION, not FIT's PARSER_VERSION
+    assert.ok(ride.total_distance_meters > 0);
+    assert.ok(ride.duration_ms > 0);
+
+    const pointCount = (
+      database.prepare("SELECT count(*) AS n FROM ride_points WHERE ride_id = ?").get(
+        result.rideId,
+      ) as { n: number }
+    ).n;
+    assert.equal(pointCount, 5_207);
+  });
+
+  it("detects a re-import of the same GPX bytes as a content-hash duplicate", () => {
+    const database = migratedDatabase();
+    const generateId = sequentialIdFactory("id");
+    importRideFile(database, generateId, inputFor(GPX_FIXTURE));
+
+    const result = importRideFile(database, generateId, inputFor(GPX_FIXTURE));
+    assert.equal(result.status, "duplicate");
+    if (result.status !== "duplicate") return;
+    assert.equal(result.matchedRule, "content-hash");
+  });
+
+  it("does not confuse a GPX import with an unrelated FIT ride", () => {
+    const database = migratedDatabase();
+    const generateId = sequentialIdFactory("id");
+    const fitResult = importRideFile(database, generateId, inputFor(FIXTURE_A));
+    const gpxResult = importRideFile(database, generateId, inputFor(GPX_FIXTURE));
+
+    assert.equal(fitResult.status, "imported");
+    assert.equal(gpxResult.status, "imported");
     assert.equal(
       (database.prepare("SELECT count(*) AS n FROM rides").get() as { n: number }).n,
       2,
