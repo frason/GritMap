@@ -44,4 +44,18 @@ class ActiveAttemptSessionTest {
         assertEquals(245, history.last().actualWatts)
         assertEquals(250, history.last().targetWatts)
     }
+
+    @Test
+    fun `retains the pacing plan id it was started with`() {
+        val withPlan = ActiveAttemptSession(
+            "attempt", "segment", 0L, LiveUiState.Idle,
+            pacingPlanId = "diablo-northgate-junction-40m30-ftp280",
+        )
+        assertEquals("diablo-northgate-junction-40m30-ftp280", withPlan.pacingPlanId)
+
+        // No baseline plan was active (e.g. a provisional-only attempt) -- must not silently
+        // fabricate an id, matching the "missing sensor data stays missing" convention.
+        val withoutPlan = ActiveAttemptSession("attempt", "segment", 0L, LiveUiState.Idle)
+        assertEquals(null, withoutPlan.pacingPlanId)
+    }
 }

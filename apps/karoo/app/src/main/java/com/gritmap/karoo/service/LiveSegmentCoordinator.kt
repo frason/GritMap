@@ -8,6 +8,7 @@ import com.gritmap.karoo.domain.SegmentDefinition
 import com.gritmap.karoo.matching.CandidateScore
 import com.gritmap.karoo.matching.CandidateSelector
 import com.gritmap.karoo.matching.DirectedLiveMatcher
+import com.gritmap.karoo.matching.ForwardProgressGate
 import com.gritmap.karoo.matching.GeoProjection
 import com.gritmap.karoo.matching.LiveMatchDecision
 import com.gritmap.karoo.pacing.ProvisionalPacingPlanner
@@ -39,11 +40,13 @@ class LiveSegmentCoordinator(
         val ftpWatts: Int?,
         val plannedFinishSeconds: Int?,
         val baselineZones: List<PacingZoneEntity>,
+        val pacingPlanId: String?,
     )
 
     private val mutex = Mutex()
     private val selector = CandidateSelector(lockProgressMeters = 50.0)
     private val candidates = linkedMapOf<String, Candidate>()
+    private val forwardProgressGate = ForwardProgressGate()
     private var selectedId: String? = null
     private var lastEmptyDiscoveryDiagnosticMs = 0L
 
@@ -63,13 +66,21 @@ class LiveSegmentCoordinator(
             candidate.matcher.update(sample.timestampMs, lat, lng)
         }
         states.filterValues { it.decision == LiveMatchDecision.ABANDONED }
-            .keys.forEach { candidates.remove(it) }
+            .keys.forEach { candidates.remove(it); forwardProgressGate.remove(it) }
+
+        // Record this sample's progress for every surviving candidate before scoring, so a
+        // candidate can't be selected/started until it has sustained real forward movement --
+        // see ForwardProgressGate's doc for the real reverse-descent bug this closes.
+        val forwardConfirmed = candidates.keys.associateWith { id ->
+            forwardProgressGate.record(id, states.getValue(id).progressMeters)
+        }
 
         val scores = candidates.mapNotNull { (id, candidate) ->
             val state = states[id] ?: return@mapNotNull null
             CandidateScore(
                 segmentId = id,
-                directionValid = state.decision != LiveMatchDecision.ABANDONED,
+                directionValid = state.decision != LiveMatchDecision.ABANDONED &&
+                    forwardConfirmed.getValue(id),
                 progressMeters = state.furthestProgressMeters,
                 startDistanceMeters = GeoProjection.distanceMeters(
                     lat, lng,
@@ -122,6 +133,7 @@ class LiveSegmentCoordinator(
     fun reset() {
         candidates.clear()
         selector.reset()
+        forwardProgressGate.reset()
         selectedId = null
     }
 
@@ -146,6 +158,7 @@ class LiveSegmentCoordinator(
                     ftpWatts,
                     baselinePlan?.targetFinishTimeSeconds,
                     baselineZones,
+                    baselinePlan?.id,
                 )
                 diagnostic("candidate_discovered", "segment=${entity.id} nearby=${nearby.size}")
             }
@@ -174,6 +187,7 @@ class LiveSegmentCoordinator(
         startedAtMs = nowMs,
         initialUiState = uiState(candidate, 0.0, sensors, 0.0),
         ftpWatts = candidate.ftpWatts,
+        pacingPlanId = candidate.pacingPlanId,
     )
 
     private fun uiState(

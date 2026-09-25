@@ -65,6 +65,7 @@ class ActiveAttemptSession(
     val startedAtMs: Long,
     initialUiState: LiveUiState,
     val ftpWatts: Int? = null,
+    val pacingPlanId: String? = null,
     private val retentionMs: Long = 120_000L,
 ) {
     private val samples = ArrayDeque<LiveTelemetry>()
