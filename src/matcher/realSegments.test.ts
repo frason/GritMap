@@ -3,8 +3,7 @@ import { readFile } from "node:fs/promises";
 import { describe, it } from "node:test";
 
 import { parseFitFile } from "../fit/parseFitFile.ts";
-import { matchSegment, type SegmentDefinition } from "./matchSegment.ts";
-import { toMatcherRidePoints } from "./toMatcherRidePoints.ts";
+import { matchSegment, toMatcherRidePoints, type SegmentDefinition } from "ride-segments";
 
 /**
  * Validates the matcher against the client's own currently-defined real-world segments and

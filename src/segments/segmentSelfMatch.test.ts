@@ -6,9 +6,8 @@ import { applyMigrations } from "../db/migrations.ts";
 import { insertSegment } from "../db/insertSegment.ts";
 import { getSegmentDetail } from "../db/getSegmentDetail.ts";
 import type { SyncDatabase } from "../db/types.ts";
-import { matchSegment, type SegmentDefinition } from "../matcher/matchSegment.ts";
-import { toMatcherRidePoints, type SourcePoint } from "../matcher/toMatcherRidePoints.ts";
 import { resamplePolyline } from "./resamplePolyline.ts";
+import { matchSegment, toMatcherRidePoints, type SegmentDefinition, type SourcePoint } from "ride-segments";
 
 const METERS_PER_DEGREE = 111_195;
 

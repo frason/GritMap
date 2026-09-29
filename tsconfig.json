@@ -5,5 +5,14 @@
     "allowImportingTsExtensions": true,
     "types": ["node"],
     "moduleSuffixes": ["", ".native", ".web", ".ios", ".android"]
-  }
+  },
+  "exclude": [
+    "${configDir}/node_modules",
+    "${configDir}/babel.config.js",
+    "${configDir}/metro.config.js",
+    "${configDir}/jest.config.js",
+    "${configDir}/android",
+    "${configDir}/ios",
+    "${configDir}/packages"
+  ]
 }

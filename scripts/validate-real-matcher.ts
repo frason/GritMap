@@ -3,11 +3,11 @@ import { readFile } from "node:fs/promises";
 import { parseFitFile, type ParsedPoint } from "../src/fit/parseFitFile.ts";
 import {
   matchSegment,
+  toMatcherRidePoints,
   type MatchCandidate,
   type ReferencePoint,
   type SegmentDefinition,
-} from "../src/matcher/matchSegment.ts";
-import { toMatcherRidePoints } from "../src/matcher/toMatcherRidePoints.ts";
+} from "ride-segments";
 
 const DEFAULT_REFERENCE_FILE = "fixtures/fit/Karoo-Morning_Ride-2026-08-02-0837.fit";
 const DEFAULT_COMPARISON_FILE = "fixtures/fit/Karoo-Morning_Ride-2026-08-09-0844.fit";

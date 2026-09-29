@@ -1,0 +1,23 @@
+{
+  "name": "ride-segments",
+  "version": "0.1.0",
+  "description": "Directed GPS segment matching for cycling/running ride data — format-agnostic, no backend, no accounts.",
+  "license": "AGPL-3.0-only",
+  "type": "module",
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "files": [
+    "src",
+    "!src/**/*.test.ts",
+    "LICENSE",
+    "README.md"
+  ],
+  "scripts": {
+    "test": "node --test \"src/**/*.test.ts\"",
+    "typecheck": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "@types/node": "^26.2.0",
+    "typescript": "~6.0.3"
+  }
+}

@@ -2,6 +2,9 @@
   "name": "gritmap",
   "version": "1.0.0",
   "main": "index.ts",
+  "workspaces": [
+    "packages/*"
+  ],
   "dependencies": {
     "@expo/metro-runtime": "~57.0.10",
     "@expo/vector-icons": "^15.0.2",
@@ -23,7 +26,8 @@
     "react-native-safe-area-context": "~5.7.0",
     "react-native-screens": "~4.26.0",
     "react-native-svg": "15.15.4",
-    "react-native-web": "^0.21.2"
+    "react-native-web": "^0.21.2",
+    "ride-segments": "^0.1.0"
   },
   "devDependencies": {
     "@types/node": "^26.2.0",
@@ -36,8 +40,8 @@
     "ios": "expo run:ios",
     "web": "expo start --web",
     "prebuild": "expo prebuild",
-    "test": "node --experimental-test-module-mocks --test \"src/**/*.test.ts\"",
-    "typecheck": "tsc --noEmit",
+    "test": "node --experimental-test-module-mocks --test \"src/**/*.test.ts\" \"packages/*/src/**/*.test.ts\"",
+    "typecheck": "tsc --noEmit && npm run typecheck --workspace ride-segments",
     "web:smoke": "expo export --platform web"
   },
   "private": true

@@ -1,8 +1,4 @@
-import type { MatchCandidate } from "../matcher/matchSegment.ts";
-import {
-  isSamePhysicalTraversal,
-  traversalOverlapRatio,
-} from "../matcher/traversalOverlap.ts";
+import { isSamePhysicalTraversal, traversalOverlapRatio, type MatchCandidate } from "ride-segments";
 
 export interface MatchPersistenceDatabase {
   exec(sql: string): unknown;

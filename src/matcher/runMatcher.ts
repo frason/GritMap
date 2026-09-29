@@ -7,8 +7,7 @@ import {
   type MatchPersistenceDatabase,
   type PersistMatchResult,
 } from "../db/persistMatchCandidate.ts";
-import { matchSegment, type RidePoint, type SegmentDefinition } from "./matchSegment.ts";
-import { toMatcherRidePoints } from "./toMatcherRidePoints.ts";
+import { matchSegment, toMatcherRidePoints, type RidePoint, type SegmentDefinition } from "ride-segments";
 
 export interface MatchRunSummary {
   inserted: number;

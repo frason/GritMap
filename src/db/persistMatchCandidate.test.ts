@@ -6,11 +6,12 @@ import {
   calculateConfidenceScore,
   MATCHER_VERSION,
   matchSegment,
+  toMatcherRidePoints,
   type MatchCandidate,
   type MatchDecision,
   type SegmentDefinition,
-} from "../matcher/matchSegment.ts";
-import { toMatcherRidePoints, type SourcePoint } from "../matcher/toMatcherRidePoints.ts";
+  type SourcePoint,
+} from "ride-segments";
 import { applyMigrations } from "./migrations.ts";
 import { persistMatchCandidate } from "./persistMatchCandidate.ts";
 

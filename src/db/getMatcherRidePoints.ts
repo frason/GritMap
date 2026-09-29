@@ -1,4 +1,4 @@
-import type { SourcePoint } from "../matcher/toMatcherRidePoints.ts";
+import type { SourcePoint } from "ride-segments";
 
 export interface GetMatcherRidePointsDatabase {
   prepare(sql: string): {
