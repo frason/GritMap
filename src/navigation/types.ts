@@ -14,6 +14,7 @@ export type SegmentsStackParamList = {
   AttemptComparison: { primaryAttemptId: string; comparisonAttemptId: string };
   RegistryBrowse: undefined;
   ZonesSettings: undefined;
+  HistoricalBand: { segmentId: string; currentAttemptId: string };
 };
 
 export type RootTabParamList = {

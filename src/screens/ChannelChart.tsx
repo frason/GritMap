@@ -7,6 +7,9 @@ export interface ChannelSeriesPoint {
   distanceMeters: number;
   primary: number | null;
   comparison: number | null;
+  /** Optional third line drawn on top of the primary/comparison band -- e.g. the historical
+   * band view's "current attempt" line drawn over a min/max band (primary=max, comparison=min). */
+  current?: number | null;
 }
 
 export interface ChannelChartProps {
@@ -16,6 +19,10 @@ export interface ChannelChartProps {
   /** Primary line color; comparison always renders in colors.textTertiary. */
   primaryColor?: keyof typeof colors;
   height?: number;
+  primaryLabel?: string;
+  comparisonLabel?: string;
+  /** Label for the optional third `current` line; only shown when some point has a value. */
+  currentLabel?: string;
 }
 
 const VIEWBOX_WIDTH = 300;
@@ -33,14 +40,20 @@ export function ChannelChart({
   series,
   primaryColor = "brand",
   height = 140,
+  primaryLabel = "This attempt",
+  comparisonLabel = "Comparison",
+  currentLabel = "Current",
 }: ChannelChartProps) {
   if (series.length === 0) {
     return null;
   }
 
+  const hasCurrent = series.some((point) => point.current !== undefined && point.current !== null);
   const maxDistance = series[series.length - 1]!.distanceMeters || 1;
   const allValues = series.flatMap((point) =>
-    [point.primary, point.comparison].filter((value): value is number => value !== null),
+    [point.primary, point.comparison, point.current ?? null].filter(
+      (value): value is number => value !== null,
+    ),
   );
   const minValue = allValues.length > 0 ? Math.min(...allValues, 0) : 0;
   const maxValue = allValues.length > 0 ? Math.max(...allValues, 0) : 1;
@@ -52,14 +65,16 @@ export function ChannelChart({
   const bandPolygons = buildBandPolygons(series, toX, toY);
   const primaryPolylines = buildPolylines(series, (point) => point.primary, toX, toY);
   const comparisonPolylines = buildPolylines(series, (point) => point.comparison, toX, toY);
+  const currentPolylines = buildPolylines(series, (point) => point.current ?? null, toX, toY);
 
   return (
     <View style={styles.container}>
       <View style={styles.header}>
         <Text style={styles.title}>{title}</Text>
         <View style={styles.legend}>
-          <LegendDot color={primaryColor} label="This attempt" />
-          <LegendDot color="textTertiary" label="Comparison" />
+          {hasCurrent && <LegendDot color="textPrimary" label={currentLabel} />}
+          <LegendDot color={primaryColor} label={primaryLabel} />
+          <LegendDot color="textTertiary" label={comparisonLabel} />
         </View>
       </View>
       <Text style={styles.axisLabel}>
@@ -85,6 +100,15 @@ export function ChannelChart({
             fill="none"
             stroke={colors[primaryColor]}
             strokeWidth={2}
+          />
+        ))}
+        {currentPolylines.map((points, index) => (
+          <Polyline
+            key={index}
+            points={points}
+            fill="none"
+            stroke={colors.textPrimary}
+            strokeWidth={3}
           />
         ))}
       </Svg>

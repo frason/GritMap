@@ -84,6 +84,7 @@ export function SegmentDetailScreen() {
   }
 
   const totalDistanceMeters = segment.referencePolyline.at(-1)?.distanceMeters ?? 0;
+  const validAttempts = attempts.filter((attempt) => attempt.decision === "accept" || attempt.manuallyApproved);
 
   async function handleSend() {
     if (!segment) return;
@@ -221,6 +222,19 @@ export function SegmentDetailScreen() {
                 <Text style={styles.compareToggleLabel}>
                   {compareMode ? "Cancel" : "Compare two attempts"}
                 </Text>
+              </TouchableOpacity>
+            )}
+            {validAttempts.length >= 3 && (
+              <TouchableOpacity
+                style={styles.compareToggle}
+                onPress={() =>
+                  navigation.navigate("HistoricalBand", {
+                    segmentId: route.params.segmentId,
+                    currentAttemptId: validAttempts[0]!.attemptId,
+                  })
+                }
+              >
+                <Text style={styles.compareToggleLabel}>Compare to history</Text>
               </TouchableOpacity>
             )}
             {compareMode && (
