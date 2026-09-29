@@ -13,6 +13,7 @@ export type SegmentsStackParamList = {
   AttemptReview: { attemptId: string };
   AttemptComparison: { primaryAttemptId: string; comparisonAttemptId: string };
   RegistryBrowse: undefined;
+  ZonesSettings: undefined;
 };
 
 export type RootTabParamList = {

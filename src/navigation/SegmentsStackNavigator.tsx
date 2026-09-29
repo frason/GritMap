@@ -5,6 +5,7 @@ import { SegmentDetailScreen } from "../screens/SegmentDetailScreen";
 import { AttemptReviewScreen } from "../screens/AttemptReviewScreen";
 import { AttemptComparisonScreen } from "../screens/AttemptComparisonScreen";
 import { RegistryBrowseScreen } from "../screens/RegistryBrowseScreen";
+import { ZonesSettingsScreen } from "../screens/ZonesSettingsScreen";
 import { colors } from "../theme/colors";
 import type { SegmentsStackParamList } from "./types";
 
@@ -33,6 +34,7 @@ export function SegmentsStackNavigator() {
         options={{ title: "Compare Attempts" }}
       />
       <Stack.Screen name="RegistryBrowse" component={RegistryBrowseScreen} options={{ title: "Segment Registry" }} />
+      <Stack.Screen name="ZonesSettings" component={ZonesSettingsScreen} options={{ title: "Power/HR Zones" }} />
     </Stack.Navigator>
   );
 }

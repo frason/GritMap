@@ -301,6 +301,21 @@ export const migrations: readonly Migration[] = [
         ON segment_attempts(ride_id, start_point_index, end_point_index);
     `,
   },
+  {
+    version: 5,
+    name: "athlete_profile",
+    sql: `
+      -- Single-row settings table (id fixed to 'singleton') for the zone thresholds used to
+      -- classify power/heart-rate samples into zones -- see src/zones/classifyZone.ts. Both
+      -- columns are nullable: zones simply don't display until the user sets them.
+      CREATE TABLE athlete_profile (
+        id TEXT PRIMARY KEY CHECK (id = 'singleton'),
+        ftp_watts INTEGER CHECK (ftp_watts IS NULL OR ftp_watts > 0),
+        max_heart_rate_bpm INTEGER CHECK (max_heart_rate_bpm IS NULL OR max_heart_rate_bpm > 0),
+        updated_at_ms INTEGER NOT NULL
+      ) STRICT;
+    `,
+  },
 ];
 
 export function configureDatabaseConnection(database: MigrationDatabase): void {
