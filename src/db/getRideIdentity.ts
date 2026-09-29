@@ -35,9 +35,12 @@ export function getRideIdentity(
 ): RideIdentity | undefined {
   const row = database.prepare(`${IDENTITY_SELECT} WHERE rides.id = ?`).get(rideId) as
     | StoredRideIdentity
+    | null
     | undefined;
 
-  if (row === undefined) return undefined;
+  // expo-sqlite's real getFirstSync() returns null for "no row"; the node:sqlite test
+  // double returns undefined for the same case -- both must be treated as not-found.
+  if (row === undefined || row === null) return undefined;
   return toRideIdentity(row);
 }
 

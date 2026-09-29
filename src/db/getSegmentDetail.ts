@@ -54,9 +54,11 @@ export function getSegmentDetail(
       FROM segments
       WHERE id = ?`,
     )
-    .get(segmentId) as StoredSegment | undefined;
+    .get(segmentId) as StoredSegment | null | undefined;
 
-  if (segment === undefined) return undefined;
+  // expo-sqlite's real getFirstSync() returns null for "no row"; the node:sqlite test
+  // double returns undefined for the same case -- both must be treated as not-found.
+  if (segment === undefined || segment === null) return undefined;
 
   const points = database
     .prepare(

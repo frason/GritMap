@@ -263,4 +263,16 @@ describe("replaceImportedRide", () => {
       0,
     );
   });
+
+  it("treats a real null row (what expo-sqlite's getFirstSync() actually returns for no match, unlike node:sqlite's undefined) as not-found", () => {
+    const fakeDatabase: SyncDatabase = {
+      exec: () => {},
+      prepare: () => ({ get: () => null, run: () => undefined, all: () => [] }),
+      runMany: () => {},
+    };
+    assert.throws(
+      () => replaceImportedRide(fakeDatabase, "no-such-ride", baseParams()),
+      /no such ride/,
+    );
+  });
 });

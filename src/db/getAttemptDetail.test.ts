@@ -55,6 +55,11 @@ describe("getAttemptDetail", () => {
 
     assert.equal(getAttemptDetail(database, "missing"), undefined);
   });
+
+  it("treats a real null row (what expo-sqlite's getFirstSync() actually returns for no match, unlike node:sqlite's undefined) as not-found", () => {
+    const fakeDatabase = { prepare: () => ({ get: () => null }) };
+    assert.equal(getAttemptDetail(fakeDatabase, "missing"), undefined);
+  });
 });
 
 function seedFixture(

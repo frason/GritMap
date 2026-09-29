@@ -11,6 +11,11 @@ describe("getSegmentDetail", () => {
     assert.equal(getSegmentDetail(database, "missing"), undefined);
   });
 
+  it("treats a real null row (what expo-sqlite's getFirstSync() actually returns for no match, unlike node:sqlite's undefined) as not-found", () => {
+    const fakeDatabase = { prepare: () => ({ get: () => null, all: () => [] }) };
+    assert.equal(getSegmentDetail(fakeDatabase, "missing"), undefined);
+  });
+
   it("reads a segment's metadata and reference polyline in point_index order", () => {
     using database = migratedDatabase();
     insertRideAndSegment(database, {

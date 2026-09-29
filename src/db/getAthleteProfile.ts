@@ -18,9 +18,11 @@ interface StoredAthleteProfile {
 export function getAthleteProfile(database: GetAthleteProfileDatabase): AthleteProfile {
   const row = database
     .prepare("SELECT ftp_watts, max_heart_rate_bpm FROM athlete_profile WHERE id = 'singleton'")
-    .get() as StoredAthleteProfile | undefined;
+    .get() as StoredAthleteProfile | null | undefined;
 
-  if (row === undefined) return {};
+  // expo-sqlite's real getFirstSync() returns null for "no row"; the node:sqlite test
+  // double returns undefined for the same case -- both must be treated as not-found.
+  if (row === undefined || row === null) return {};
 
   return {
     ...(row.ftp_watts !== null ? { ftpWatts: row.ftp_watts } : {}),

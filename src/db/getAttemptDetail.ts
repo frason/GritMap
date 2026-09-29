@@ -81,9 +81,11 @@ export function getAttemptDetail(
       JOIN match_diagnostics ON match_diagnostics.attempt_id = segment_attempts.id
       WHERE segment_attempts.id = ?`,
     )
-    .get(attemptId) as StoredAttemptDetail | undefined;
+    .get(attemptId) as StoredAttemptDetail | null | undefined;
 
-  if (row === undefined) return undefined;
+  // expo-sqlite's real getFirstSync() returns null for "no row"; the node:sqlite test
+  // double returns undefined for the same case -- both must be treated as not-found.
+  if (row === undefined || row === null) return undefined;
 
   return {
     attemptId: row.attempt_id,

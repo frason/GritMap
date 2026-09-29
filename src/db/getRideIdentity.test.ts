@@ -11,6 +11,11 @@ describe("getRideIdentity / listRideIdentities", () => {
     assert.equal(getRideIdentity(database, "missing"), undefined);
   });
 
+  it("treats a real null row (what expo-sqlite's getFirstSync() actually returns for no match, unlike node:sqlite's undefined) as not-found", () => {
+    const fakeDatabase = { prepare: () => ({ get: () => null, all: () => [] }) };
+    assert.equal(getRideIdentity(fakeDatabase, "missing"), undefined);
+  });
+
   it("reads a single ride's identity with activityId/deviceId present", () => {
     using database = migratedDatabase();
     insertRide(database, "ride-a", "file-a", {

@@ -122,9 +122,12 @@ export function replaceImportedRide(
       )
       .get(existingRideId) as
       | { imported_file_id: string; retained_file_uri: string | null }
+      | null
       | undefined;
 
-    if (existing === undefined) {
+    // expo-sqlite's real getFirstSync() returns null for "no row"; the node:sqlite test
+    // double returns undefined for the same case -- both must be treated as not-found.
+    if (existing === undefined || existing === null) {
       throw new Error(`Cannot replace ride ${existingRideId}: no such ride`);
     }
 

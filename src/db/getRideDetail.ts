@@ -46,9 +46,11 @@ export function getRideDetail(
       JOIN imported_files ON imported_files.id = rides.imported_file_id
       WHERE rides.id = ?`,
     )
-    .get(rideId) as StoredRideDetail | undefined;
+    .get(rideId) as StoredRideDetail | null | undefined;
 
-  if (row === undefined) return undefined;
+  // expo-sqlite's real getFirstSync() returns null for "no row"; the node:sqlite test
+  // double returns undefined for the same case -- both must be treated as not-found.
+  if (row === undefined || row === null) return undefined;
 
   return {
     rideId: row.ride_id,

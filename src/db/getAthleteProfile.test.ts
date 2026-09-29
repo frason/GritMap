@@ -38,6 +38,11 @@ describe("getAthleteProfile", () => {
     assert.deepEqual(getAthleteProfile(database), {});
   });
 
+  it("treats a real null row (what expo-sqlite's getFirstSync() actually returns for no match, unlike node:sqlite's undefined) as not-found", () => {
+    const fakeDatabase = { prepare: () => ({ get: () => null }) };
+    assert.deepEqual(getAthleteProfile(fakeDatabase), {});
+  });
+
   it("returns what setAthleteProfile saved", () => {
     const database = migratedDatabase();
     setAthleteProfile(database, { ftpWatts: 250, maxHeartRateBpm: 185, nowMs: 1_000 });
