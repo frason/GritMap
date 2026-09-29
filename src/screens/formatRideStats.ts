@@ -26,3 +26,11 @@ export function formatDurationHoursMinutes(ms?: number): string {
   const minutes = totalMinutes % 60;
   return hours > 0 ? `${hours}h ${minutes}m` : `${minutes}m`;
 }
+
+/** mm:ss, for goal/attempt times precise enough to matter for a PR (e.g. "45:49"). */
+export function formatDurationMinutesSeconds(ms: number): string {
+  const totalSeconds = Math.round(ms / 1_000);
+  const minutes = Math.floor(totalSeconds / 60);
+  const seconds = totalSeconds % 60;
+  return `${minutes}:${String(seconds).padStart(2, "0")}`;
+}

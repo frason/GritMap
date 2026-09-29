@@ -1,4 +1,5 @@
 import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
+import { HomeScreen } from "../screens/HomeScreen";
 import { Icon } from "../theme/Icon";
 import { colors } from "../theme/colors";
 import { RidesStackNavigator } from "./RidesStackNavigator";
@@ -16,6 +17,16 @@ export function RootNavigator() {
         tabBarInactiveTintColor: colors.textTertiary,
       }}
     >
+      <Tab.Screen
+        name="HomeTab"
+        component={HomeScreen}
+        options={{
+          title: "Home",
+          tabBarIcon: ({ focused, size }) => (
+            <Icon name="flag" size={size} color={focused ? "brand" : "textTertiary"} />
+          ),
+        }}
+      />
       <Tab.Screen
         name="RidesTab"
         component={RidesStackNavigator}

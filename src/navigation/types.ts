@@ -17,6 +17,7 @@ export type SegmentsStackParamList = {
 };
 
 export type RootTabParamList = {
-  RidesTab: undefined;
+  HomeTab: undefined;
+  RidesTab: NavigatorScreenParams<RidesStackParamList> | undefined;
   SegmentsTab: NavigatorScreenParams<SegmentsStackParamList> | undefined;
 };

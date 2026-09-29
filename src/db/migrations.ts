@@ -316,6 +316,23 @@ export const migrations: readonly Migration[] = [
       ) STRICT;
     `,
   },
+  {
+    version: 6,
+    name: "active_goal",
+    sql: `
+      -- Single-row goal table (id fixed to 'singleton'), per docs/Grip-Map-app-spec.md's
+      -- goal-first Home screen -- the MVP scopes exactly one active goal, not a multi-goal
+      -- dashboard. Deleting the goal segment removes the goal too (a goal for a segment
+      -- that no longer exists is meaningless).
+      CREATE TABLE active_goal (
+        id TEXT PRIMARY KEY CHECK (id = 'singleton'),
+        segment_id TEXT NOT NULL,
+        target_duration_ms INTEGER NOT NULL CHECK (target_duration_ms > 0),
+        updated_at_ms INTEGER NOT NULL,
+        FOREIGN KEY (segment_id) REFERENCES segments(id) ON DELETE CASCADE
+      ) STRICT;
+    `,
+  },
 ];
 
 export function configureDatabaseConnection(database: MigrationDatabase): void {
