@@ -223,4 +223,35 @@ describe("insertSegment", () => {
     );
     assert.deepEqual(execCalls, ["BEGIN IMMEDIATE", "ROLLBACK"]);
   });
+
+  it("inserts a segment with no source ride (e.g. imported from the registry)", () => {
+    const { raw, database } = migratedDatabase();
+    // Deliberately no insertSourceRide(raw) -- there is no local ride to reference.
+
+    const { segmentId } = insertSegment(
+      database,
+      sequentialIdFactory("segment"),
+      baseParams({ sourceRideId: undefined, sourceStartPointIndex: undefined, sourceEndPointIndex: undefined }),
+    );
+
+    const row = raw.prepare("SELECT * FROM segments WHERE id = ?").get(segmentId) as Record<string, unknown>;
+    assert.equal(row.source_ride_id, null);
+    assert.equal(row.source_start_point_index, null);
+    assert.equal(row.source_end_point_index, null);
+  });
+
+  it("rejects a source point index given without its counterpart", () => {
+    const { raw, database } = migratedDatabase();
+    assert.throws(() =>
+      insertSegment(
+        database,
+        sequentialIdFactory("segment"),
+        baseParams({ sourceRideId: undefined, sourceStartPointIndex: 0, sourceEndPointIndex: undefined }),
+      ),
+    );
+    assert.equal(
+      (raw.prepare("SELECT count(*) AS count FROM segments").get() as { count: number }).count,
+      0,
+    );
+  });
 });

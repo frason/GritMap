@@ -10,6 +10,9 @@ import type { RideTrackPoint } from "../db/getRideTrack";
 import { runMatcherForSegment, type MatchRunSummary } from "../matcher/runMatcher";
 import type { SegmentsStackParamList } from "../navigation/types";
 import { sendSegmentToKaroo } from "../karoo/sendSegmentToKaroo";
+import { defaultRegistryConfig } from "../registry/registryConfig";
+import { publishRegistrySegment } from "../registry/registryClient";
+import { getRegistryToken, setRegistryToken } from "../registry/registryCredentials";
 import { colors } from "../theme/colors";
 import { Icon } from "../theme/Icon";
 import { radius, spacing } from "../theme/spacing";
@@ -34,6 +37,10 @@ export function SegmentDetailScreen() {
   const [rerunSummary, setRerunSummary] = useState<MatchRunSummary | undefined>(undefined);
   const [compareMode, setCompareMode] = useState(false);
   const [selectedAttemptIds, setSelectedAttemptIds] = useState<string[]>([]);
+  const [needsToken, setNeedsToken] = useState(false);
+  const [tokenInput, setTokenInput] = useState("");
+  const [publishing, setPublishing] = useState(false);
+  const [publishStatus, setPublishStatus] = useState<string | undefined>(undefined);
 
   useFocusEffect(
     useCallback(() => {
@@ -98,6 +105,42 @@ export function SegmentDetailScreen() {
     );
   }
 
+  async function handlePublish() {
+    if (!segment) return;
+    const token = tokenInput.trim().length > 0 ? tokenInput.trim() : await getRegistryToken();
+    if (token === undefined) {
+      setNeedsToken(true);
+      setPublishStatus("Paste a GitHub personal access token (repo scope) to publish");
+      return;
+    }
+    if (tokenInput.trim().length > 0) {
+      await setRegistryToken(token);
+      setTokenInput("");
+    }
+    setNeedsToken(false);
+    setPublishing(true);
+    setPublishStatus("Publishing…");
+    const result = await publishRegistrySegment(defaultRegistryConfig(), token, {
+      id: segment.segmentId,
+      name: segment.name,
+      schemaVersion: segment.schemaVersion,
+      corridorMeters: segment.corridorMeters,
+      requiredCoveragePct: segment.requiredCoveragePct,
+      fingerprint: segment.fingerprint,
+      referencePolyline: segment.referencePolyline,
+    });
+    setPublishing(false);
+    setPublishStatus(
+      result.ok
+        ? result.alreadyPublished
+          ? "Already published to the registry"
+          : "Published — anyone can now discover and import this segment"
+        : `Publish failed${result.statusCode ? ` (HTTP ${result.statusCode})` : ""}${
+            result.message ? `: ${result.message}` : ""
+          }`,
+    );
+  }
+
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>
       <Text style={styles.title}>{segment.name}</Text>
@@ -136,6 +179,33 @@ export function SegmentDetailScreen() {
           <Text style={styles.sendButtonLabel}>{sending ? "Sending…" : "Send to Karoo"}</Text>
         </TouchableOpacity>
         {sendStatus !== undefined && <Text style={styles.sendStatusText}>{sendStatus}</Text>}
+      </Section>
+
+      <Section title="Registry">
+        <Text style={styles.sendHint}>
+          Publish this segment definition so it can be discovered and imported elsewhere. Only
+          the route and matching parameters are shared — never your rides or attempts.
+        </Text>
+        {needsToken && (
+          <TextInput
+            style={styles.addressInput}
+            placeholder="GitHub personal access token (repo scope)"
+            placeholderTextColor={colors.textTertiary}
+            value={tokenInput}
+            onChangeText={setTokenInput}
+            autoCapitalize="none"
+            autoCorrect={false}
+            secureTextEntry
+          />
+        )}
+        <TouchableOpacity
+          style={[styles.sendButton, publishing && styles.sendButtonDisabled]}
+          onPress={handlePublish}
+          disabled={publishing}
+        >
+          <Text style={styles.sendButtonLabel}>{publishing ? "Publishing…" : "Publish to registry"}</Text>
+        </TouchableOpacity>
+        {publishStatus !== undefined && <Text style={styles.sendStatusText}>{publishStatus}</Text>}
       </Section>
 
       <Section title="Attempts">

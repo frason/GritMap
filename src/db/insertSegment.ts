@@ -8,9 +8,14 @@ export interface InsertSegmentParams {
   schemaVersion: number;
   fingerprint: string;
   referencePolyline: readonly SegmentReferencePoint[];
-  sourceRideId: string;
-  sourceStartPointIndex: number;
-  sourceEndPointIndex: number;
+  /**
+   * Absent together for a segment with no local source ride -- e.g. one imported from the
+   * segment registry (see importRegistrySegment.ts). The schema's own CHECK constraint
+   * already allows this; present together is the only other valid state.
+   */
+  sourceRideId?: string;
+  sourceStartPointIndex?: number;
+  sourceEndPointIndex?: number;
   nowMs: number;
 }
 
@@ -48,9 +53,9 @@ export function insertSegment(
         params.requiredCoveragePct,
         params.schemaVersion,
         params.fingerprint,
-        params.sourceRideId,
-        params.sourceStartPointIndex,
-        params.sourceEndPointIndex,
+        params.sourceRideId ?? null,
+        params.sourceStartPointIndex ?? null,
+        params.sourceEndPointIndex ?? null,
         params.nowMs,
       );
 
@@ -103,10 +108,17 @@ function validateInsertSegmentParams(params: InsertSegmentParams): void {
     }
   });
 
-  if (params.sourceStartPointIndex < 0) {
-    throw new Error("sourceStartPointIndex must be non-negative");
+  const hasStart = params.sourceStartPointIndex !== undefined;
+  const hasEnd = params.sourceEndPointIndex !== undefined;
+  if (hasStart !== hasEnd) {
+    throw new Error("sourceStartPointIndex and sourceEndPointIndex must both be present or both absent");
   }
-  if (params.sourceStartPointIndex >= params.sourceEndPointIndex) {
-    throw new Error("sourceStartPointIndex must be less than sourceEndPointIndex");
+  if (hasStart && hasEnd) {
+    if (params.sourceStartPointIndex! < 0) {
+      throw new Error("sourceStartPointIndex must be non-negative");
+    }
+    if (params.sourceStartPointIndex! >= params.sourceEndPointIndex!) {
+      throw new Error("sourceStartPointIndex must be less than sourceEndPointIndex");
+    }
   }
 }
