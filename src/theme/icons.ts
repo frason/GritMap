@@ -18,6 +18,10 @@ const iconGlyphs = {
   mapPin: "location",
   trash: "trash-outline",
   flag: "flag-outline",
+  medal: "medal-outline",
+  list: "list-outline",
+  pulse: "pulse-outline",
+  more: "ellipsis-vertical",
 } as const satisfies Record<string, ComponentProps<typeof Ionicons>["name"]>;
 
 export type IconName = keyof typeof iconGlyphs;

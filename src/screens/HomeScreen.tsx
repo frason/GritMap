@@ -18,6 +18,7 @@ import {
   formatDurationMinutesSeconds,
   formatRideDate,
 } from "./formatRideStats";
+import { parseTargetDurationInput } from "./parseTargetDuration";
 
 type Navigation = BottomTabNavigationProp<RootTabParamList>;
 
@@ -206,15 +207,9 @@ function GoalSetupForm({
       setError("Choose a segment");
       return;
     }
-    const minutes = Number(minutesInput);
-    const seconds = Number(secondsInput || "0");
-    if (!Number.isFinite(minutes) || !Number.isFinite(seconds) || minutes < 0 || seconds < 0 || seconds >= 60) {
+    const targetDurationMs = parseTargetDurationInput(minutesInput, secondsInput);
+    if (targetDurationMs === undefined) {
       setError("Enter a valid target time");
-      return;
-    }
-    const targetDurationMs = (minutes * 60 + seconds) * 1_000;
-    if (targetDurationMs <= 0) {
-      setError("Target time must be greater than zero");
       return;
     }
     onSave(selectedSegmentId, targetDurationMs);

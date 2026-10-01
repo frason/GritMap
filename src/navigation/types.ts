@@ -15,6 +15,8 @@ export type SegmentsStackParamList = {
   RegistryBrowse: undefined;
   ZonesSettings: undefined;
   HistoricalBand: { segmentId: string; currentAttemptId: string };
+  SendToKaroo: { segmentId: string };
+  PublishToRegistry: { segmentId: string };
 };
 
 export type RootTabParamList = {

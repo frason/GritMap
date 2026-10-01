@@ -34,3 +34,15 @@ export function formatDurationMinutesSeconds(ms: number): string {
   const seconds = totalSeconds % 60;
   return `${minutes}:${String(seconds).padStart(2, "0")}`;
 }
+
+export function formatGradePercent(percent?: number): string {
+  if (percent === undefined) return "—";
+  return `${percent.toFixed(1)}%`;
+}
+
+/** Reuses formatDistanceMiles's own meters-per-mile conversion, scaled to an hourly rate. */
+export function formatSpeedMph(metersPerSecond?: number): string {
+  if (metersPerSecond === undefined) return "—";
+  const SECONDS_PER_HOUR = 3_600;
+  return `${((metersPerSecond * SECONDS_PER_HOUR) / METERS_PER_MILE).toFixed(1)} mph`;
+}

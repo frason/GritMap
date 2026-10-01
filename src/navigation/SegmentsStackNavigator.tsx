@@ -7,6 +7,8 @@ import { AttemptComparisonScreen } from "../screens/AttemptComparisonScreen";
 import { RegistryBrowseScreen } from "../screens/RegistryBrowseScreen";
 import { ZonesSettingsScreen } from "../screens/ZonesSettingsScreen";
 import { HistoricalBandScreen } from "../screens/HistoricalBandScreen";
+import { SendToKarooScreen } from "../screens/SendToKarooScreen";
+import { PublishToRegistryScreen } from "../screens/PublishToRegistryScreen";
 import { colors } from "../theme/colors";
 import type { SegmentsStackParamList } from "./types";
 
@@ -37,6 +39,12 @@ export function SegmentsStackNavigator() {
       <Stack.Screen name="RegistryBrowse" component={RegistryBrowseScreen} options={{ title: "Segment Registry" }} />
       <Stack.Screen name="ZonesSettings" component={ZonesSettingsScreen} options={{ title: "Power/HR Zones" }} />
       <Stack.Screen name="HistoricalBand" component={HistoricalBandScreen} options={{ title: "Historical Range" }} />
+      <Stack.Screen name="SendToKaroo" component={SendToKarooScreen} options={{ title: "Send to Karoo" }} />
+      <Stack.Screen
+        name="PublishToRegistry"
+        component={PublishToRegistryScreen}
+        options={{ title: "Publish to Registry" }}
+      />
     </Stack.Navigator>
   );
 }
