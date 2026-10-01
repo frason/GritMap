@@ -43,15 +43,22 @@ describe("setAthleteProfile", () => {
     assert.throws(() => setAthleteProfile(database, { maxHeartRateBpm: 0, nowMs: 1_000 }));
   });
 
+  it("rejects a non-positive weight", () => {
+    const database = migratedDatabase();
+    assert.throws(() => setAthleteProfile(database, { weightKg: 0, nowMs: 1_000 }));
+    assert.throws(() => setAthleteProfile(database, { weightKg: -70, nowMs: 1_000 }));
+  });
+
   it("rejects non-finite values", () => {
     const database = migratedDatabase();
     assert.throws(() => setAthleteProfile(database, { ftpWatts: Number.NaN, nowMs: 1_000 }));
     assert.throws(() =>
       setAthleteProfile(database, { maxHeartRateBpm: Number.POSITIVE_INFINITY, nowMs: 1_000 }),
     );
+    assert.throws(() => setAthleteProfile(database, { weightKg: Number.NaN, nowMs: 1_000 }));
   });
 
-  it("allows saving with both thresholds omitted", () => {
+  it("allows saving with every field omitted", () => {
     const database = migratedDatabase();
     assert.doesNotThrow(() => setAthleteProfile(database, { nowMs: 1_000 }));
   });

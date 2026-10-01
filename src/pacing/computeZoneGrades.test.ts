@@ -1,0 +1,85 @@
+import assert from "node:assert/strict";
+import { describe, it } from "node:test";
+
+import { computeZoneGrades, QUARTER_MILE_METERS } from "./computeZoneGrades.ts";
+import type { SegmentReferencePoint } from "../segments/resamplePolyline.ts";
+
+function point(distanceMeters: number, elevationMeters?: number): SegmentReferencePoint {
+  return {
+    lat: 0,
+    lng: 0,
+    distanceMeters,
+    ...(elevationMeters === undefined ? {} : { elevationMeters }),
+  };
+}
+
+describe("computeZoneGrades", () => {
+  it("returns [] for an empty polyline", () => {
+    assert.deepEqual(computeZoneGrades([]), []);
+  });
+
+  it("produces 3 zero-grade zones for a flat polyline exactly 3 quarter-miles long", () => {
+    const total = QUARTER_MILE_METERS * 3;
+    const points: SegmentReferencePoint[] = [];
+    for (let d = 0; d <= total; d += 10) points.push(point(Math.min(d, total), 100));
+    if (points[points.length - 1]!.distanceMeters !== total) points.push(point(total, 100));
+
+    const zones = computeZoneGrades(points);
+    assert.equal(zones.length, 3);
+    for (const zone of zones) assert.equal(zone.gradePct, 0);
+    assert.equal(zones[0]!.startDistanceMeters, 0);
+    assert.equal(zones[2]!.endDistanceMeters, total);
+  });
+
+  it("ends the final zone at the exact total distance when it isn't a multiple of the zone length", () => {
+    const total = 900; // between 2 and 3 quarter-miles; final remainder is 94.25m (>= 10m, not merged)
+    const points = [point(0, 100), point(total, 100)];
+    const zones = computeZoneGrades(points);
+    assert.equal(zones.length, 3);
+    assert.equal(zones[2]!.startDistanceMeters, QUARTER_MILE_METERS * 2);
+    assert.equal(zones[2]!.endDistanceMeters, total);
+  });
+
+  it("merges a trailing remainder shorter than the resample interval into the previous zone", () => {
+    const total = QUARTER_MILE_METERS * 2 + 5; // 5m remainder, under the 10m threshold
+    const points = [point(0, 100), point(total, 100)];
+    const zones = computeZoneGrades(points);
+    assert.equal(zones.length, 2);
+    assert.equal(zones[1]!.startDistanceMeters, QUARTER_MILE_METERS);
+    assert.equal(zones[1]!.endDistanceMeters, total);
+  });
+
+  it("dilutes grade toward 0 in proportion to missing elevation coverage", () => {
+    const fullCoverage = computeZoneGrades(
+      [point(0, 0), point(50, 5), point(100, 10)],
+      100,
+    );
+    const halfCoverage = computeZoneGrades(
+      [point(0, 0), point(50, 5), point(100)], // last point's elevation is missing
+      100,
+    );
+    assert.equal(fullCoverage.length, 1);
+    assert.equal(halfCoverage.length, 1);
+    assert.equal(fullCoverage[0]!.gradePct, 10); // 10m rise over 100m
+    assert.equal(halfCoverage[0]!.gradePct, 5); // only the first (fully-covered) half counted
+  });
+
+  it("returns exactly 0 grade for a zone with no elevation data at all", () => {
+    const zones = computeZoneGrades([point(0), point(50), point(100)], 100);
+    assert.equal(zones.length, 1);
+    assert.equal(zones[0]!.gradePct, 0);
+  });
+
+  it("splits a leg's rise proportionally when it straddles a zone boundary, without double-counting", () => {
+    // One leg from 0 to 100 (rise 20, i.e. 20% grade), chunked into 2 zones of 50m each --
+    // each zone should get exactly half the rise (10), not the leg's full rise twice.
+    const zones = computeZoneGrades([point(0, 0), point(100, 20)], 50);
+    assert.equal(zones.length, 2);
+    assert.equal(zones[0]!.gradePct, 20);
+    assert.equal(zones[1]!.gradePct, 20);
+    const totalRise =
+      (zones[0]!.gradePct / 100) * (zones[0]!.endDistanceMeters - zones[0]!.startDistanceMeters) +
+      (zones[1]!.gradePct / 100) * (zones[1]!.endDistanceMeters - zones[1]!.startDistanceMeters);
+    assert.ok(Math.abs(totalRise - 20) < 1e-9);
+  });
+});

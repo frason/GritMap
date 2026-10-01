@@ -45,8 +45,8 @@ describe("getAthleteProfile", () => {
 
   it("returns what setAthleteProfile saved", () => {
     const database = migratedDatabase();
-    setAthleteProfile(database, { ftpWatts: 250, maxHeartRateBpm: 185, nowMs: 1_000 });
-    assert.deepEqual(getAthleteProfile(database), { ftpWatts: 250, maxHeartRateBpm: 185 });
+    setAthleteProfile(database, { ftpWatts: 250, maxHeartRateBpm: 185, weightKg: 75.5, nowMs: 1_000 });
+    assert.deepEqual(getAthleteProfile(database), { ftpWatts: 250, maxHeartRateBpm: 185, weightKg: 75.5 });
   });
 
   it("omits a threshold that was never set, rather than fabricating a value", () => {

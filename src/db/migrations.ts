@@ -333,6 +333,18 @@ export const migrations: readonly Migration[] = [
       ) STRICT;
     `,
   },
+  {
+    version: 7,
+    name: "athlete_profile_weight",
+    sql: `
+      -- Body weight, needed only so the Karoo's rider-profile transfer (RiderHistoryJsonParser.kt
+      -- requires a positive weightKg) can actually be sent -- see sendGuidancePackageToKaroo.ts.
+      -- Manually entered for now; the same column is meant to be kept in sync from Apple
+      -- HealthKit/Google Health Connect once that integration exists (#69/#70), not replaced by
+      -- a separate mechanism, so no "source" column is added ahead of that actually being built.
+      ALTER TABLE athlete_profile ADD COLUMN weight_kg REAL CHECK (weight_kg IS NULL OR weight_kg > 0);
+    `,
+  },
 ];
 
 export function configureDatabaseConnection(database: MigrationDatabase): void {

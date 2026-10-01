@@ -6,10 +6,13 @@ import * as Crypto from "expo-crypto";
 import { useDatabase } from "../db/DatabaseProvider";
 import { getSegmentDetail, type SegmentDetail } from "../db/getSegmentDetail";
 import { listAttemptsForSegment, type AttemptSummary } from "../db/listAttemptsForSegment";
+import { getAthleteProfile, type AthleteProfile } from "../db/getAthleteProfile";
+import { getActiveGoal, type ActiveGoal } from "../db/getActiveGoal";
 import type { RideTrackPoint } from "../db/getRideTrack";
 import { runMatcherForSegment, type MatchRunSummary } from "../matcher/runMatcher";
 import type { SegmentsStackParamList } from "../navigation/types";
 import { sendSegmentToKaroo } from "../karoo/sendSegmentToKaroo";
+import { sendGuidancePackageToKaroo } from "../karoo/sendGuidancePackageToKaroo";
 import { defaultRegistryConfig } from "../registry/registryConfig";
 import { publishRegistrySegment } from "../registry/registryClient";
 import { getRegistryToken, setRegistryToken } from "../registry/registryCredentials";
@@ -30,9 +33,13 @@ export function SegmentDetailScreen() {
   const navigation = useNavigation<Navigation>();
   const [segment, setSegment] = useState<SegmentDetail | undefined>(undefined);
   const [attempts, setAttempts] = useState<AttemptSummary[]>([]);
+  const [athleteProfile, setAthleteProfile] = useState<AthleteProfile>({});
+  const [activeGoal, setActiveGoal] = useState<ActiveGoal | undefined>(undefined);
   const [karooAddress, setKarooAddress] = useState("");
   const [sending, setSending] = useState(false);
   const [sendStatus, setSendStatus] = useState<string | undefined>(undefined);
+  const [pacingSending, setPacingSending] = useState(false);
+  const [pacingSendStatus, setPacingSendStatus] = useState<string | undefined>(undefined);
   const [rerunning, setRerunning] = useState(false);
   const [rerunSummary, setRerunSummary] = useState<MatchRunSummary | undefined>(undefined);
   const [compareMode, setCompareMode] = useState(false);
@@ -46,6 +53,8 @@ export function SegmentDetailScreen() {
     useCallback(() => {
       setSegment(getSegmentDetail(database, route.params.segmentId));
       setAttempts(listAttemptsForSegment(database, route.params.segmentId));
+      setAthleteProfile(getAthleteProfile(database));
+      setActiveGoal(getActiveGoal(database));
     }, [database, route.params.segmentId]),
   );
 
@@ -98,6 +107,34 @@ export function SegmentDetailScreen() {
     const result = await sendSegmentToKaroo(segment, trimmed);
     setSending(false);
     setSendStatus(
+      result.ok
+        ? "Sent — check the Karoo screen to confirm it imported"
+        : `Send failed${result.statusCode ? ` (HTTP ${result.statusCode})` : ""}${
+            result.message ? `: ${result.message}` : ""
+          }`,
+    );
+  }
+
+  async function handleSendPacingPlan() {
+    const { ftpWatts, weightKg, maxHeartRateBpm } = athleteProfile;
+    if (!segment || ftpWatts === undefined || weightKg === undefined || activeGoal === undefined) return;
+    const trimmed = karooAddress.trim();
+    if (trimmed.length === 0) {
+      setPacingSendStatus("Enter the Karoo's address (shown on its \"Receive from Phone\" screen)");
+      return;
+    }
+    setPacingSending(true);
+    setPacingSendStatus("Sending…");
+    const result = await sendGuidancePackageToKaroo(
+      segment,
+      { ftpWatts, weightKg, ...(maxHeartRateBpm === undefined ? {} : { maxHeartRateBpm }) },
+      activeGoal.targetDurationMs,
+      trimmed,
+      generateId(),
+      Date.now(),
+    );
+    setPacingSending(false);
+    setPacingSendStatus(
       result.ok
         ? "Sent — check the Karoo screen to confirm it imported"
         : `Send failed${result.statusCode ? ` (HTTP ${result.statusCode})` : ""}${
@@ -180,6 +217,38 @@ export function SegmentDetailScreen() {
           <Text style={styles.sendButtonLabel}>{sending ? "Sending…" : "Send to Karoo"}</Text>
         </TouchableOpacity>
         {sendStatus !== undefined && <Text style={styles.sendStatusText}>{sendStatus}</Text>}
+      </Section>
+
+      <Section title="Pacing plan">
+        {athleteProfile.ftpWatts === undefined ? (
+          <TouchableOpacity onPress={() => navigation.navigate("ZonesSettings")}>
+            <Text style={styles.missingLink}>Set your FTP to generate a pacing plan</Text>
+          </TouchableOpacity>
+        ) : athleteProfile.weightKg === undefined ? (
+          <TouchableOpacity onPress={() => navigation.navigate("ZonesSettings")}>
+            <Text style={styles.missingLink}>Set your weight to send a pacing plan to the Karoo</Text>
+          </TouchableOpacity>
+        ) : activeGoal === undefined || activeGoal.segmentId !== segment.segmentId ? (
+          <Text style={styles.sendHint}>
+            Set a goal time for this segment on the Home tab to generate a pacing plan
+          </Text>
+        ) : (
+          <>
+            <Text style={styles.sendHint}>
+              Sends a target-watts table for this segment's goal pace to the Karoo address above.
+            </Text>
+            <TouchableOpacity
+              style={[styles.sendButton, pacingSending && styles.sendButtonDisabled]}
+              onPress={handleSendPacingPlan}
+              disabled={pacingSending}
+            >
+              <Text style={styles.sendButtonLabel}>
+                {pacingSending ? "Sending…" : "Send pacing plan to Karoo"}
+              </Text>
+            </TouchableOpacity>
+            {pacingSendStatus !== undefined && <Text style={styles.sendStatusText}>{pacingSendStatus}</Text>}
+          </>
+        )}
       </Section>
 
       <Section title="Registry">
@@ -432,6 +501,10 @@ const styles = StyleSheet.create({
   sendStatusText: {
     fontSize: 13,
     color: colors.textSecondary,
+  },
+  missingLink: {
+    fontSize: 13,
+    color: colors.brand,
   },
   attemptsEmptyText: {
     fontSize: 14,

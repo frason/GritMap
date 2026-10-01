@@ -11,6 +11,7 @@ export function ZonesSettingsScreen() {
   const database = useDatabase();
   const [ftpInput, setFtpInput] = useState("");
   const [maxHrInput, setMaxHrInput] = useState("");
+  const [weightInput, setWeightInput] = useState("");
   const [status, setStatus] = useState<string | undefined>(undefined);
 
   useFocusEffect(
@@ -18,12 +19,14 @@ export function ZonesSettingsScreen() {
       const profile = getAthleteProfile(database);
       setFtpInput(profile.ftpWatts === undefined ? "" : String(profile.ftpWatts));
       setMaxHrInput(profile.maxHeartRateBpm === undefined ? "" : String(profile.maxHeartRateBpm));
+      setWeightInput(profile.weightKg === undefined ? "" : String(profile.weightKg));
     }, [database]),
   );
 
   function handleSave() {
     const ftpWatts = parsePositiveInt(ftpInput);
     const maxHeartRateBpm = parsePositiveInt(maxHrInput);
+    const weightKg = parsePositiveNumber(weightInput);
     if (ftpInput.trim().length > 0 && ftpWatts === undefined) {
       setStatus("FTP must be a positive whole number of watts");
       return;
@@ -32,7 +35,11 @@ export function ZonesSettingsScreen() {
       setStatus("Max heart rate must be a positive whole number of bpm");
       return;
     }
-    setAthleteProfile(database, { ftpWatts, maxHeartRateBpm, nowMs: Date.now() });
+    if (weightInput.trim().length > 0 && weightKg === undefined) {
+      setStatus("Weight must be a positive number of kg");
+      return;
+    }
+    setAthleteProfile(database, { ftpWatts, maxHeartRateBpm, weightKg, nowMs: Date.now() });
     setStatus("Saved");
   }
 
@@ -67,6 +74,23 @@ export function ZonesSettingsScreen() {
         />
       </View>
 
+      <View style={styles.field}>
+        <Text style={styles.label}>Weight (kg)</Text>
+        <Text style={styles.fieldHint}>
+          Needed to send a pacing plan to the Karoo. Entered manually for now; a future
+          Apple Health/Google Health Connect sync is meant to keep this value current
+          automatically rather than replace it.
+        </Text>
+        <TextInput
+          style={styles.input}
+          placeholder="e.g. 75.5"
+          placeholderTextColor={colors.textTertiary}
+          value={weightInput}
+          onChangeText={setWeightInput}
+          keyboardType="decimal-pad"
+        />
+      </View>
+
       <TouchableOpacity style={styles.saveButton} onPress={handleSave}>
         <Text style={styles.saveButtonLabel}>Save</Text>
       </TouchableOpacity>
@@ -81,6 +105,14 @@ function parsePositiveInt(input: string): number | undefined {
   if (trimmed.length === 0) return undefined;
   const value = Number(trimmed);
   return Number.isFinite(value) && Number.isInteger(value) && value > 0 ? value : undefined;
+}
+
+/** Same as parsePositiveInt, but allows a fractional value (e.g. 75.5kg). */
+function parsePositiveNumber(input: string): number | undefined {
+  const trimmed = input.trim();
+  if (trimmed.length === 0) return undefined;
+  const value = Number(trimmed);
+  return Number.isFinite(value) && value > 0 ? value : undefined;
 }
 
 const styles = StyleSheet.create({
@@ -105,6 +137,10 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: "600",
     color: colors.textPrimary,
+  },
+  fieldHint: {
+    fontSize: 12,
+    color: colors.textSecondary,
   },
   input: {
     backgroundColor: colors.surface,

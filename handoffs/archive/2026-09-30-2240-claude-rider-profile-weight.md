@@ -15,16 +15,6 @@
   `handoffs/archive/2026-09-30-2240-claude-pacing-plan-plus-codex-drift-note.md` before being
   replaced by this handoff.
 
-## Karoo responsive Power/HR Drift update
-
-Codex completed and installed GritMap Karoo 0.10.16/code39 on device
-`00442GA241760203`. The `SMALL` field now uses the approved Option A (large signed drift,
-trend/status, green/amber/red threshold rail), and `SMALL_WIDE` uses Option C (normalized
-Power and HR gauges, 5% reference, drift and rate). Both consume live tracker state rather
-than static preview values. Actual-size native-graphics previews were inspected; the full
-JVM suite, assembly, and replacement install passed. Detailed archive:
-`handoffs/archive/2026-09-30-responsive-power-hr-drift.md`.
-
 ## Outcome
 
 Direct continuation of the previous increment (phone-side pacing-plan generator, see
