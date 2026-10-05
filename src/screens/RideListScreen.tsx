@@ -9,6 +9,7 @@ import { colors } from "../theme/colors";
 import { Icon } from "../theme/Icon";
 import { radius, spacing } from "../theme/spacing";
 import { formatDistanceMiles, formatDurationHoursMinutes, formatRideDate } from "./formatRideStats";
+import { RidePreviewThumbnail } from "./RidePreviewThumbnail";
 
 type Navigation = NativeStackNavigationProp<RidesStackParamList>;
 
@@ -62,7 +63,11 @@ function RideRow({ ride, onPress }: { ride: RideSummary; onPress: () => void }) 
   return (
     <TouchableOpacity style={styles.row} onPress={onPress}>
       <View style={styles.routeChip}>
-        <Icon name="route" color="brand" size={20} />
+        {ride.previewPolyline !== undefined && ride.previewPolyline.length >= 2 ? (
+          <RidePreviewThumbnail points={ride.previewPolyline} size={40} />
+        ) : (
+          <Icon name="route" color="brand" size={20} />
+        )}
       </View>
       <View style={styles.rowText}>
         <Text style={styles.rowTitle}>{title}</Text>

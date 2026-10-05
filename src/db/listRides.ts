@@ -4,12 +4,18 @@ export interface ListRidesDatabase {
   };
 }
 
+export interface RidePreviewPoint {
+  lat: number;
+  lng: number;
+}
+
 export interface RideSummary {
   rideId: string;
   originalFilename: string;
   startTimestampMs?: number;
   durationMs?: number;
   totalDistanceMeters?: number;
+  previewPolyline?: RidePreviewPoint[];
 }
 
 interface StoredRideSummary {
@@ -18,12 +24,14 @@ interface StoredRideSummary {
   start_timestamp_ms: number | null;
   duration_ms: number | null;
   total_distance_meters: number | null;
+  preview_polyline_json: string | null;
 }
 
 /**
  * Lists every ride, newest first, for the Ride List screen. Reads the v3 summary columns
  * (populated once at import time by persistImportedRide.ts) directly -- no per-row
- * aggregation over ride_points at read time.
+ * aggregation over ride_points at read time. Same for preview_polyline_json (v8) -- never
+ * falls back to a live getRideTrack() query, which would be unbounded per row.
  */
 export function listRides(database: ListRidesDatabase): RideSummary[] {
   const rows = database
@@ -33,7 +41,8 @@ export function listRides(database: ListRidesDatabase): RideSummary[] {
         imported_files.original_filename AS original_filename,
         rides.start_timestamp_ms,
         rides.duration_ms,
-        rides.total_distance_meters
+        rides.total_distance_meters,
+        rides.preview_polyline_json
       FROM rides
       JOIN imported_files ON imported_files.id = rides.imported_file_id
       ORDER BY rides.start_timestamp_ms DESC, rides.id DESC`,
@@ -48,5 +57,8 @@ export function listRides(database: ListRidesDatabase): RideSummary[] {
     ...(row.total_distance_meters === null
       ? {}
       : { totalDistanceMeters: row.total_distance_meters }),
+    ...(row.preview_polyline_json === null
+      ? {}
+      : { previewPolyline: JSON.parse(row.preview_polyline_json) as RidePreviewPoint[] }),
   }));
 }

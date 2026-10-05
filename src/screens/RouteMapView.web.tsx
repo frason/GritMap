@@ -9,6 +9,8 @@ export interface RouteMapViewProps {
   highlightRange?: { startPointIndex: number; endPointIndex: number };
   /** Not supported on web -- MapLibre's native module doesn't resolve here (see below). */
   editableRange?: unknown;
+  /** Not supported on web -- there's no map here to report a viewport from. */
+  onViewportChange?: (bounds: { west: number; south: number; east: number; north: number }) => void;
 }
 
 /**

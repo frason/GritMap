@@ -24,7 +24,7 @@ describe("SQLite migrations", () => {
       .map((row) => String(row.name));
 
     for (const table of CORE_TABLES) assert.ok(tables.includes(table), `missing ${table}`);
-    assert.equal(Number(database.prepare("PRAGMA user_version").get()?.user_version), 7);
+    assert.equal(Number(database.prepare("PRAGMA user_version").get()?.user_version), 9);
 
     assertColumns(database, "imported_files", [
       "id",
@@ -50,6 +50,7 @@ describe("SQLite migrations", () => {
       "fit_metadata_json",
       "total_distance_meters",
       "total_ascent_meters",
+      "preview_polyline_json",
     ]);
     assertColumns(database, "ride_points", [
       "ride_id",
@@ -204,7 +205,7 @@ describe("SQLite migrations", () => {
 
     applyMigrations(database);
 
-    assert.equal(Number(database.prepare("PRAGMA user_version").get()?.user_version), 7);
+    assert.equal(Number(database.prepare("PRAGMA user_version").get()?.user_version), 9);
     assert.deepEqual({ ...database.prepare(`
       SELECT rides.id, imported_files.original_filename,
              imported_files.retained_file_uri, imported_files.file_size_bytes,
@@ -328,7 +329,7 @@ describe("SQLite migrations", () => {
 
     applyMigrations(database);
 
-    assert.equal(Number(database.prepare("PRAGMA user_version").get()?.user_version), 7);
+    assert.equal(Number(database.prepare("PRAGMA user_version").get()?.user_version), 9);
     assert.deepEqual({ ...database.prepare(`
       SELECT total_distance_meters, total_ascent_meters FROM rides WHERE id = 'ride-pre-v3'
     `).get() }, { total_distance_meters: null, total_ascent_meters: null });
@@ -351,6 +352,47 @@ describe("SQLite migrations", () => {
           .run(-1, "ride-pre-v3"),
       /CHECK constraint failed/,
     );
+  });
+
+  it("backfills preview_polyline_json for rides imported before v8, matching import-time sampling", () => {
+    using database = new DatabaseSync(":memory:");
+    applyMigrations(database, migrations.slice(0, 7));
+    insertRide(database, "ride-short", "file-short"); // 3 GPS points -> all kept
+    insertRide(database, "ride-long", "file-long");
+    database.prepare("DELETE FROM ride_points WHERE ride_id = 'ride-long'").run();
+    const insertPoint = database.prepare(
+      `INSERT INTO ride_points (ride_id, point_index, timestamp_ms, latitude, longitude)
+       VALUES (?, ?, ?, ?, ?)`,
+    );
+    const LONG_COUNT = 1_000;
+    for (let i = 0; i < LONG_COUNT; i += 1) {
+      // Every 7th point has no GPS fix: sampling must run over GPS points only.
+      if (i % 7 === 0) insertPoint.run("ride-long", i, 1_000 + i, null, null);
+      else insertPoint.run("ride-long", i, 1_000 + i, 37 + i / 10_000, -122 - i / 10_000);
+    }
+    insertRide(database, "ride-nogps", "file-nogps");
+    database.prepare("UPDATE ride_points SET latitude = NULL, longitude = NULL WHERE ride_id = 'ride-nogps'").run();
+
+    applyMigrations(database);
+
+    const preview = (rideId: string) => {
+      const row = database.prepare("SELECT preview_polyline_json AS p FROM rides WHERE id = ?").get(rideId);
+      return row?.p === null ? null : (JSON.parse(String(row?.p)) as { lat: number; lng: number }[]);
+    };
+
+    assert.deepEqual(preview("ride-short"), [
+      { lat: 37.1, lng: -122.1 },
+      { lat: 37.2, lng: -122.2 },
+      { lat: 37.3, lng: -122.3 },
+    ]);
+    assert.equal(preview("ride-nogps"), null);
+
+    const gps = [] as { lat: number; lng: number }[];
+    for (let i = 0; i < LONG_COUNT; i += 1) {
+      if (i % 7 !== 0) gps.push({ lat: 37 + i / 10_000, lng: -122 - i / 10_000 });
+    }
+    const expected = Array.from({ length: 35 }, (_, k) => gps[Math.round((k * (gps.length - 1)) / 34)]!);
+    assert.deepEqual(preview("ride-long"), expected);
   });
 
   it("allows two segments to share a fingerprint (geometry-only identity, no UNIQUE)", () => {
@@ -385,7 +427,7 @@ describe("SQLite migrations", () => {
 
     applyMigrations(database);
 
-    assert.equal(Number(database.prepare("PRAGMA user_version").get()?.user_version), 7);
+    assert.equal(Number(database.prepare("PRAGMA user_version").get()?.user_version), 9);
     assert.equal(count(database, "segments"), 1);
     assert.equal(count(database, "segment_reference_points"), 2);
     assert.equal(count(database, "segment_attempts"), 1);

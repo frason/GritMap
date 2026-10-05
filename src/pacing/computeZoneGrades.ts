@@ -1,19 +1,62 @@
 import type { SegmentReferencePoint } from "../segments/resamplePolyline.ts";
 
-/** A quarter mile, matching the companion Karoo app's existing pacing-plan zone length. */
+/** A quarter mile -- the explicit-length default of computeZoneGrades, kept for callers/tests that pin a length. */
 export const QUARTER_MILE_METERS = 402.875;
 
 /**
+ * Candidate zone lengths for computeAdaptiveZoneGrades. 402.336m / 804.672m are exact
+ * quarter / half miles (matching the Karoo's own live-split unit, ActiveAttemptSession.kt's
+ * QUARTER_MILE_METERS); 100m is the Karoo climber feature's resolution and the floor, so a
+ * short segment still gets several zones.
+ */
+export const ZONE_LENGTH_CHOICES_METERS = [100, 200, 402.336, 804.672] as const;
+
+/** Aim for roughly this many zones, then snap the resulting length to the nearest choice. */
+const TARGET_ZONE_COUNT = 20;
+
+/**
  * Below this, a trailing remainder zone merges into the previous one instead of standing
- * alone -- matches the 10m resample-grid interval (docs/MVP.md), so a near-empty trailing
- * zone can never be an artifact of resampling granularity alone.
+ * alone: at least the 10m resample-grid interval (docs/MVP.md), or 10% of the zone length
+ * for longer zones, so a sliver of a zone is never emitted.
  */
 const MIN_FINAL_ZONE_METERS = 10;
+const MIN_FINAL_ZONE_FRACTION = 0.1;
 
 export interface ZoneWindow {
   startDistanceMeters: number;
   endDistanceMeters: number;
   gradePct: number;
+}
+
+/**
+ * Picks a zone length that scales with the segment: aim for ~20 zones, then snap to the
+ * nearest (in log terms) of 100m / 200m / quarter mile / half mile. A half-mile segment
+ * gets 100m zones (8 of them) instead of two quarter-mile ones; a 6.5-mile climb gets
+ * quarter-mile zones (~26); a very long one tops out at half-mile zones.
+ */
+export function chooseZoneLengthMeters(totalDistanceMeters: number): number {
+  if (!Number.isFinite(totalDistanceMeters) || totalDistanceMeters <= 0) {
+    return ZONE_LENGTH_CHOICES_METERS[0];
+  }
+  const target = totalDistanceMeters / TARGET_ZONE_COUNT;
+  let best: number = ZONE_LENGTH_CHOICES_METERS[0];
+  let bestLogDistance = Number.POSITIVE_INFINITY;
+  for (const choice of ZONE_LENGTH_CHOICES_METERS) {
+    const logDistance = Math.abs(Math.log(target / choice));
+    if (logDistance < bestLogDistance) {
+      best = choice;
+      bestLogDistance = logDistance;
+    }
+  }
+  return best;
+}
+
+/** computeZoneGrades with the zone length chosen from the segment's own total distance. */
+export function computeAdaptiveZoneGrades(
+  referencePolyline: readonly SegmentReferencePoint[],
+): ZoneWindow[] {
+  const totalDistanceMeters = referencePolyline[referencePolyline.length - 1]?.distanceMeters ?? 0;
+  return computeZoneGrades(referencePolyline, chooseZoneLengthMeters(totalDistanceMeters));
 }
 
 /**
@@ -36,9 +79,10 @@ export function computeZoneGrades(
   }
   boundaries.push(totalDistanceMeters);
 
+  const minFinalZoneMeters = Math.max(MIN_FINAL_ZONE_METERS, zoneLengthMeters * MIN_FINAL_ZONE_FRACTION);
   if (
     boundaries.length >= 3 &&
-    boundaries[boundaries.length - 1]! - boundaries[boundaries.length - 2]! < MIN_FINAL_ZONE_METERS
+    boundaries[boundaries.length - 1]! - boundaries[boundaries.length - 2]! < minFinalZoneMeters
   ) {
     boundaries.splice(boundaries.length - 2, 1);
   }

@@ -1,7 +1,12 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 
-import { computeZoneGrades, QUARTER_MILE_METERS } from "./computeZoneGrades.ts";
+import {
+  chooseZoneLengthMeters,
+  computeAdaptiveZoneGrades,
+  computeZoneGrades,
+  QUARTER_MILE_METERS,
+} from "./computeZoneGrades.ts";
 import type { SegmentReferencePoint } from "../segments/resamplePolyline.ts";
 
 function point(distanceMeters: number, elevationMeters?: number): SegmentReferencePoint {
@@ -81,5 +86,39 @@ describe("computeZoneGrades", () => {
       (zones[0]!.gradePct / 100) * (zones[0]!.endDistanceMeters - zones[0]!.startDistanceMeters) +
       (zones[1]!.gradePct / 100) * (zones[1]!.endDistanceMeters - zones[1]!.startDistanceMeters);
     assert.ok(Math.abs(totalRise - 20) < 1e-9);
+  });
+});
+
+describe("chooseZoneLengthMeters", () => {
+  it("uses 100m zones for short segments", () => {
+    assert.equal(chooseZoneLengthMeters(400), 100);
+    assert.equal(chooseZoneLengthMeters(805), 100); // half a mile -> ~8 zones
+  });
+
+  it("scales up through 200m, quarter mile, and half mile as the segment grows", () => {
+    assert.equal(chooseZoneLengthMeters(3_219), 200); // 2 miles
+    assert.equal(chooseZoneLengthMeters(10_427), 402.336); // Diablo-length climb
+    assert.equal(chooseZoneLengthMeters(40_000), 804.672); // very long -> capped at half mile
+  });
+
+  it("falls back to the smallest length for a degenerate distance", () => {
+    assert.equal(chooseZoneLengthMeters(0), 100);
+    assert.equal(chooseZoneLengthMeters(Number.NaN), 100);
+  });
+});
+
+describe("computeAdaptiveZoneGrades", () => {
+  it("chunks a half-mile segment into 100m zones", () => {
+    const zones = computeAdaptiveZoneGrades([point(0, 100), point(805, 140)]);
+    assert.equal(zones.length, 8); // 100m zones; the 5m remainder merges into the last one
+    assert.equal(zones[0]!.endDistanceMeters, 100);
+    assert.equal(zones.at(-1)!.endDistanceMeters, 805);
+  });
+
+  it("merges a sliver remainder into the previous zone for longer zones too", () => {
+    // 402.336m zones: a 30m remainder is under 10% of the zone length, so it merges.
+    const zones = computeZoneGrades([point(0, 0), point(402.336 * 3 + 30, 0)], 402.336);
+    assert.equal(zones.length, 3);
+    assert.equal(zones[2]!.endDistanceMeters, 402.336 * 3 + 30);
   });
 });

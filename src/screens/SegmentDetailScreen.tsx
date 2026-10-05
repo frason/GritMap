@@ -15,7 +15,7 @@ import type { RideTrackPoint } from "../db/getRideTrack";
 import { runMatcherForSegment, type MatchRunSummary } from "../matcher/runMatcher";
 import { computeSegmentElevationStats } from "../segments/computeSegmentElevationStats";
 import { computeAnchorPowerWatts } from "../pacing/powerDurationAnchor";
-import { computeZoneGrades } from "../pacing/computeZoneGrades";
+import { computeAdaptiveZoneGrades } from "../pacing/computeZoneGrades";
 import { buildTargetPowerZones, type PacingZone } from "../pacing/buildTargetPowerZones";
 import { parseTargetDurationInput } from "./parseTargetDuration";
 import type { SegmentsStackParamList } from "../navigation/types";
@@ -291,7 +291,7 @@ export function SegmentDetailScreen() {
   } else {
     const ftpWatts = athleteProfile.ftpWatts;
     const anchorPowerWatts = computeAnchorPowerWatts(ftpWatts, activeGoal.targetDurationMs);
-    const zoneWindows = computeZoneGrades(segment.referencePolyline);
+    const zoneWindows = computeAdaptiveZoneGrades(segment.referencePolyline);
     pacingZones = buildTargetPowerZones(zoneWindows, anchorPowerWatts, ftpWatts);
     const pctFtp = Math.round((anchorPowerWatts / ftpWatts) * 100);
 
@@ -314,7 +314,7 @@ export function SegmentDetailScreen() {
           <>
             <TextInput
               style={styles.addressInput}
-              placeholder="Karoo address, e.g. 192.168.1.42:8734"
+              placeholder="IP or full Karoo URL"
               placeholderTextColor={colors.textTertiary}
               value={karooAddress}
               onChangeText={setKarooAddress}

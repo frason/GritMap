@@ -133,6 +133,68 @@ describe("insertImportedRide", () => {
     assert.equal(ride.total_ascent_meters, 0);
   });
 
+  it("stores a preview polyline of every point when the ride has GPS and few points", () => {
+    const database = migratedDatabase();
+    const generateId = sequentialIdFactory("id");
+
+    const result = insertImportedRide(
+      database,
+      generateId,
+      baseParams({
+        points: points(
+          { timestampMs: 1_000, lat: 37.0, lng: -122.0 },
+          { timestampMs: 2_000, lat: 37.001, lng: -122.001 },
+        ),
+      }),
+    );
+
+    const row = database
+      .prepare("SELECT preview_polyline_json FROM rides WHERE id = ?")
+      .get(result.rideId) as { preview_polyline_json: string };
+    assert.deepEqual(JSON.parse(row.preview_polyline_json), [
+      { lat: 37.0, lng: -122.0 },
+      { lat: 37.001, lng: -122.001 },
+    ]);
+  });
+
+  it("stores no preview polyline when the ride has no GPS fix at all", () => {
+    const database = migratedDatabase();
+    const generateId = sequentialIdFactory("id");
+
+    const result = insertImportedRide(
+      database,
+      generateId,
+      baseParams({ points: points({ timestampMs: 1_000 }, { timestampMs: 2_000 }) }),
+    );
+
+    const row = database
+      .prepare("SELECT preview_polyline_json FROM rides WHERE id = ?")
+      .get(result.rideId) as { preview_polyline_json: string | null };
+    assert.equal(row.preview_polyline_json, null);
+  });
+
+  it("decimates a long GPS track down to a bounded preview point count, keeping the endpoints", () => {
+    const database = migratedDatabase();
+    const generateId = sequentialIdFactory("id");
+
+    const longTrack = points(
+      ...Array.from({ length: 200 }, (_, i) => ({
+        timestampMs: 1_000 + i * 1_000,
+        lat: 37.0 + i * 0.0001,
+        lng: -122.0 - i * 0.0001,
+      })),
+    );
+    const result = insertImportedRide(database, generateId, baseParams({ points: longTrack }));
+
+    const row = database
+      .prepare("SELECT preview_polyline_json FROM rides WHERE id = ?")
+      .get(result.rideId) as { preview_polyline_json: string };
+    const preview = JSON.parse(row.preview_polyline_json) as { lat: number; lng: number }[];
+    assert.equal(preview.length, 35);
+    assert.deepEqual(preview[0], { lat: 37.0, lng: -122.0 });
+    assert.deepEqual(preview[preview.length - 1], { lat: 37.0 + 199 * 0.0001, lng: -122.0 - 199 * 0.0001 });
+  });
+
   it("rolls back entirely if any statement in the transaction fails", () => {
     const database = migratedDatabase();
     const generateId = sequentialIdFactory("id");

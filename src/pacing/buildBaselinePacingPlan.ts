@@ -1,9 +1,9 @@
 import type { SegmentReferencePoint } from "../segments/resamplePolyline.ts";
 import { computeAnchorPowerWatts } from "./powerDurationAnchor.ts";
-import { computeZoneGrades } from "./computeZoneGrades.ts";
+import { computeAdaptiveZoneGrades, computeZoneGrades } from "./computeZoneGrades.ts";
 import { buildTargetPowerZones, type PacingClassification } from "./buildTargetPowerZones.ts";
 
-const DEFAULT_MODEL_VERSION = "pacing-anchor-grade-v1";
+const DEFAULT_MODEL_VERSION = "pacing-anchor-grade-v2";
 
 /**
  * apps/karoo's PacingModels.kt enum has no "REST" value -- "REST" is this app's own
@@ -24,6 +24,8 @@ export interface BuildBaselinePacingPlanInput {
   targetDurationMs: number;
   createdAtMs: number;
   modelVersion?: string;
+  /** Pins a fixed zone length; omit to scale it with the segment (chooseZoneLengthMeters). */
+  zoneLengthMeters?: number;
 }
 
 /**
@@ -33,7 +35,10 @@ export interface BuildBaselinePacingPlanInput {
  */
 export function buildBaselinePacingPlan(input: BuildBaselinePacingPlanInput): object {
   const anchorPowerWatts = computeAnchorPowerWatts(input.ftpWatts, input.targetDurationMs);
-  const zoneWindows = computeZoneGrades(input.referencePolyline);
+  const zoneWindows =
+    input.zoneLengthMeters === undefined
+      ? computeAdaptiveZoneGrades(input.referencePolyline)
+      : computeZoneGrades(input.referencePolyline, input.zoneLengthMeters);
   const zones = buildTargetPowerZones(zoneWindows, anchorPowerWatts, input.ftpWatts);
 
   return {

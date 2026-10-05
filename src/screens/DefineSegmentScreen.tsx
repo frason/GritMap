@@ -13,11 +13,13 @@ import { resamplePolyline } from "../segments/resamplePolyline";
 import { computeCumulativeTrackDistance, nearestByDistance } from "../segments/cumulativeTrackDistance";
 import { clampRangeEnd, clampRangeStart } from "../segments/clampSegmentRange";
 import { nearestTrackPointByLatLng } from "../segments/nearestTrackPoint";
+import { computeVisibleDistanceRange } from "../segments/computeVisibleDistanceRange";
 import type { RidesStackParamList, RootTabParamList } from "../navigation/types";
 import { colors } from "../theme/colors";
 import { radius, spacing } from "../theme/spacing";
 import { RouteMapView } from "./RouteMapView";
 import { DistanceRangeScrubber } from "./DistanceRangeScrubber";
+import { RideElevationChart, type RideElevationChartRange } from "./RideElevationChart";
 
 /** Fixed per docs/MVP.md's "Segment definition" contract -- not yet user-configurable. */
 const RESAMPLE_INTERVAL_METERS = 10;
@@ -40,8 +42,13 @@ export function DefineSegmentScreen() {
   const [startDistanceMeters, setStartDistanceMeters] = useState(0);
   const [endDistanceMeters, setEndDistanceMeters] = useState<number | undefined>(undefined);
   const [saving, setSaving] = useState(false);
-  // Which pin the next map tap moves (issue #58) -- tapping a pin also selects it.
+  // Which pin the next map tap moves (issue #58) -- tapping a pin also selects it. Shown as
+  // "Start"/"Finish" tabs at the top of the screen; only the active tab's pin responds to a
+  // map tap.
   const [activeHandle, setActiveHandle] = useState<"start" | "end">("start");
+  // Zooms RideElevationChart to match the map's own zoom -- undefined (full ride) until the
+  // user pans/zooms the map at least once.
+  const [visibleRange, setVisibleRange] = useState<RideElevationChartRange | undefined>(undefined);
 
   useEffect(() => {
     setTrack(getRideTrack(database, route.params.rideId));
@@ -67,6 +74,15 @@ export function DefineSegmentScreen() {
   function handleRangeChange(range: { startDistanceMeters: number; endDistanceMeters: number }) {
     setStartDistanceMeters(range.startDistanceMeters);
     setEndDistanceMeters(range.endDistanceMeters);
+  }
+
+  function handleViewportChange(bounds: { west: number; south: number; east: number; north: number }) {
+    const range = computeVisibleDistanceRange(distanceIndexed, bounds);
+    // Panned away from the route entirely -- keep whatever range the chart last showed
+    // rather than collapsing it to nothing.
+    if (range !== undefined) {
+      setVisibleRange({ startDistanceMeters: range.minDistanceMeters, endDistanceMeters: range.maxDistanceMeters });
+    }
   }
 
   function handleMapTap(latLng: { lat: number; lng: number }) {
@@ -137,6 +153,27 @@ export function DefineSegmentScreen() {
       behavior={Platform.OS === "ios" ? "padding" : undefined}
     >
       <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
+        {totalDistanceMeters > 0 && (
+          <View style={styles.tabRow}>
+            <HandleTab
+              label="Start"
+              active={activeHandle === "start"}
+              onPress={() => setActiveHandle("start")}
+            />
+            <HandleTab
+              label="Finish"
+              active={activeHandle === "end"}
+              onPress={() => setActiveHandle("end")}
+            />
+          </View>
+        )}
+        {totalDistanceMeters > 0 && (
+          <Text style={styles.mapHint}>
+            Tap the map to move the {activeHandle === "start" ? "start" : "finish"} point --
+            only {activeHandle === "start" ? "start" : "finish"} can be changed on this tab.
+          </Text>
+        )}
+
         <View style={styles.mapContainer}>
           <RouteMapView
             points={track}
@@ -152,23 +189,16 @@ export function DefineSegmentScreen() {
                   }
                 : undefined
             }
+            onViewportChange={handleViewportChange}
           />
         </View>
 
         {totalDistanceMeters > 0 && (
-          <View style={styles.handleToggleRow}>
-            <HandleToggleButton
-              label="Start"
-              active={activeHandle === "start"}
-              onPress={() => setActiveHandle("start")}
-            />
-            <HandleToggleButton
-              label="End"
-              active={activeHandle === "end"}
-              onPress={() => setActiveHandle("end")}
-            />
-            <Text style={styles.mapHint}>Tap the map to move the selected pin</Text>
-          </View>
+          <RideElevationChart
+            points={distanceIndexed}
+            selectedRange={{ startDistanceMeters, endDistanceMeters: resolvedEndDistanceMeters }}
+            visibleRange={visibleRange}
+          />
         )}
 
         {totalDistanceMeters > 0 && (
@@ -203,24 +233,24 @@ export function DefineSegmentScreen() {
   );
 }
 
-function HandleToggleButton({
+function HandleTab({
   label,
   active,
   onPress,
 }: {
-  label: "Start" | "End";
+  label: "Start" | "Finish";
   active: boolean;
   onPress: () => void;
 }) {
   return (
     <TouchableOpacity
-      style={[styles.handleToggle, active && styles.handleToggleActive]}
+      style={[styles.tab, active && styles.tabActive]}
       onPress={onPress}
-      accessibilityRole="button"
+      accessibilityRole="tab"
       accessibilityLabel={`Edit ${label}`}
       accessibilityState={{ selected: active }}
     >
-      <Text style={[styles.handleToggleLabel, active && styles.handleToggleLabelActive]}>{label}</Text>
+      <Text style={[styles.tabLabel, active && styles.tabLabelActive]}>{label}</Text>
     </TouchableOpacity>
   );
 }
@@ -240,34 +270,33 @@ const styles = StyleSheet.create({
     overflow: "hidden",
     backgroundColor: colors.surface,
   },
-  handleToggleRow: {
+  tabRow: {
     flexDirection: "row",
+    backgroundColor: colors.surface,
+    borderRadius: radius.md,
+    padding: spacing.space4,
+    gap: spacing.space4,
+  },
+  tab: {
+    flex: 1,
+    borderRadius: radius.md - 2,
+    paddingVertical: spacing.space8 + 2,
     alignItems: "center",
-    gap: spacing.space8,
   },
-  handleToggle: {
-    borderRadius: radius.pill,
-    borderWidth: 1,
-    borderColor: colors.border,
-    paddingHorizontal: spacing.space16,
-    paddingVertical: spacing.space8,
-  },
-  handleToggleActive: {
+  tabActive: {
     backgroundColor: colors.brand,
-    borderColor: colors.brand,
   },
-  handleToggleLabel: {
-    fontSize: 13,
+  tabLabel: {
+    fontSize: 14,
     fontWeight: "600",
     color: colors.textSecondary,
   },
-  handleToggleLabelActive: {
+  tabLabelActive: {
     color: colors.textOnBrand,
   },
   mapHint: {
     fontSize: 12,
     color: colors.textTertiary,
-    flexShrink: 1,
   },
   nameInput: {
     backgroundColor: colors.surface,

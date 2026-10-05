@@ -36,6 +36,7 @@ export function insertImportedRide(
   const rideId = generateId();
   const totalDistanceMeters = computeTotalDistanceMeters(params.points);
   const totalAscentMeters = computeTotalAscentMeters(params.points);
+  const previewPolylineJson = computePreviewPolylineJson(params.points);
   const endTimestampMs = params.startTimestampMs + params.durationMs;
 
   database.exec("BEGIN IMMEDIATE");
@@ -61,8 +62,8 @@ export function insertImportedRide(
           id, imported_file_id, parser_version, start_timestamp_ms, end_timestamp_ms,
           created_at_ms, updated_at_ms, activity_id, device_id, duration_ms,
           original_timezone_offset_minutes, fit_metadata_json,
-          total_distance_meters, total_ascent_meters
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+          total_distance_meters, total_ascent_meters, preview_polyline_json
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       )
       .run(
         rideId,
@@ -79,6 +80,7 @@ export function insertImportedRide(
         params.deviceMetadataJson,
         totalDistanceMeters ?? null,
         totalAscentMeters ?? null,
+        previewPolylineJson ?? null,
       );
 
     insertRidePoints(database, rideId, params.points);
@@ -108,6 +110,7 @@ export function replaceImportedRide(
 ): ReplaceImportedRideResult {
   const totalDistanceMeters = computeTotalDistanceMeters(params.points);
   const totalAscentMeters = computeTotalAscentMeters(params.points);
+  const previewPolylineJson = computePreviewPolylineJson(params.points);
   const endTimestampMs = params.startTimestampMs + params.durationMs;
 
   database.exec("BEGIN IMMEDIATE");
@@ -153,7 +156,7 @@ export function replaceImportedRide(
          SET parser_version = ?, start_timestamp_ms = ?, end_timestamp_ms = ?,
              updated_at_ms = ?, activity_id = ?, device_id = ?, duration_ms = ?,
              original_timezone_offset_minutes = ?, fit_metadata_json = ?,
-             total_distance_meters = ?, total_ascent_meters = ?
+             total_distance_meters = ?, total_ascent_meters = ?, preview_polyline_json = ?
          WHERE id = ?`,
       )
       .run(
@@ -168,6 +171,7 @@ export function replaceImportedRide(
         params.deviceMetadataJson,
         totalDistanceMeters ?? null,
         totalAscentMeters ?? null,
+        previewPolylineJson ?? null,
         existingRideId,
       );
 
@@ -244,4 +248,33 @@ function computeTotalAscentMeters(points: readonly ParsedPoint[]): number | unde
   }
 
   return sawElevation ? ascent : undefined;
+}
+
+const PREVIEW_POLYLINE_TARGET_POINTS = 35;
+
+/**
+ * A small, evenly-decimated-by-index {lat,lng} polyline for the rides-list thumbnail --
+ * just enough points for a recognizable shape, not full GPS precision. Unlike
+ * getRideTrack.ts's gap-aware track used for real analysis, this doesn't need to preserve
+ * timestamp-gap detection, so plain even sampling (always keeping the first and last point)
+ * is enough. Returns undefined when the ride has no GPS fix at all.
+ */
+function computePreviewPolylineJson(points: readonly ParsedPoint[]): string | undefined {
+  const withPosition = points.filter(
+    (point): point is ParsedPoint & { lat: number; lng: number } =>
+      point.lat !== undefined && point.lng !== undefined,
+  );
+  if (withPosition.length === 0) return undefined;
+  if (withPosition.length <= PREVIEW_POLYLINE_TARGET_POINTS) {
+    return JSON.stringify(withPosition.map((point) => ({ lat: point.lat, lng: point.lng })));
+  }
+
+  const lastIndex = withPosition.length - 1;
+  const sampled: { lat: number; lng: number }[] = [];
+  for (let i = 0; i < PREVIEW_POLYLINE_TARGET_POINTS; i += 1) {
+    const sourceIndex = Math.round((i * lastIndex) / (PREVIEW_POLYLINE_TARGET_POINTS - 1));
+    const point = withPosition[sourceIndex]!;
+    sampled.push({ lat: point.lat, lng: point.lng });
+  }
+  return JSON.stringify(sampled);
 }

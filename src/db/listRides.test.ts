@@ -43,6 +43,21 @@ describe("listRides", () => {
     const [ride] = listRides(database);
     assert.ok(ride && !("totalDistanceMeters" in ride));
   });
+
+  it("parses previewPolyline from the stored JSON, and omits it entirely when NULL", () => {
+    using database = migratedDatabase();
+    insertRide(database, "ride-with-preview", "file-a", {
+      startTimestampMs: 1_000,
+      previewPolylineJson: JSON.stringify([{ lat: 37.0, lng: -122.0 }]),
+    });
+    insertRide(database, "ride-without-preview", "file-b", { startTimestampMs: 2_000 });
+
+    const rides = listRides(database);
+    const withPreview = rides.find((r) => r.rideId === "ride-with-preview");
+    const withoutPreview = rides.find((r) => r.rideId === "ride-without-preview");
+    assert.deepEqual(withPreview?.previewPolyline, [{ lat: 37.0, lng: -122.0 }]);
+    assert.ok(withoutPreview && !("previewPolyline" in withoutPreview));
+  });
 });
 
 function migratedDatabase(): DatabaseSync {
@@ -55,7 +70,12 @@ function insertRide(
   database: DatabaseSync,
   rideId: string,
   fileId: string,
-  fields: { startTimestampMs?: number; durationMs?: number; totalDistanceMeters?: number },
+  fields: {
+    startTimestampMs?: number;
+    durationMs?: number;
+    totalDistanceMeters?: number;
+    previewPolylineJson?: string;
+  },
 ): void {
   database
     .prepare(
@@ -67,8 +87,8 @@ function insertRide(
     .prepare(
       `INSERT INTO rides (
         id, imported_file_id, parser_version, created_at_ms, updated_at_ms,
-        start_timestamp_ms, duration_ms, total_distance_meters
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+        start_timestamp_ms, duration_ms, total_distance_meters, preview_polyline_json
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     )
     .run(
       rideId,
@@ -79,5 +99,6 @@ function insertRide(
       fields.startTimestampMs ?? null,
       fields.durationMs ?? null,
       fields.totalDistanceMeters ?? null,
+      fields.previewPolylineJson ?? null,
     );
 }

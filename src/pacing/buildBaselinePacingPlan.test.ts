@@ -63,12 +63,27 @@ describe("buildBaselinePacingPlan", () => {
       ftpWatts: 300,
       targetDurationMs: 60 * 60_000,
       createdAtMs: 1_000,
+      zoneLengthMeters: 402.875,
     }) as { zones: { classification: string; icon: string }[] };
 
     assert.equal(plan.zones.length, 3);
     assert.equal(plan.zones[0]!.classification, "RECOVER");
     assert.equal(plan.zones[0]!.icon, "RECOVER");
     for (const zone of plan.zones) assert.notEqual(zone.classification, "REST");
+  });
+
+  it("scales zone length with the segment: a half-mile segment gets several 100m zones, not two quarter-mile ones", () => {
+    const plan = buildBaselinePacingPlan({
+      id: "plan-1",
+      segmentFingerprint: "fp-abc",
+      referencePolyline: simplePolyline(805),
+      ftpWatts: 280,
+      targetDurationMs: 4 * 60_000,
+      createdAtMs: 1_000,
+    }) as { zones: { startDistanceMeters: number; endDistanceMeters: number }[] };
+
+    assert.ok(plan.zones.length >= 6, `expected several zones, got ${plan.zones.length}`);
+    assert.equal(plan.zones[0]!.endDistanceMeters - plan.zones[0]!.startDistanceMeters, 100);
   });
 
   it("always emits whole-number ftpWatts and targetPowerWatts, even for a fractional FTP", () => {

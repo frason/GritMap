@@ -18,6 +18,8 @@ export interface RouteMapViewProps {
   highlightRange?: { startPointIndex: number; endPointIndex: number };
   /** Tap-to-place start/end pins directly on the map, for defining a segment (issue #58). */
   editableRange?: EditableSegmentRange;
+  /** Fires with the map's visible lat/lng bounds once a pan/zoom settles -- lets a caller (e.g. an elevation chart) zoom in sync with the map. Not called on every live drag tick, only once the gesture settles, via onRegionDidChange. */
+  onViewportChange?: (bounds: { west: number; south: number; east: number; north: number }) => void;
 }
 
 export interface EditableSegmentRange {
@@ -57,7 +59,7 @@ const HANDLE_SIZE = 28;
  */
 const EDIT_ZOOM_LEVEL = 17;
 
-export function RouteMapView({ points, highlightRange, editableRange }: RouteMapViewProps) {
+export function RouteMapView({ points, highlightRange, editableRange, onViewportChange }: RouteMapViewProps) {
   const mapRef = useRef<MapRef>(null);
   const cameraRef = useRef<CameraRef>(null);
   // Bumped on every onRegionDidChange (settled) and, throttled, on onRegionIsChanging (live
@@ -121,7 +123,17 @@ export function RouteMapView({ points, highlightRange, editableRange }: RouteMap
         // easier to judge where a tap will land relative to the route.
         touchRotate={editableRange === undefined}
         touchPitch={editableRange === undefined}
-        onRegionDidChange={() => setRegionChangeTick((tick) => tick + 1)}
+        onRegionDidChange={() => {
+          setRegionChangeTick((tick) => tick + 1);
+          if (onViewportChange === undefined) return;
+          mapRef.current
+            ?.getBounds()
+            .then(([west, south, east, north]) => onViewportChange({ west, south, east, north }))
+            .catch(() => {
+              // The native map isn't ready yet -- same "ignore, let the next settle retry"
+              // tolerance EditableHandles' reproject() already uses for project().
+            });
+        }}
         // Without this, a pin stays frozen at its old screen position for the whole
         // duration of a manual pan/zoom and only jumps to the correct spot once the
         // gesture settles (onRegionDidChange alone). Throttled to ~10/sec so a fast pan

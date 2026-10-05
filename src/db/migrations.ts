@@ -345,6 +345,54 @@ export const migrations: readonly Migration[] = [
       ALTER TABLE athlete_profile ADD COLUMN weight_kg REAL CHECK (weight_kg IS NULL OR weight_kg > 0);
     `,
   },
+  {
+    version: 8,
+    name: "ride_preview_polyline",
+    sql: `
+      -- A small (~30-40 point) decimated {lat,lng} polyline, computed once at import time
+      -- (persistImportedRide.ts), so the rides list can show a route-shape thumbnail per
+      -- row without a live per-row query over the full, undecimated ride_points table.
+      -- Same "precompute once at import" convention as total_distance_meters/total_ascent_meters.
+      ALTER TABLE rides ADD COLUMN preview_polyline_json TEXT
+        CHECK (preview_polyline_json IS NULL OR json_valid(preview_polyline_json));
+    `,
+  },
+  {
+    version: 9,
+    name: "backfill_ride_preview_polyline",
+    sql: `
+      -- v8 only fills preview_polyline_json for rides imported after it shipped; this fills it
+      -- for every earlier ride from its stored ride_points, using the same selection as
+      -- persistImportedRide.ts's computePreviewPolylineJson: all GPS points when there are 35
+      -- or fewer, otherwise the 35 points at index round(k * (n - 1) / 34), k = 0..34. A row
+      -- at index idx is one of those exactly when it survives the k <-> idx round trip below
+      -- (for n > 35 the step exceeds 1, so every selected index maps back to a unique k).
+      UPDATE rides
+      SET preview_polyline_json = (
+        SELECT json_group_array(json_object('lat', latitude, 'lng', longitude))
+        FROM (
+          SELECT latitude, longitude
+          FROM (
+            SELECT
+              latitude,
+              longitude,
+              ROW_NUMBER() OVER (ORDER BY point_index) - 1 AS idx,
+              COUNT(*) OVER () AS n
+            FROM ride_points
+            WHERE ride_id = rides.id AND latitude IS NOT NULL AND longitude IS NOT NULL
+          )
+          WHERE n <= 35
+             OR CAST(ROUND(CAST(ROUND(idx * 34.0 / (n - 1)) AS INTEGER) * (n - 1) / 34.0) AS INTEGER) = idx
+          ORDER BY idx
+        )
+      )
+      WHERE preview_polyline_json IS NULL
+        AND EXISTS (
+          SELECT 1 FROM ride_points
+          WHERE ride_id = rides.id AND latitude IS NOT NULL AND longitude IS NOT NULL
+        );
+    `,
+  },
 ];
 
 export function configureDatabaseConnection(database: MigrationDatabase): void {
