@@ -104,6 +104,29 @@ plan blocks sending and tells the rider to import an updated plan or switch back
 one. (Plans given as `targetPercentFtp` are converted to watts at import, so they also need
 re-importing after an FTP change; automatic re-derivation is a possible follow-up.)
 
+## Predicted finish time
+
+An imported plan carries watts, not a time, so the phone predicts one (`src/pacing/predictFinishTime.ts`,
+`predictPlanFinish.ts`). The import preview and the segment screen show **"Predicted finish about 40:12"**, how it
+was derived, how it compares with your goal for that segment, and the coach's own target if the document had one.
+
+- **Model:** a steady-state cycling power equation (gravity + rolling resistance + air drag, 50 m steps, grade
+  measured over 100 m of the route's elevation). Inputs are your weight (phone profile) and the route; bike and kit
+  9.5 kg, CdA 0.36, Crr 0.005, air density 1.2, drivetrain 97.5% are fixed assumptions. Speed is capped at 16 m/s
+  so a descent never runs away. Most trustworthy on climbs.
+- **Calibration:** for each of your last three accepted efforts on the segment the model is run on the power you
+  actually held; actual time / model time is that effort's factor (your bike, position, conditions). The prediction
+  uses the median factor (factors outside 0.8-1.3 are discarded) and says "calibrated to your last N efforts".
+  With no usable effort it is labelled an estimate.
+- **Evidence (2026-10-05, the real 2026-09-13 Diablo effort, 92.5 kg):** the uncalibrated model on the power
+  actually held predicted 42:43 for a ride that took 45:45 (about 7% fast); the generated 39:00 plan models to 39:05
+  uncalibrated and **41:52 calibrated**. So the uncalibrated figure is optimistic; expect it to tighten after the
+  first effort on a segment.
+- **Karoo target time:** a coach plan with no `targetFinishTimeSeconds` is sent to the Karoo with the predicted
+  finish as its target (otherwise the Karoo's segment "Goal" reads "Fastest sustainable" and its pacer has no time
+  to work to). A plan that states its own target keeps it. The phone's goal is not changed or sent.
+- Needs your weight and a route with elevation; without them nothing is shown or sent and the screen says why.
+
 ## Proposed Karoo-side extension (for Codex; not implemented, not required)
 
 The phone cannot send any of this until the Karoo build accepts it, because the current parser

@@ -25,6 +25,9 @@ import { computeAnchorPowerWatts } from "../pacing/powerDurationAnchor";
 import { computeAdaptiveZoneGrades } from "../pacing/computeZoneGrades";
 import { buildTargetPowerZones } from "../pacing/buildTargetPowerZones";
 import { summarizeCoachPlan } from "../pacing/coachPlan";
+import { loadCalibrationAttempts } from "../pacing/loadCalibrationAttempts";
+import { predictPlanFinish, type PlanFinishPrediction } from "../pacing/predictPlanFinish";
+import { describePlanPrediction } from "./describePlanPrediction";
 import { parseTargetDurationInput } from "./parseTargetDuration";
 import type { SegmentsStackParamList } from "../navigation/types";
 import { sendGuidancePackageToKaroo } from "../karoo/sendGuidancePackageToKaroo";
@@ -83,6 +86,7 @@ export function SegmentDetailScreen() {
   const [athleteProfile, setAthleteProfile] = useState<AthleteProfile>({});
   const [activeGoal, setActiveGoal] = useState<ActiveGoal | undefined>(undefined);
   const [activePlan, setActivePlan] = useState<SavedSegmentPlan | undefined>(undefined);
+  const [planPrediction, setPlanPrediction] = useState<PlanFinishPrediction | undefined>(undefined);
   const [otherGoalSegmentName, setOtherGoalSegmentName] = useState<string | undefined>(undefined);
   const [analyzeEffortSummary, setAnalyzeEffortSummary] = useState<AnalyzeEffortSummary | undefined>(undefined);
   const [goalMinutesInput, setGoalMinutesInput] = useState("");
@@ -118,7 +122,20 @@ export function SegmentDetailScreen() {
       setAthleteProfile(getAthleteProfile(database));
       setKarooAddress((current) => (current === "" ? (getSavedKarooAddress(database) ?? "") : current));
       setActiveGoal(currentGoal);
-      setActivePlan(getActiveSegmentPlan(database, route.params.segmentId));
+      const currentPlan = getActiveSegmentPlan(database, route.params.segmentId);
+      setActivePlan(currentPlan);
+      const currentSegment = getSegmentDetail(database, route.params.segmentId);
+      const currentProfile = getAthleteProfile(database);
+      setPlanPrediction(
+        currentPlan !== undefined && currentSegment !== undefined && currentProfile.weightKg !== undefined
+          ? predictPlanFinish({
+              zones: currentPlan.zones,
+              referencePolyline: currentSegment.referencePolyline,
+              riderWeightKg: currentProfile.weightKg,
+              attempts: loadCalibrationAttempts(database, route.params.segmentId),
+            })
+          : undefined,
+      );
       setGoalMinutesInput("");
       setGoalSecondsInput("");
       setGoalSaveStatus(undefined);
@@ -249,7 +266,11 @@ export function SegmentDetailScreen() {
       trimmed,
       generateId(),
       Date.now(),
-      activePlan,
+      // A coach plan with no target time of its own gets the predicted finish, so the Karoo's
+      // "Goal" and its pacer have a time to work to instead of "Fastest sustainable".
+      activePlan !== undefined && activePlan.targetFinishSeconds === undefined && planPrediction !== undefined
+        ? { ...activePlan, targetFinishSeconds: Math.round(planPrediction.durationMs / 1_000) }
+        : activePlan,
     );
     setPacingSending(false);
     if (result.ok && activePlan !== undefined) {
@@ -294,6 +315,20 @@ export function SegmentDetailScreen() {
             : ` · target ${formatDurationMinutesSeconds(activePlan.targetFinishSeconds * 1_000)}`}
         </Text>
         {activePlan.notes !== undefined && <Text style={styles.sendHint}>{activePlan.notes}</Text>}
+        {planPrediction !== undefined ? (
+          <PredictionBlock
+            prediction={planPrediction}
+            {...(goalIsForThisSegment && activeGoal !== undefined ? { goalDurationMs: activeGoal.targetDurationMs } : {})}
+            {...(activePlan.targetFinishSeconds === undefined ? {} : { coachTargetSeconds: activePlan.targetFinishSeconds })}
+            sentAsTarget={activePlan.targetFinishSeconds === undefined}
+          />
+        ) : (
+          athleteProfile.weightKg === undefined && (
+            <TouchableOpacity onPress={() => navigation.navigate("ZonesSettings")}>
+              <Text style={styles.missingLink}>Set your weight to see a predicted finish time</Text>
+            </TouchableOpacity>
+          )
+        )}
         {outdated && (
           <Text style={styles.outdatedText}>
             Written for an FTP of {activePlan.ftpWatts} W; yours is now {Math.round(athleteProfile.ftpWatts)} W. Import an
@@ -614,6 +649,33 @@ export function SegmentDetailScreen() {
   );
 }
 
+function PredictionBlock({
+  prediction,
+  goalDurationMs,
+  coachTargetSeconds,
+  sentAsTarget,
+}: {
+  prediction: PlanFinishPrediction;
+  goalDurationMs?: number;
+  coachTargetSeconds?: number;
+  sentAsTarget: boolean;
+}) {
+  const lines = describePlanPrediction({
+    prediction,
+    ...(goalDurationMs === undefined ? {} : { goalDurationMs }),
+    ...(coachTargetSeconds === undefined ? {} : { coachTargetSeconds }),
+  });
+  return (
+    <View style={styles.predictionBlock}>
+      <Text style={styles.predictionHeadline}>{lines.headline}</Text>
+      <Text style={styles.sendHint}>{lines.basis}</Text>
+      {lines.goal !== undefined && <Text style={styles.goalSummaryText}>{lines.goal}</Text>}
+      {lines.coachTarget !== undefined && <Text style={styles.sendHint}>{lines.coachTarget}</Text>}
+      {sentAsTarget && <Text style={styles.sendHint}>Sent to the Karoo as this plan's target time.</Text>}
+    </View>
+  );
+}
+
 function EffortRow({
   icon,
   title,
@@ -799,6 +861,8 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: colors.textSecondary,
   },
+  predictionBlock: { gap: spacing.space4 },
+  predictionHeadline: { fontSize: 17, fontWeight: "700", color: colors.textPrimary },
   outdatedText: {
     fontSize: 13,
     lineHeight: 18,

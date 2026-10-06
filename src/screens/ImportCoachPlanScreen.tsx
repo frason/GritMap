@@ -9,10 +9,13 @@ import { getAthleteProfile, type AthleteProfile } from "../db/getAthleteProfile"
 import { getSegmentDetail, type SegmentDetail } from "../db/getSegmentDetail";
 import { saveSegmentPlan } from "../db/segmentPlans";
 import { buildCoachPlanRequest } from "../pacing/buildCoachPlanRequest";
+import { loadCalibrationAttempts } from "../pacing/loadCalibrationAttempts";
+import { predictPlanFinish, type PlanFinishPrediction } from "../pacing/predictPlanFinish";
 import { parseCoachPlan, summarizeCoachPlan, type CoachPlanParseResult } from "../pacing/coachPlan";
 import type { SegmentsStackParamList } from "../navigation/types";
 import { colors } from "../theme/colors";
 import { radius, spacing } from "../theme/spacing";
+import { describePlanPrediction } from "./describePlanPrediction";
 import { ElevationProfileChart } from "./ElevationProfileChart";
 
 type ImportCoachPlanRoute = RouteProp<SegmentsStackParamList, "ImportCoachPlan">;
@@ -35,6 +38,7 @@ export function ImportCoachPlanScreen() {
   const [goalDurationMs, setGoalDurationMs] = useState<number | undefined>(undefined);
   const [text, setText] = useState("");
   const [result, setResult] = useState<CoachPlanParseResult | undefined>(undefined);
+  const [prediction, setPrediction] = useState<PlanFinishPrediction | undefined>(undefined);
   const [saveError, setSaveError] = useState<string | undefined>(undefined);
 
   useFocusEffect(
@@ -83,12 +87,21 @@ export function ImportCoachPlanScreen() {
   function handleCheck() {
     if (segment === undefined || ftpWatts === undefined) return;
     setSaveError(undefined);
-    setResult(
-      parseCoachPlan(text, {
-        segmentFingerprint: segment.fingerprint,
-        segmentLengthMeters: totalMeters,
-        ftpWatts,
-      }),
+    const parsed = parseCoachPlan(text, {
+      segmentFingerprint: segment.fingerprint,
+      segmentLengthMeters: totalMeters,
+      ftpWatts,
+    });
+    setResult(parsed);
+    setPrediction(
+      parsed.ok && profile.weightKg !== undefined
+        ? predictPlanFinish({
+            zones: parsed.plan.zones,
+            referencePolyline: segment.referencePolyline,
+            riderWeightKg: profile.weightKg,
+            attempts: loadCalibrationAttempts(database, segment.segmentId),
+          })
+        : undefined,
     );
   }
 
@@ -141,6 +154,7 @@ export function ImportCoachPlanScreen() {
           onChangeText={(value) => {
             setText(value);
             setResult(undefined);
+            setPrediction(undefined);
           }}
           autoCapitalize="none"
           autoCorrect={false}
@@ -170,7 +184,14 @@ export function ImportCoachPlanScreen() {
       {result !== undefined && result.ok && (
         <View style={styles.card}>
           <Text style={styles.cardTitle}>Plan looks good</Text>
-          <PlanSummary result={result} ftpWatts={ftpWatts} />
+          <PlanSummary
+            result={result}
+            ftpWatts={ftpWatts}
+            prediction={prediction}
+            goalDurationMs={goalDurationMs}
+            weightMissing={profile.weightKg === undefined}
+            onSetWeight={() => navigation.navigate("ZonesSettings")}
+          />
           {result.warnings.map((warning, index) => (
             <Text key={index} style={styles.warningLine}>
               • {warning}
@@ -187,9 +208,31 @@ export function ImportCoachPlanScreen() {
   );
 }
 
-function PlanSummary({ result, ftpWatts }: { result: Extract<CoachPlanParseResult, { ok: true }>; ftpWatts: number }) {
+function PlanSummary({
+  result,
+  ftpWatts,
+  prediction,
+  goalDurationMs,
+  weightMissing,
+  onSetWeight,
+}: {
+  result: Extract<CoachPlanParseResult, { ok: true }>;
+  ftpWatts: number;
+  prediction: PlanFinishPrediction | undefined;
+  goalDurationMs: number | undefined;
+  weightMissing: boolean;
+  onSetWeight: () => void;
+}) {
   const { plan } = result;
   const summary = summarizeCoachPlan(plan.zones, ftpWatts);
+  const lines =
+    prediction === undefined
+      ? undefined
+      : describePlanPrediction({
+          prediction,
+          ...(goalDurationMs === undefined ? {} : { goalDurationMs }),
+          ...(plan.targetFinishTimeSeconds === undefined ? {} : { coachTargetSeconds: plan.targetFinishTimeSeconds }),
+        });
   return (
     <View style={styles.summary}>
       <Text style={styles.summaryLine}>
@@ -200,6 +243,22 @@ function PlanSummary({ result, ftpWatts }: { result: Extract<CoachPlanParseResul
         {summary.zoneCount} zones · avg {summary.averagePowerWatts} W ({summary.percentOfFtp}% FTP) · {summary.minPowerWatts}–
         {summary.maxPowerWatts} W
       </Text>
+      {lines !== undefined && (
+        <View style={styles.prediction}>
+          <Text style={styles.predictionHeadline}>{lines.headline}</Text>
+          <Text style={styles.body}>{lines.basis}</Text>
+          {lines.goal !== undefined && <Text style={styles.summaryLine}>{lines.goal}</Text>}
+          {lines.coachTarget !== undefined && <Text style={styles.body}>{lines.coachTarget}</Text>}
+          {plan.targetFinishTimeSeconds === undefined && (
+            <Text style={styles.body}>This is the target time the Karoo will be given for this plan.</Text>
+          )}
+        </View>
+      )}
+      {prediction === undefined && weightMissing && (
+        <TouchableOpacity onPress={onSetWeight}>
+          <Text style={styles.link}>Set your weight to see a predicted finish time</Text>
+        </TouchableOpacity>
+      )}
       {plan.notes !== undefined && <Text style={styles.body}>{plan.notes}</Text>}
     </View>
   );
@@ -240,4 +299,7 @@ const styles = StyleSheet.create({
   warningLine: { fontSize: 13, color: colors.textSecondary, lineHeight: 18 },
   summary: { gap: spacing.space4 },
   summaryLine: { fontSize: 14, color: colors.textPrimary },
+  prediction: { gap: spacing.space4, paddingTop: spacing.space4 },
+  predictionHeadline: { fontSize: 17, fontWeight: "700", color: colors.textPrimary },
+  link: { fontSize: 14, fontWeight: "600", color: colors.brand },
 });
