@@ -1,4 +1,4 @@
-import { fromPortableSegmentJson } from "../segments/fromPortableSegmentJson.ts";
+import { fromPortableSegmentJson, type FromPortableSegmentJsonOptions } from "../segments/fromPortableSegmentJson.ts";
 import { insertSegment } from "./insertSegment.ts";
 import type { SyncDatabase } from "./types.ts";
 
@@ -18,8 +18,9 @@ export async function importRegistrySegment(
   generateId: () => string,
   raw: unknown,
   nowMs: number,
+  options: FromPortableSegmentJsonOptions = {},
 ): Promise<ImportRegistrySegmentResult> {
-  const parsed = await fromPortableSegmentJson(raw);
+  const parsed = await fromPortableSegmentJson(raw, options);
   if (!parsed.ok) {
     return { status: "invalid", error: parsed.error };
   }

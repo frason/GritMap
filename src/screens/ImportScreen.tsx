@@ -1,15 +1,19 @@
 import * as Crypto from "expo-crypto";
 import * as DocumentPicker from "expo-document-picker";
 import { File } from "expo-file-system";
+import type { BottomTabNavigationProp } from "@react-navigation/bottom-tabs";
+import { useNavigation } from "@react-navigation/native";
 import { useRef, useState } from "react";
-import { FlatList, StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import { Alert, FlatList, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useDatabase } from "../db/DatabaseProvider";
+import { importSegmentJsonText } from "../db/importSegmentJsonText";
 import { computeFileHash } from "../import/computeFileHash";
 import type { DuplicateRule } from "../import/findDuplicate";
 import { importRideFile, type ImportRideFileInput } from "../import/importRideFile";
 import { deleteRetainedFile, retainRideFile } from "../import/retainFitFile";
-import { runMatcherForRide } from "../matcher/runMatcher";
+import { runMatcherForRide, runMatcherForSegment } from "../matcher/runMatcher";
+import type { RootTabParamList } from "../navigation/types";
 import { colors } from "../theme/colors";
 import { Icon } from "../theme/Icon";
 import { radius, spacing } from "../theme/spacing";
@@ -32,6 +36,8 @@ const generateId = () => Crypto.randomUUID();
 
 export function ImportScreen() {
   const database = useDatabase();
+  const navigation = useNavigation();
+  const [isImportingSegment, setIsImportingSegment] = useState(false);
   const [rows, setRows] = useState<FileRowState[]>([]);
   const [isImporting, setIsImporting] = useState(false);
   const [pendingDuplicate, setPendingDuplicate] = useState<PendingDuplicate | null>(null);
@@ -122,6 +128,47 @@ export function ImportScreen() {
     }
   }
 
+  /**
+   * Adds a segment from a portable segment JSON file (for example one AirDropped from the Karoo),
+   * through the same validation and fingerprint handling as a registry import, then opens it so a
+   * plan can be created and sent back. Existing rides are matched against it straight away.
+   */
+  async function handleImportSegmentJsonPress() {
+    const picked = await DocumentPicker.getDocumentAsync({ multiple: false, type: "*/*" });
+    if (picked.canceled) return;
+    const asset = picked.assets[0];
+    if (!asset) return;
+
+    setIsImportingSegment(true);
+    try {
+      const text = await new File(asset.uri).text();
+      const result = await importSegmentJsonText(database, generateId, text, Date.now());
+      if (result.status === "invalid") {
+        Alert.alert("Couldn't import segment", `${asset.name}: ${result.error}`);
+        return;
+      }
+      if (result.status === "imported") {
+        runMatcherForSegment(database, generateId, result.segmentId, Date.now());
+      }
+      // Import lives in the Rides stack, SegmentDetail in the Segments stack: go through the tab navigator.
+      const openSegment = () =>
+        navigation
+          .getParent<BottomTabNavigationProp<RootTabParamList>>()
+          ?.navigate("SegmentsTab", { screen: "SegmentDetail", params: { segmentId: result.segmentId } });
+      if (result.status === "already-imported") {
+        Alert.alert("Already in your library", `${asset.name} is a segment you already have.`, [
+          { text: "Open it", onPress: openSegment },
+        ]);
+      } else {
+        openSegment();
+      }
+    } catch (error) {
+      Alert.alert("Couldn't import segment", error instanceof Error ? error.message : String(error));
+    } finally {
+      setIsImportingSegment(false);
+    }
+  }
+
   async function handleImportPress() {
     const picked = await DocumentPicker.getDocumentAsync({ multiple: true, type: "*/*" });
     if (picked.canceled) return;
@@ -169,6 +216,12 @@ export function ImportScreen() {
               {isImporting ? "Importing…" : "Choose Files"}
             </Text>
           </TouchableOpacity>
+          <TouchableOpacity onPress={handleImportSegmentJsonPress} disabled={isImportingSegment}>
+            <Text style={styles.segmentLink}>{isImportingSegment ? "Importing segment…" : "Import Segment JSON"}</Text>
+          </TouchableOpacity>
+          <Text style={styles.segmentHint}>
+            For a segment file moved from the Karoo or shared by someone else. It is added to your Segments, not Rides.
+          </Text>
         </View>
       ) : (
         <>
@@ -192,6 +245,9 @@ export function ImportScreen() {
               <Text style={styles.secondaryButtonLabel}>
                 {isImporting ? "Importing…" : "Add More Files"}
               </Text>
+            </TouchableOpacity>
+            <TouchableOpacity onPress={handleImportSegmentJsonPress} disabled={isImportingSegment}>
+              <Text style={styles.segmentLink}>{isImportingSegment ? "Importing segment…" : "Import Segment JSON"}</Text>
             </TouchableOpacity>
           </View>
         </>
@@ -252,6 +308,17 @@ const styles = StyleSheet.create({
     color: colors.textOnBrand,
     fontSize: 15,
     fontWeight: "600",
+  },
+  segmentLink: {
+    color: colors.brand,
+    fontSize: 15,
+    fontWeight: "600",
+    paddingVertical: spacing.space8,
+  },
+  segmentHint: {
+    fontSize: 12,
+    color: colors.textTertiary,
+    textAlign: "center",
   },
   secondaryButton: {
     backgroundColor: colors.brandSubtle,

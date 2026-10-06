@@ -21,7 +21,20 @@ export type FromPortableSegmentJsonResult =
  * (possibly stale, corrupted, or from a future schema version), so every field is checked
  * and the fingerprint is recomputed locally and compared rather than trusted at face value.
  */
-export async function fromPortableSegmentJson(raw: unknown): Promise<FromPortableSegmentJsonResult> {
+export interface FromPortableSegmentJsonOptions {
+  /**
+   * Accept a document with no `fingerprint` field and use the locally computed one. The Karoo's
+   * own segment files (apps/karoo/samples/*.segment.json) omit it -- the Karoo derives it on
+   * import -- so a file the rider moves from the Karoo has none to verify. A fingerprint that IS
+   * present must still match, and the registry path leaves this off and keeps requiring it.
+   */
+  allowMissingFingerprint?: boolean;
+}
+
+export async function fromPortableSegmentJson(
+  raw: unknown,
+  options: FromPortableSegmentJsonOptions = {},
+): Promise<FromPortableSegmentJsonResult> {
   if (typeof raw !== "object" || raw === null) {
     return { ok: false, error: "Not a JSON object" };
   }
@@ -39,7 +52,8 @@ export async function fromPortableSegmentJson(raw: unknown): Promise<FromPortabl
   if (typeof value.name !== "string" || value.name.trim().length === 0) {
     return { ok: false, error: "Missing or invalid name" };
   }
-  if (typeof value.fingerprint !== "string" || value.fingerprint.length === 0) {
+  const fingerprintMissing = value.fingerprint === undefined;
+  if (fingerprintMissing ? options.allowMissingFingerprint !== true : typeof value.fingerprint !== "string" || value.fingerprint.length === 0) {
     return { ok: false, error: "Missing or invalid fingerprint" };
   }
 
@@ -75,7 +89,7 @@ export async function fromPortableSegmentJson(raw: unknown): Promise<FromPortabl
     requiredCoveragePct: matching.requiredCoveragePct,
     referencePolyline,
   });
-  if (recomputedFingerprint !== value.fingerprint) {
+  if (!fingerprintMissing && recomputedFingerprint !== value.fingerprint) {
     return { ok: false, error: "Fingerprint mismatch -- segment data may be corrupted or tampered" };
   }
 
@@ -87,7 +101,7 @@ export async function fromPortableSegmentJson(raw: unknown): Promise<FromPortabl
       schemaVersion: value.schemaVersion,
       corridorMeters: matching.corridorMeters,
       requiredCoveragePct: matching.requiredCoveragePct,
-      fingerprint: value.fingerprint,
+      fingerprint: recomputedFingerprint,
       referencePolyline,
     },
   };

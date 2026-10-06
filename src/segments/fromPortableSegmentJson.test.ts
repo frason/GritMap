@@ -94,4 +94,36 @@ describe("fromPortableSegmentJson", () => {
     assert.equal((await fromPortableSegmentJson("not json")).ok, false);
     assert.equal((await fromPortableSegmentJson(42)).ok, false);
   });
+
+  describe("allowMissingFingerprint", () => {
+    const withoutFingerprint = () => {
+      const { fingerprint: _drop, ...rest } = validPortableJson();
+      return rest;
+    };
+
+    it("is off by default: a file with no fingerprint is still rejected (the registry path)", async () => {
+      assert.deepEqual(await fromPortableSegmentJson(withoutFingerprint()), {
+        ok: false,
+        error: "Missing or invalid fingerprint",
+      });
+    });
+
+    it("when on, uses the locally computed fingerprint for a file that has none", async () => {
+      const result = await fromPortableSegmentJson(withoutFingerprint(), { allowMissingFingerprint: true });
+      assert.ok(result.ok);
+      assert.equal(result.segment.fingerprint, VALID_FINGERPRINT);
+    });
+
+    it("when on, still rejects a fingerprint that is present but wrong, or not text", async () => {
+      assert.deepEqual(
+        await fromPortableSegmentJson(validPortableJson({ fingerprint: "0".repeat(64) }), { allowMissingFingerprint: true }),
+        { ok: false, error: "Fingerprint mismatch -- segment data may be corrupted or tampered" },
+      );
+      assert.deepEqual(
+        await fromPortableSegmentJson(validPortableJson({ fingerprint: 5 }), { allowMissingFingerprint: true }),
+        { ok: false, error: "Missing or invalid fingerprint" },
+      );
+    });
+  });
 });
+
