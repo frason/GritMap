@@ -75,5 +75,19 @@ describe("sendSegmentToKaroo", () => {
 
     assert.equal(result.ok, false);
     assert.equal(result.message, "Network request failed");
+    assert.equal(result.unreachable, true);
+  });
+
+  it("rejects a malformed address before any request, and does not call it unreachable", async () => {
+    let called = false;
+    globalThis.fetch = (async () => {
+      called = true;
+      return { ok: true, status: 200 } as Response;
+    }) as typeof fetch;
+
+    const result = await sendSegmentToKaroo(sampleSegment(), "   ");
+
+    assert.deepEqual(result, { ok: false, message: "Enter the Karoo address" });
+    assert.equal(called, false);
   });
 });

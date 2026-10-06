@@ -2,14 +2,22 @@ import { ScrollView, StyleSheet, Text, View } from "react-native";
 import Svg, { Line, Polyline, Rect, Text as SvgText } from "react-native-svg";
 import { colors } from "../theme/colors";
 import { spacing } from "../theme/spacing";
-import { computeAdaptiveZoneGrades, type ZoneWindow } from "../pacing/computeZoneGrades";
-import type { PacingClassification, PacingZone } from "../pacing/buildTargetPowerZones";
+import { computeAdaptiveZoneGrades } from "../pacing/computeZoneGrades";
+import type { PacingClassification } from "../pacing/buildTargetPowerZones";
 import type { SegmentReferencePoint } from "../segments/resamplePolyline";
+
+/** What the chart needs of a plan zone -- satisfied by generated zones and imported rider/coach zones alike. */
+export interface ChartPlanZone {
+  startDistanceMeters: number;
+  endDistanceMeters: number;
+  targetPowerWatts: number;
+  classification: PacingClassification;
+}
 
 export interface ElevationProfileChartProps {
   referencePolyline: readonly SegmentReferencePoint[];
-  /** The computed pacing plan, when FTP + a goal for this segment are both set. Undefined renders a plain elevation line with quarter-mile ticks and no color. */
-  zones?: readonly PacingZone[];
+  /** The pacing plan to draw -- generated (FTP + goal set) or imported. Undefined renders a plain elevation line with zone ticks and no color. */
+  zones?: readonly ChartPlanZone[];
   height?: number;
 }
 
@@ -45,7 +53,8 @@ export function ElevationProfileChart({ referencePolyline, zones, height = 150 }
   const points = referencePolyline.filter((point) => point.elevationMeters !== undefined);
   if (points.length < 2) return null;
 
-  const zoneWindows: readonly ZoneWindow[] = zones ?? computeAdaptiveZoneGrades(referencePolyline);
+  const zoneWindows: readonly { startDistanceMeters: number; endDistanceMeters: number }[] =
+    zones ?? computeAdaptiveZoneGrades(referencePolyline);
   if (zoneWindows.length === 0) return null;
 
   const elevations = points.map((point) => point.elevationMeters!);

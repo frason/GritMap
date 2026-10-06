@@ -79,7 +79,7 @@ export function buildTargetPowerZones(
 
   return zoneWindows.map((zone, i) => {
     const targetPowerWatts = Math.round(stepLimited[i]!);
-    const classification = classify(targetPowerWatts, anchorPowerWatts);
+    const classification = classifyAgainstAnchor(targetPowerWatts, anchorPowerWatts);
     return {
       ...zone,
       targetPowerWatts,
@@ -89,7 +89,11 @@ export function buildTargetPowerZones(
   });
 }
 
-function classify(targetPowerWatts: number, anchorPowerWatts: number): PacingClassification {
+/** REST/HOLD/PUSH for a target relative to a reference power (the plan's anchor or mean), at 90% / 110%. */
+export function classifyAgainstAnchor(
+  targetPowerWatts: number,
+  anchorPowerWatts: number,
+): PacingClassification {
   const ratio = targetPowerWatts / anchorPowerWatts;
   if (ratio < REST_THRESHOLD) return "REST";
   if (ratio > PUSH_THRESHOLD) return "PUSH";

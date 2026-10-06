@@ -9,6 +9,7 @@ import { ZonesSettingsScreen } from "../screens/ZonesSettingsScreen";
 import { HistoricalBandScreen } from "../screens/HistoricalBandScreen";
 import { SendToKarooScreen } from "../screens/SendToKarooScreen";
 import { PublishToRegistryScreen } from "../screens/PublishToRegistryScreen";
+import { ImportCoachPlanScreen } from "../screens/ImportCoachPlanScreen";
 import { colors } from "../theme/colors";
 import type { SegmentsStackParamList } from "./types";
 
@@ -45,6 +46,7 @@ export function SegmentsStackNavigator() {
         component={PublishToRegistryScreen}
         options={{ title: "Publish to Registry" }}
       />
+      <Stack.Screen name="ImportCoachPlan" component={ImportCoachPlanScreen} options={{ title: "Import Plan" }} />
     </Stack.Navigator>
   );
 }

@@ -17,6 +17,11 @@ export interface SetAthleteProfileParams {
  * send action prompts for weight the same way. weightKg is manually entered for now; it's
  * the same field a future HealthKit/Health Connect sync would keep current, not a separate
  * one, so callers don't need to change when that lands.
+ *
+ * `profile_version` (migration v10) is bumped in the same statement, and only when FTP, weight
+ * or max HR actually changes -- so re-saving identical values, or a no-op edit, never makes
+ * plans built against the profile look outdated. SQLite evaluates every right-hand side in
+ * `DO UPDATE SET` against the row as it was before the update, and `IS` compares NULLs equal.
  */
 export function setAthleteProfile(
   database: SetAthleteProfileDatabase,
@@ -43,6 +48,13 @@ export function setAthleteProfile(
          ftp_watts = excluded.ftp_watts,
          max_heart_rate_bpm = excluded.max_heart_rate_bpm,
          weight_kg = excluded.weight_kg,
+         profile_version = CASE
+           WHEN athlete_profile.ftp_watts IS excluded.ftp_watts
+            AND athlete_profile.max_heart_rate_bpm IS excluded.max_heart_rate_bpm
+            AND athlete_profile.weight_kg IS excluded.weight_kg
+           THEN athlete_profile.profile_version
+           ELSE athlete_profile.profile_version + 1
+         END,
          updated_at_ms = excluded.updated_at_ms`,
     )
     .run(params.ftpWatts ?? null, params.maxHeartRateBpm ?? null, params.weightKg ?? null, params.nowMs);

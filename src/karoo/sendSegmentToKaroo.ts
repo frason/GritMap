@@ -1,10 +1,13 @@
 import type { SegmentDetail } from "../db/getSegmentDetail.ts";
 import { toPortableSegmentJson } from "../segments/toPortableSegmentJson.ts";
+import { karooTransferEndpoint } from "./karooTransferEndpoint.ts";
 
 export interface SendSegmentResult {
   ok: boolean;
   statusCode?: number;
   message?: string;
+  /** True only when the request was attempted and got no HTTP answer (wrong/changed address, receiver not open, different network). */
+  unreachable?: boolean;
 }
 
 /**
@@ -28,14 +31,21 @@ export async function sendSegmentToKaroo(
     referencePolyline: segment.referencePolyline,
   });
 
+  let endpoint: string;
   try {
-    const response = await fetch(`http://${hostAndPort}/transfer`, {
+    endpoint = karooTransferEndpoint(hostAndPort);
+  } catch (error) {
+    return { ok: false, message: error instanceof Error ? error.message : String(error) };
+  }
+
+  try {
+    const response = await fetch(endpoint, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(json),
     });
     return { ok: response.ok, statusCode: response.status };
   } catch (error) {
-    return { ok: false, message: error instanceof Error ? error.message : String(error) };
+    return { ok: false, unreachable: true, message: error instanceof Error ? error.message : String(error) };
   }
 }

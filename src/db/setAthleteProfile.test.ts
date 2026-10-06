@@ -3,6 +3,7 @@ import { DatabaseSync } from "node:sqlite";
 import { describe, it } from "node:test";
 
 import { applyMigrations } from "./migrations.ts";
+import { getAthleteProfile } from "./getAthleteProfile.ts";
 import { setAthleteProfile } from "./setAthleteProfile.ts";
 import type { SyncDatabase } from "./types.ts";
 
@@ -61,5 +62,47 @@ describe("setAthleteProfile", () => {
   it("allows saving with every field omitted", () => {
     const database = migratedDatabase();
     assert.doesNotThrow(() => setAthleteProfile(database, { nowMs: 1_000 }));
+  });
+
+  describe("profile version", () => {
+    it("starts at 1 on the first save", () => {
+      const database = migratedDatabase();
+      setAthleteProfile(database, { ftpWatts: 250, weightKg: 70, nowMs: 1_000 });
+      assert.equal(getAthleteProfile(database).profileVersion, 1);
+    });
+
+    it("does not bump when the same values are saved again", () => {
+      const database = migratedDatabase();
+      setAthleteProfile(database, { ftpWatts: 250, maxHeartRateBpm: 185, weightKg: 70, nowMs: 1_000 });
+      setAthleteProfile(database, { ftpWatts: 250, maxHeartRateBpm: 185, weightKg: 70, nowMs: 2_000 });
+      assert.equal(getAthleteProfile(database).profileVersion, 1);
+    });
+
+    it("does not bump when only absent values stay absent", () => {
+      const database = migratedDatabase();
+      setAthleteProfile(database, { ftpWatts: 250, nowMs: 1_000 });
+      setAthleteProfile(database, { ftpWatts: 250, nowMs: 2_000 });
+      assert.equal(getAthleteProfile(database).profileVersion, 1);
+    });
+
+    it("bumps once per save that changes FTP, weight, or max heart rate", () => {
+      const database = migratedDatabase();
+      setAthleteProfile(database, { ftpWatts: 250, weightKg: 70, nowMs: 1_000 });
+      setAthleteProfile(database, { ftpWatts: 260, weightKg: 70, nowMs: 2_000 }); // FTP
+      assert.equal(getAthleteProfile(database).profileVersion, 2);
+      setAthleteProfile(database, { ftpWatts: 260, weightKg: 69, nowMs: 3_000 }); // weight
+      assert.equal(getAthleteProfile(database).profileVersion, 3);
+      setAthleteProfile(database, { ftpWatts: 260, weightKg: 69, maxHeartRateBpm: 188, nowMs: 4_000 }); // max HR set
+      assert.equal(getAthleteProfile(database).profileVersion, 4);
+      setAthleteProfile(database, { ftpWatts: 260, weightKg: 69, nowMs: 5_000 }); // max HR cleared
+      assert.equal(getAthleteProfile(database).profileVersion, 5);
+    });
+
+    it("bumps by exactly one even when several values change in one save", () => {
+      const database = migratedDatabase();
+      setAthleteProfile(database, { ftpWatts: 250, weightKg: 70, nowMs: 1_000 });
+      setAthleteProfile(database, { ftpWatts: 300, weightKg: 65, maxHeartRateBpm: 190, nowMs: 2_000 });
+      assert.equal(getAthleteProfile(database).profileVersion, 2);
+    });
   });
 });

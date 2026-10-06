@@ -46,19 +46,24 @@ describe("getAthleteProfile", () => {
   it("returns what setAthleteProfile saved", () => {
     const database = migratedDatabase();
     setAthleteProfile(database, { ftpWatts: 250, maxHeartRateBpm: 185, weightKg: 75.5, nowMs: 1_000 });
-    assert.deepEqual(getAthleteProfile(database), { ftpWatts: 250, maxHeartRateBpm: 185, weightKg: 75.5 });
+    assert.deepEqual(getAthleteProfile(database), {
+      profileVersion: 1,
+      ftpWatts: 250,
+      maxHeartRateBpm: 185,
+      weightKg: 75.5,
+    });
   });
 
   it("omits a threshold that was never set, rather than fabricating a value", () => {
     const database = migratedDatabase();
     setAthleteProfile(database, { ftpWatts: 250, nowMs: 1_000 });
-    assert.deepEqual(getAthleteProfile(database), { ftpWatts: 250 });
+    assert.deepEqual(getAthleteProfile(database), { profileVersion: 1, ftpWatts: 250 });
   });
 
   it("a second save overwrites the first (singleton row, not a new one)", () => {
     const database = migratedDatabase();
     setAthleteProfile(database, { ftpWatts: 250, maxHeartRateBpm: 185, nowMs: 1_000 });
     setAthleteProfile(database, { ftpWatts: 260, nowMs: 2_000 });
-    assert.deepEqual(getAthleteProfile(database), { ftpWatts: 260 });
+    assert.deepEqual(getAthleteProfile(database), { profileVersion: 2, ftpWatts: 260 });
   });
 });

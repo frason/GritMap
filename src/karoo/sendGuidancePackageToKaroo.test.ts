@@ -5,6 +5,7 @@ import { sendGuidancePackageToKaroo, type GuidancePackageRiderInput } from "./se
 import { buildBaselinePacingPlan } from "../pacing/buildBaselinePacingPlan.ts";
 import { buildRiderHistoryPackage } from "../pacing/buildRiderHistoryPackage.ts";
 import type { SegmentDetail } from "../db/getSegmentDetail.ts";
+import type { SavedSegmentPlan } from "../db/segmentPlans.ts";
 
 const originalFetch = globalThis.fetch;
 
@@ -135,5 +136,101 @@ describe("sendGuidancePackageToKaroo", () => {
 
     assert.equal(result.ok, false);
     assert.equal(result.message, "Network request failed");
+    assert.equal(result.unreachable, true);
+  });
+
+  it("rejects a malformed address before any request, and does not call it unreachable", async () => {
+    let called = false;
+    globalThis.fetch = (async () => {
+      called = true;
+      return { ok: true, status: 200 } as Response;
+    }) as typeof fetch;
+
+    const result = await sendGuidancePackageToKaroo(
+      sampleSegment(), sampleRider(), 39 * 60_000, "https://192.168.1.42", "plan-1", 1_700_000,
+    );
+
+    assert.deepEqual(result, { ok: false, message: "Karoo address must use http" });
+    assert.equal(called, false);
+  });
+
+  describe("with an imported rider/coach plan", () => {
+    function importedPlan(overrides: Partial<SavedSegmentPlan> = {}): SavedSegmentPlan {
+      return {
+        id: "saved-1",
+        segmentId: "segment-1",
+        source: "human-coach",
+        authorLabel: "Sam",
+        profileVersion: 2,
+        ftpWatts: 280,
+        targetFinishSeconds: 2_340,
+        createdAtMs: 500,
+        zones: [
+          { startDistanceMeters: 0, endDistanceMeters: 60, targetPowerWatts: 200, classification: "REST", instruction: "Spin" },
+          { startDistanceMeters: 60, endDistanceMeters: 111, targetPowerWatts: 290, classification: "PUSH", instruction: "Go" },
+        ],
+        ...overrides,
+      };
+    }
+
+    function captureBody(): { bodies: Record<string, unknown>[] } {
+      const bodies: Record<string, unknown>[] = [];
+      globalThis.fetch = (async (_url: string, init: RequestInit) => {
+        bodies.push(JSON.parse(init.body as string));
+        return { ok: true, status: 200 } as Response;
+      }) as typeof fetch;
+      return { bodies };
+    }
+
+    it("sends the imported plan as a manual-generator baseline with provenance, REST translated to RECOVER", async () => {
+      const { bodies } = captureBody();
+      const result = await sendGuidancePackageToKaroo(
+        sampleSegment(), sampleRider(), undefined, "192.168.1.42:8734", "pkg-9", 2_000, importedPlan(),
+      );
+      assert.deepEqual(result, { ok: true, statusCode: 200 });
+      assert.deepEqual(bodies[0]!.baselinePacingPlan, {
+        schemaVersion: 1,
+        id: "pkg-9",
+        segmentFingerprint: "abc123",
+        createdAtMs: 2_000,
+        generator: { type: "manual", modelVersion: "human-coach" },
+        ftpWatts: 280,
+        targetFinishTimeSeconds: 2_340,
+        zones: [
+          { startDistanceMeters: 0, endDistanceMeters: 60, targetPowerWatts: 200, classification: "RECOVER", icon: "RECOVER", instruction: "Spin" },
+          { startDistanceMeters: 60, endDistanceMeters: 111, targetPowerWatts: 290, classification: "PUSH", icon: "PUSH", instruction: "Go" },
+        ],
+      });
+    });
+
+    it("uses exactly the Karoo's accepted baseline keys, omitting targetFinishTimeSeconds when the plan has none", async () => {
+      const { bodies } = captureBody();
+      await sendGuidancePackageToKaroo(
+        sampleSegment(), sampleRider(), undefined, "192.168.1.42:8734", "pkg-9", 2_000,
+        (({ targetFinishSeconds: _omit, ...rest }) => rest)(importedPlan()),
+      );
+      assert.deepEqual(new Set(Object.keys(bodies[0]!.baselinePacingPlan as object)), new Set([
+        "schemaVersion", "id", "segmentFingerprint", "createdAtMs", "generator", "ftpWatts", "zones",
+      ]));
+    });
+
+    it("refuses, without sending, a plan written for a different FTP than the rider's current one", async () => {
+      const { bodies } = captureBody();
+      const result = await sendGuidancePackageToKaroo(
+        sampleSegment(), sampleRider(), undefined, "192.168.1.42:8734", "pkg-9", 2_000, importedPlan({ ftpWatts: 260 }),
+      );
+      assert.equal(result.ok, false);
+      assert.match(result.message ?? "", /260 W but yours is 280 W/);
+      assert.equal(bodies.length, 0);
+    });
+
+    it("refuses a generated send with no goal time, without sending", async () => {
+      const { bodies } = captureBody();
+      const result = await sendGuidancePackageToKaroo(
+        sampleSegment(), sampleRider(), undefined, "192.168.1.42:8734", "pkg-9", 2_000,
+      );
+      assert.deepEqual(result, { ok: false, message: "Set a goal time first." });
+      assert.equal(bodies.length, 0);
+    });
   });
 });

@@ -4,6 +4,8 @@ import { useFocusEffect, useRoute, type RouteProp } from "@react-navigation/nati
 import { useDatabase } from "../db/DatabaseProvider";
 import { getSegmentDetail, type SegmentDetail } from "../db/getSegmentDetail";
 import { sendSegmentToKaroo } from "../karoo/sendSegmentToKaroo";
+import { describeSendResult } from "../karoo/describeSendResult";
+import { getSavedKarooAddress, saveKarooAddress } from "../karoo/savedKarooAddress";
 import type { SegmentsStackParamList } from "../navigation/types";
 import { colors } from "../theme/colors";
 import { radius, spacing } from "../theme/spacing";
@@ -26,6 +28,7 @@ export function SendToKarooScreen() {
   useFocusEffect(
     useCallback(() => {
       setSegment(getSegmentDetail(database, route.params.segmentId));
+      setKarooAddress((current) => (current === "" ? (getSavedKarooAddress(database) ?? "") : current));
     }, [database, route.params.segmentId]),
   );
 
@@ -40,13 +43,8 @@ export function SendToKarooScreen() {
     setSendStatus("Sending…");
     const result = await sendSegmentToKaroo(segment, trimmed);
     setSending(false);
-    setSendStatus(
-      result.ok
-        ? "Sent — check the Karoo screen to confirm it imported"
-        : `Send failed${result.statusCode ? ` (HTTP ${result.statusCode})` : ""}${
-            result.message ? `: ${result.message}` : ""
-          }`,
-    );
+    if (result.ok) setKarooAddress(saveKarooAddress(database, trimmed, Date.now()));
+    setSendStatus(describeSendResult(result, trimmed));
   }
 
   if (segment === undefined) {
@@ -71,7 +69,7 @@ export function SendToKarooScreen() {
       </Text>
       <TextInput
         style={styles.addressInput}
-        placeholder="192.168.1.42:8734"
+        placeholder="IP or full Karoo URL"
         placeholderTextColor={colors.textTertiary}
         value={karooAddress}
         onChangeText={setKarooAddress}

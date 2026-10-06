@@ -24,7 +24,7 @@ describe("SQLite migrations", () => {
       .map((row) => String(row.name));
 
     for (const table of CORE_TABLES) assert.ok(tables.includes(table), `missing ${table}`);
-    assert.equal(Number(database.prepare("PRAGMA user_version").get()?.user_version), 9);
+    assert.equal(Number(database.prepare("PRAGMA user_version").get()?.user_version), 12);
 
     assertColumns(database, "imported_files", [
       "id",
@@ -205,7 +205,7 @@ describe("SQLite migrations", () => {
 
     applyMigrations(database);
 
-    assert.equal(Number(database.prepare("PRAGMA user_version").get()?.user_version), 9);
+    assert.equal(Number(database.prepare("PRAGMA user_version").get()?.user_version), 12);
     assert.deepEqual({ ...database.prepare(`
       SELECT rides.id, imported_files.original_filename,
              imported_files.retained_file_uri, imported_files.file_size_bytes,
@@ -329,7 +329,7 @@ describe("SQLite migrations", () => {
 
     applyMigrations(database);
 
-    assert.equal(Number(database.prepare("PRAGMA user_version").get()?.user_version), 9);
+    assert.equal(Number(database.prepare("PRAGMA user_version").get()?.user_version), 12);
     assert.deepEqual({ ...database.prepare(`
       SELECT total_distance_meters, total_ascent_meters FROM rides WHERE id = 'ride-pre-v3'
     `).get() }, { total_distance_meters: null, total_ascent_meters: null });
@@ -395,6 +395,39 @@ describe("SQLite migrations", () => {
     assert.deepEqual(preview("ride-long"), expected);
   });
 
+  it("adds profile_version (default 1 for an existing profile) and the segment_plans table", () => {
+    using database = new DatabaseSync(":memory:");
+    applyMigrations(database, migrations.slice(0, 9));
+    database
+      .prepare("INSERT INTO athlete_profile (id, ftp_watts, updated_at_ms) VALUES ('singleton', 250, 1000)")
+      .run();
+
+    applyMigrations(database);
+
+    assert.equal(
+      database.prepare("SELECT profile_version AS v FROM athlete_profile WHERE id = 'singleton'").get()?.v,
+      1,
+    );
+    assertColumns(database, "segment_plans", [
+      "id",
+      "segment_id",
+      "source",
+      "author_label",
+      "notes",
+      "profile_version",
+      "ftp_watts",
+      "target_finish_seconds",
+      "zones_json",
+      "created_at_ms",
+      "last_sent_at_ms",
+      "is_active",
+    ]);
+    assert.throws(
+      () => database.prepare("UPDATE athlete_profile SET profile_version = 0").run(),
+      /CHECK constraint failed/,
+    );
+  });
+
   it("allows two segments to share a fingerprint (geometry-only identity, no UNIQUE)", () => {
     using database = migratedDatabase();
     insertRide(database, "ride-fp", "file-fp");
@@ -427,7 +460,7 @@ describe("SQLite migrations", () => {
 
     applyMigrations(database);
 
-    assert.equal(Number(database.prepare("PRAGMA user_version").get()?.user_version), 9);
+    assert.equal(Number(database.prepare("PRAGMA user_version").get()?.user_version), 12);
     assert.equal(count(database, "segments"), 1);
     assert.equal(count(database, "segment_reference_points"), 2);
     assert.equal(count(database, "segment_attempts"), 1);

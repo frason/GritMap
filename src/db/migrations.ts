@@ -393,6 +393,59 @@ export const migrations: readonly Migration[] = [
         );
     `,
   },
+  {
+    version: 10,
+    name: "athlete_profile_version",
+    sql: `
+      -- A monotonically increasing version of the rider profile (FTP, weight, max HR). Bumped by
+      -- setAthleteProfile.ts only when one of those values actually changes, so a plan can record
+      -- which profile it was built against and be flagged outdated when the profile moves on.
+      ALTER TABLE athlete_profile ADD COLUMN profile_version INTEGER NOT NULL DEFAULT 1
+        CHECK (profile_version > 0);
+    `,
+  },
+  {
+    version: 11,
+    name: "segment_plans",
+    sql: `
+      -- Pacing plans supplied from outside the generator -- written by the rider, a human coach, or
+      -- an AI coach (src/pacing/coachPlan.ts) -- after validation and normalization to absolute
+      -- watts. The generated plan is never stored: it is recomputed from FTP + goal on demand.
+      -- At most one plan per segment is active; an active plan overrides the generated one.
+      CREATE TABLE segment_plans (
+        id TEXT PRIMARY KEY,
+        segment_id TEXT NOT NULL,
+        source TEXT NOT NULL CHECK (source IN ('self', 'human-coach', 'ai-coach')),
+        author_label TEXT,
+        notes TEXT,
+        profile_version INTEGER NOT NULL CHECK (profile_version > 0),
+        ftp_watts INTEGER NOT NULL CHECK (ftp_watts > 0),
+        target_finish_seconds INTEGER CHECK (target_finish_seconds IS NULL OR target_finish_seconds > 0),
+        zones_json TEXT NOT NULL CHECK (json_valid(zones_json)),
+        created_at_ms INTEGER NOT NULL,
+        last_sent_at_ms INTEGER,
+        is_active INTEGER NOT NULL DEFAULT 0 CHECK (is_active IN (0, 1)),
+        FOREIGN KEY (segment_id) REFERENCES segments(id) ON DELETE CASCADE
+      ) STRICT;
+
+      CREATE UNIQUE INDEX idx_segment_plans_one_active
+        ON segment_plans(segment_id) WHERE is_active = 1;
+      CREATE INDEX idx_segment_plans_segment ON segment_plans(segment_id, created_at_ms);
+    `,
+  },
+  {
+    version: 12,
+    name: "app_settings",
+    sql: `
+      -- Small device-local preferences that are not rider data (currently the last Karoo address
+      -- that accepted a transfer, src/karoo/savedKarooAddress.ts). Never synced or published.
+      CREATE TABLE app_settings (
+        key TEXT PRIMARY KEY,
+        value TEXT NOT NULL,
+        updated_at_ms INTEGER NOT NULL
+      ) STRICT;
+    `,
+  },
 ];
 
 export function configureDatabaseConnection(database: MigrationDatabase): void {

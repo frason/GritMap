@@ -1,7 +1,7 @@
 import type { SegmentReferencePoint } from "../segments/resamplePolyline.ts";
 import { computeAnchorPowerWatts } from "./powerDurationAnchor.ts";
 import { computeAdaptiveZoneGrades, computeZoneGrades } from "./computeZoneGrades.ts";
-import { buildTargetPowerZones, type PacingClassification } from "./buildTargetPowerZones.ts";
+import { buildTargetPowerZones, type PacingClassification, type PacingZone } from "./buildTargetPowerZones.ts";
 
 const DEFAULT_MODEL_VERSION = "pacing-anchor-grade-v2";
 
@@ -41,18 +41,50 @@ export function buildBaselinePacingPlan(input: BuildBaselinePacingPlanInput): ob
       : computeZoneGrades(input.referencePolyline, input.zoneLengthMeters);
   const zones = buildTargetPowerZones(zoneWindows, anchorPowerWatts, input.ftpWatts);
 
+  return toBaselinePlanWire({
+    id: input.id,
+    segmentFingerprint: input.segmentFingerprint,
+    createdAtMs: input.createdAtMs,
+    generator: { type: "phone-ai", modelVersion: input.modelVersion ?? DEFAULT_MODEL_VERSION },
+    ftpWatts: input.ftpWatts,
+    targetFinishTimeSeconds: Math.round(input.targetDurationMs / 1000),
+    zones,
+  });
+}
+
+export interface WireBaselinePlanInput {
+  id: string;
+  segmentFingerprint: string;
+  createdAtMs: number;
+  /** "manual" is the Karoo's existing wire value for any plan not produced by this app's generator. */
+  generator: { type: "phone-ai" | "manual"; modelVersion: string };
+  ftpWatts: number;
+  /** Omitted from the wire entirely when absent -- the Karoo parser treats the field as optional. */
+  targetFinishTimeSeconds?: number;
+  zones: readonly Pick<
+    PacingZone,
+    "startDistanceMeters" | "endDistanceMeters" | "targetPowerWatts" | "classification" | "instruction"
+  >[];
+}
+
+/**
+ * The one place a plan becomes the Karoo's `baselinePacingPlan` JSON (key sets read from
+ * TransferPackageParser.parseBaseline / AiPacingResponseParser.parseZone). Both the generated
+ * plan above and imported rider/coach plans (coachPlan.ts) go through here, so the REST ->
+ * RECOVER translation and the whole-watt rounding cannot drift between them.
+ */
+export function toBaselinePlanWire(input: WireBaselinePlanInput): object {
   return {
     schemaVersion: 1,
     id: input.id,
     segmentFingerprint: input.segmentFingerprint,
     createdAtMs: input.createdAtMs,
-    generator: {
-      type: "phone-ai",
-      modelVersion: input.modelVersion ?? DEFAULT_MODEL_VERSION,
-    },
+    generator: input.generator,
     ftpWatts: Math.round(input.ftpWatts),
-    targetFinishTimeSeconds: Math.round(input.targetDurationMs / 1000),
-    zones: zones.map((zone) => ({
+    ...(input.targetFinishTimeSeconds === undefined
+      ? {}
+      : { targetFinishTimeSeconds: Math.round(input.targetFinishTimeSeconds) }),
+    zones: input.zones.map((zone) => ({
       startDistanceMeters: zone.startDistanceMeters,
       endDistanceMeters: zone.endDistanceMeters,
       targetPowerWatts: zone.targetPowerWatts,

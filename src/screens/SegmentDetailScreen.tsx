@@ -11,22 +11,32 @@ import { getAttemptTrack } from "../db/getAttemptTrack";
 import { getAthleteProfile, type AthleteProfile } from "../db/getAthleteProfile";
 import { getActiveGoal, type ActiveGoal } from "../db/getActiveGoal";
 import { setActiveGoal as saveActiveGoal } from "../db/setActiveGoal";
+import {
+  deactivateSegmentPlan,
+  getActiveSegmentPlan,
+  isSegmentPlanOutdated,
+  markSegmentPlanSent,
+  type SavedSegmentPlan,
+} from "../db/segmentPlans";
 import type { RideTrackPoint } from "../db/getRideTrack";
 import { runMatcherForSegment, type MatchRunSummary } from "../matcher/runMatcher";
 import { computeSegmentElevationStats } from "../segments/computeSegmentElevationStats";
 import { computeAnchorPowerWatts } from "../pacing/powerDurationAnchor";
 import { computeAdaptiveZoneGrades } from "../pacing/computeZoneGrades";
-import { buildTargetPowerZones, type PacingZone } from "../pacing/buildTargetPowerZones";
+import { buildTargetPowerZones } from "../pacing/buildTargetPowerZones";
+import { summarizeCoachPlan } from "../pacing/coachPlan";
 import { parseTargetDurationInput } from "./parseTargetDuration";
 import type { SegmentsStackParamList } from "../navigation/types";
 import { sendGuidancePackageToKaroo } from "../karoo/sendGuidancePackageToKaroo";
+import { describeSendResult } from "../karoo/describeSendResult";
+import { getSavedKarooAddress, saveKarooAddress } from "../karoo/savedKarooAddress";
 import { colors } from "../theme/colors";
 import { Icon } from "../theme/Icon";
 import type { IconName } from "../theme/icons";
 import { radius, spacing } from "../theme/spacing";
 import { RouteMapView } from "./RouteMapView";
 import { ElevationSparkline } from "./ElevationSparkline";
-import { ElevationProfileChart } from "./ElevationProfileChart";
+import { ElevationProfileChart, type ChartPlanZone } from "./ElevationProfileChart";
 import {
   formatDistanceMiles,
   formatDurationHoursMinutes,
@@ -41,6 +51,8 @@ type SegmentDetailRoute = RouteProp<SegmentsStackParamList, "SegmentDetail">;
 type Navigation = NativeStackNavigationProp<SegmentsStackParamList>;
 
 const generateId = () => Crypto.randomUUID();
+
+const PLAN_SOURCE_LABELS = { self: "Your plan", "human-coach": "Coach plan", "ai-coach": "AI coach plan" } as const;
 
 interface AnalyzeEffortSummary {
   avgPowerWatts?: number;
@@ -70,6 +82,7 @@ export function SegmentDetailScreen() {
   const [attempts, setAttempts] = useState<AttemptSummary[]>([]);
   const [athleteProfile, setAthleteProfile] = useState<AthleteProfile>({});
   const [activeGoal, setActiveGoal] = useState<ActiveGoal | undefined>(undefined);
+  const [activePlan, setActivePlan] = useState<SavedSegmentPlan | undefined>(undefined);
   const [otherGoalSegmentName, setOtherGoalSegmentName] = useState<string | undefined>(undefined);
   const [analyzeEffortSummary, setAnalyzeEffortSummary] = useState<AnalyzeEffortSummary | undefined>(undefined);
   const [goalMinutesInput, setGoalMinutesInput] = useState("");
@@ -103,7 +116,9 @@ export function SegmentDetailScreen() {
       setSegment(getSegmentDetail(database, route.params.segmentId));
       setAttempts(currentAttempts);
       setAthleteProfile(getAthleteProfile(database));
+      setKarooAddress((current) => (current === "" ? (getSavedKarooAddress(database) ?? "") : current));
       setActiveGoal(currentGoal);
+      setActivePlan(getActiveSegmentPlan(database, route.params.segmentId));
       setGoalMinutesInput("");
       setGoalSecondsInput("");
       setGoalSaveStatus(undefined);
@@ -208,9 +223,17 @@ export function SegmentDetailScreen() {
   const mostRecentAttempt = [...attempts].sort((a, b) => b.startTimestampMs - a.startTimestampMs)[0];
   const bestAttempt = bestByDuration(validAttempts);
 
+  function handleUseGeneratedPlan() {
+    if (!segment) return;
+    deactivateSegmentPlan(database, segment.segmentId);
+    setActivePlan(undefined);
+    setPacingSendStatus(undefined);
+  }
+
   async function handleSendPacingPlan() {
     const { ftpWatts, weightKg, maxHeartRateBpm } = athleteProfile;
-    if (!segment || ftpWatts === undefined || weightKg === undefined || activeGoal === undefined) return;
+    if (!segment || ftpWatts === undefined || weightKg === undefined) return;
+    if (activePlan === undefined && activeGoal === undefined) return;
     const trimmed = karooAddress.trim();
     if (trimmed.length === 0) {
       setPacingSendStatus("Enter the Karoo's address (shown on its \"Receive from Phone\" screen)");
@@ -221,25 +244,25 @@ export function SegmentDetailScreen() {
     const result = await sendGuidancePackageToKaroo(
       segment,
       { ftpWatts, weightKg, ...(maxHeartRateBpm === undefined ? {} : { maxHeartRateBpm }) },
-      activeGoal.targetDurationMs,
+      activePlan === undefined ? activeGoal?.targetDurationMs : undefined,
       trimmed,
       generateId(),
       Date.now(),
+      activePlan,
     );
     setPacingSending(false);
-    setPacingSendStatus(
-      result.ok
-        ? "Sent — check the Karoo screen to confirm it imported"
-        : `Send failed${result.statusCode ? ` (HTTP ${result.statusCode})` : ""}${
-            result.message ? `: ${result.message}` : ""
-          }`,
-    );
+    if (result.ok && activePlan !== undefined) {
+      markSegmentPlanSent(database, activePlan.id, Date.now());
+      setActivePlan(getActiveSegmentPlan(database, activePlan.segmentId));
+    }
+    if (result.ok) setKarooAddress(saveKarooAddress(database, trimmed, Date.now()));
+    setPacingSendStatus(describeSendResult(result, trimmed));
   }
 
   // Goal & Pacing Plan: computed here (not deep in JSX) so the resulting zones can also
   // feed the Elevation Profile chart below without computing them twice.
   let pacingPlanBody: ReactNode;
-  let pacingZones: PacingZone[] | undefined;
+  let pacingZones: readonly ChartPlanZone[] | undefined;
   const goalIsForThisSegment = activeGoal !== undefined && activeGoal.segmentId === segment.segmentId;
 
   if (athleteProfile.ftpWatts === undefined) {
@@ -247,6 +270,68 @@ export function SegmentDetailScreen() {
       <TouchableOpacity onPress={() => navigation.navigate("ZonesSettings")}>
         <Text style={styles.missingLink}>Set your FTP to generate a pacing plan</Text>
       </TouchableOpacity>
+    );
+  } else if (activePlan !== undefined) {
+    pacingZones = activePlan.zones;
+    const summary = summarizeCoachPlan(activePlan.zones, activePlan.ftpWatts);
+    const outdated = isSegmentPlanOutdated(activePlan, athleteProfile.ftpWatts);
+    pacingPlanBody = (
+      <>
+        <View style={styles.goalSummaryRow}>
+          <Text style={styles.goalSummaryText}>
+            {PLAN_SOURCE_LABELS[activePlan.source]}
+            {activePlan.authorLabel === undefined ? "" : ` · ${activePlan.authorLabel}`}
+          </Text>
+          <TouchableOpacity onPress={() => navigation.navigate("ImportCoachPlan", { segmentId: segment.segmentId })}>
+            <Text style={styles.missingLink}>Replace</Text>
+          </TouchableOpacity>
+        </View>
+        <Text style={styles.sendHint}>
+          {summary.zoneCount} zones · ~{summary.averagePowerWatts}W avg ({summary.percentOfFtp}% FTP)
+          {activePlan.targetFinishSeconds === undefined
+            ? ""
+            : ` · target ${formatDurationMinutesSeconds(activePlan.targetFinishSeconds * 1_000)}`}
+        </Text>
+        {activePlan.notes !== undefined && <Text style={styles.sendHint}>{activePlan.notes}</Text>}
+        {outdated && (
+          <Text style={styles.outdatedText}>
+            Written for an FTP of {activePlan.ftpWatts} W; yours is now {Math.round(athleteProfile.ftpWatts)} W. Import an
+            updated plan, or switch back to the generated one, before sending.
+          </Text>
+        )}
+        {athleteProfile.weightKg === undefined ? (
+          <TouchableOpacity onPress={() => navigation.navigate("ZonesSettings")}>
+            <Text style={styles.missingLink}>Set your weight to send this plan to the Karoo</Text>
+          </TouchableOpacity>
+        ) : (
+          <>
+            <TextInput
+              style={styles.addressInput}
+              placeholder="IP or full Karoo URL"
+              placeholderTextColor={colors.textTertiary}
+              value={karooAddress}
+              onChangeText={setKarooAddress}
+              autoCapitalize="none"
+              autoCorrect={false}
+              keyboardType="url"
+            />
+            <TouchableOpacity
+              style={[styles.sendButton, (pacingSending || outdated) && styles.sendButtonDisabled]}
+              onPress={handleSendPacingPlan}
+              disabled={pacingSending || outdated}
+            >
+              <Text style={styles.sendButtonLabel}>{pacingSending ? "Sending…" : "Send plan to Karoo"}</Text>
+            </TouchableOpacity>
+            {pacingSendStatus !== undefined && <Text style={styles.sendStatusText}>{pacingSendStatus}</Text>}
+            {activePlan.lastSentAtMs !== undefined && (
+              <Text style={styles.sendHint}>Last sent {formatRideDate(activePlan.lastSentAtMs)}</Text>
+            )}
+          </>
+        )}
+        <TouchableOpacity onPress={handleUseGeneratedPlan}>
+          <Text style={styles.missingLink}>Use GritMap's generated plan instead</Text>
+        </TouchableOpacity>
+      </>
     );
   } else if (editingGoal || !goalIsForThisSegment) {
     pacingPlanBody = (
@@ -504,6 +589,15 @@ export function SegmentDetailScreen() {
             >
               <Text style={styles.menuItemLabel}>Publish to Registry</Text>
             </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.menuItem}
+              onPress={() => {
+                setMenuVisible(false);
+                navigation.navigate("ImportCoachPlan", { segmentId: route.params.segmentId });
+              }}
+            >
+              <Text style={styles.menuItemLabel}>Import coach plan</Text>
+            </TouchableOpacity>
           </View>
         </TouchableOpacity>
       </Modal>
@@ -695,6 +789,11 @@ const styles = StyleSheet.create({
   sendHint: {
     fontSize: 13,
     color: colors.textSecondary,
+  },
+  outdatedText: {
+    fontSize: 13,
+    lineHeight: 18,
+    color: colors.statusWarning,
   },
   addressInput: {
     backgroundColor: colors.surface,
