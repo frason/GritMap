@@ -18,6 +18,7 @@ export type SegmentsStackParamList = {
   SendToKaroo: { segmentId: string };
   PublishToRegistry: { segmentId: string };
   ImportCoachPlan: { segmentId: string };
+  PlanVsActual: { attemptId: string };
 };
 
 export type RootTabParamList = {

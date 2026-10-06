@@ -222,6 +222,7 @@ export function SegmentDetailScreen() {
   const validAttempts = attempts.filter((attempt) => attempt.decision === "accept" || attempt.manuallyApproved);
   const mostRecentAttempt = [...attempts].sort((a, b) => b.startTimestampMs - a.startTimestampMs)[0];
   const bestAttempt = bestByDuration(validAttempts);
+  const mostRecentValidAttempt = [...validAttempts].sort((a, b) => b.startTimestampMs - a.startTimestampMs)[0];
 
   function handleUseGeneratedPlan() {
     if (!segment) return;
@@ -459,6 +460,14 @@ export function SegmentDetailScreen() {
               )}`}
               subtitle={formatRideDate(bestAttempt.startTimestampMs)}
               onPress={() => navigation.navigate("AttemptReview", { attemptId: bestAttempt.attemptId })}
+            />
+          )}
+          {mostRecentValidAttempt !== undefined && (
+            <EffortRow
+              icon="flag"
+              title="Plan vs actual"
+              subtitle="Most recent effort against your plan"
+              onPress={() => navigation.navigate("PlanVsActual", { attemptId: mostRecentValidAttempt.attemptId })}
             />
           )}
           <EffortRow

@@ -101,6 +101,14 @@ export function AttemptReviewScreen() {
         </View>
       )}
 
+      <TouchableOpacity
+        style={styles.planLink}
+        onPress={() => navigation.navigate("PlanVsActual", { attemptId: attempt.attemptId })}
+      >
+        <Icon name="flag" color="brand" size={18} />
+        <Text style={styles.planLinkLabel}>Compare with your pacing plan</Text>
+      </TouchableOpacity>
+
       <View style={styles.actions}>
         <TouchableOpacity style={styles.rejectButton} onPress={handleReject}>
           <Icon name="xCircle" color="statusDanger" size={18} />
@@ -155,6 +163,17 @@ function humanizeReason(reason: string): string {
 }
 
 const styles = StyleSheet.create({
+  planLink: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: spacing.space8,
+    paddingVertical: spacing.space12,
+    borderRadius: radius.md,
+    borderWidth: 1,
+    borderColor: colors.brand,
+  },
+  planLinkLabel: { color: colors.brand, fontSize: 15, fontWeight: "600" },
   container: {
     flex: 1,
     backgroundColor: colors.background,

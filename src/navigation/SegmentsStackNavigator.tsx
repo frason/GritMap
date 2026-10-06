@@ -10,6 +10,7 @@ import { HistoricalBandScreen } from "../screens/HistoricalBandScreen";
 import { SendToKarooScreen } from "../screens/SendToKarooScreen";
 import { PublishToRegistryScreen } from "../screens/PublishToRegistryScreen";
 import { ImportCoachPlanScreen } from "../screens/ImportCoachPlanScreen";
+import { PlanVsActualScreen } from "../screens/PlanVsActualScreen";
 import { colors } from "../theme/colors";
 import type { SegmentsStackParamList } from "./types";
 
@@ -47,6 +48,7 @@ export function SegmentsStackNavigator() {
         options={{ title: "Publish to Registry" }}
       />
       <Stack.Screen name="ImportCoachPlan" component={ImportCoachPlanScreen} options={{ title: "Import Plan" }} />
+      <Stack.Screen name="PlanVsActual" component={PlanVsActualScreen} options={{ title: "Plan vs Actual" }} />
     </Stack.Navigator>
   );
 }
