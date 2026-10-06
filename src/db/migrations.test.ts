@@ -24,7 +24,7 @@ describe("SQLite migrations", () => {
       .map((row) => String(row.name));
 
     for (const table of CORE_TABLES) assert.ok(tables.includes(table), `missing ${table}`);
-    assert.equal(Number(database.prepare("PRAGMA user_version").get()?.user_version), 12);
+    assert.equal(Number(database.prepare("PRAGMA user_version").get()?.user_version), 13);
 
     assertColumns(database, "imported_files", [
       "id",
@@ -205,7 +205,7 @@ describe("SQLite migrations", () => {
 
     applyMigrations(database);
 
-    assert.equal(Number(database.prepare("PRAGMA user_version").get()?.user_version), 12);
+    assert.equal(Number(database.prepare("PRAGMA user_version").get()?.user_version), 13);
     assert.deepEqual({ ...database.prepare(`
       SELECT rides.id, imported_files.original_filename,
              imported_files.retained_file_uri, imported_files.file_size_bytes,
@@ -329,7 +329,7 @@ describe("SQLite migrations", () => {
 
     applyMigrations(database);
 
-    assert.equal(Number(database.prepare("PRAGMA user_version").get()?.user_version), 12);
+    assert.equal(Number(database.prepare("PRAGMA user_version").get()?.user_version), 13);
     assert.deepEqual({ ...database.prepare(`
       SELECT total_distance_meters, total_ascent_meters FROM rides WHERE id = 'ride-pre-v3'
     `).get() }, { total_distance_meters: null, total_ascent_meters: null });
@@ -460,7 +460,7 @@ describe("SQLite migrations", () => {
 
     applyMigrations(database);
 
-    assert.equal(Number(database.prepare("PRAGMA user_version").get()?.user_version), 12);
+    assert.equal(Number(database.prepare("PRAGMA user_version").get()?.user_version), 13);
     assert.equal(count(database, "segments"), 1);
     assert.equal(count(database, "segment_reference_points"), 2);
     assert.equal(count(database, "segment_attempts"), 1);

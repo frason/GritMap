@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 
-import { describePlanPrediction } from "./describePlanPrediction.ts";
+import { describePlanPrediction, describeTargetOutcome } from "./describePlanPrediction.ts";
 
 const estimate = { durationMs: 2_412_000, basis: "estimate" as const, modelDurationMs: 2_412_000, attemptsUsed: 0 };
 const calibrated = { durationMs: 2_412_000, basis: "calibrated" as const, modelDurationMs: 2_250_000, attemptsUsed: 3, spreadPct: 2 };
@@ -42,3 +42,12 @@ describe("describePlanPrediction", () => {
     );
   });
 });
+
+describe("describeTargetOutcome", () => {
+  it("says slower, faster, or right on against the Karoo's target", () => {
+    assert.equal(describeTargetOutcome(2_512, 2_530_000), "Finished 0:18 slower than the 41:52 target your Karoo was given.");
+    assert.equal(describeTargetOutcome(2_512, 2_450_000), "Finished 1:02 faster than the 41:52 target your Karoo was given.");
+    assert.equal(describeTargetOutcome(2_512, 2_515_000), "Finished right on the 41:52 target your Karoo was given.");
+  });
+});
+

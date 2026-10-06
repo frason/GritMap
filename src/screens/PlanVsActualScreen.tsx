@@ -9,17 +9,19 @@ import { getAttemptDetail } from "../db/getAttemptDetail";
 import { getAttemptTrack } from "../db/getAttemptTrack";
 import { getSegmentDetail, type SegmentDetail } from "../db/getSegmentDetail";
 import { listAttemptsForSegment } from "../db/listAttemptsForSegment";
+import { getPlanSentBefore } from "../db/planSends";
 import { getActiveSegmentPlan } from "../db/segmentPlans";
 import {
   computePlanVsActual,
   type PlanVsActualZone,
   type PlanVsActualSummary,
 } from "../pacing/computePlanVsActual";
-import { resolveSegmentPlan, type ResolvedSegmentPlan } from "../pacing/resolveSegmentPlan";
+import { resolvePlanForEffort, type PlanForEffort } from "../pacing/resolveSegmentPlan";
 import type { SegmentsStackParamList } from "../navigation/types";
 import { colors } from "../theme/colors";
 import { radius, spacing } from "../theme/spacing";
 import { formatDurationMinutesSeconds, formatRideDate } from "./formatRideStats";
+import { describeTargetOutcome } from "./describePlanPrediction";
 import { formatTimeDelta } from "./formatTimeDelta";
 import { PlanVsActualChart } from "./PlanVsActualChart";
 
@@ -32,7 +34,8 @@ interface LoadedComparison {
   segment: SegmentDetail;
   startTimestampMs: number;
   durationMs: number;
-  plan: ResolvedSegmentPlan;
+  plan: PlanForEffort;
+  targetOutcome?: string;
   zones: PlanVsActualZone[];
   summary: PlanVsActualSummary;
   hasPowerTrack: boolean;
@@ -71,7 +74,9 @@ export function PlanVsActualScreen() {
       const profile = getAthleteProfile(database);
       const goal = getActiveGoal(database);
       const activePlan = getActiveSegmentPlan(database, segment.segmentId);
-      const plan = resolveSegmentPlan({
+      const sentPlan = getPlanSentBefore(database, segment.segmentId, attempt.startTimestampMs);
+      const plan = resolvePlanForEffort({
+        ...(sentPlan === undefined ? {} : { sentPlan }),
         ...(activePlan === undefined ? {} : { activePlan }),
         ...(profile.ftpWatts === undefined ? {} : { ftpWatts: profile.ftpWatts }),
         ...(goal !== undefined && goal.segmentId === segment.segmentId ? { goalDurationMs: goal.targetDurationMs } : {}),
@@ -113,6 +118,9 @@ export function PlanVsActualScreen() {
         zones,
         summary,
         hasPowerTrack: track.some((point) => point.power !== undefined),
+        ...(plan.kind === "sent" && plan.sent.targetFinishSeconds !== undefined
+          ? { targetOutcome: describeTargetOutcome(plan.sent.targetFinishSeconds, attempt.endTimestampMs - attempt.startTimestampMs) }
+          : {}),
         ...(best === undefined ? {} : { reference: { durationMs: best.durationMs, date: best.startTimestampMs } }),
       });
     }, [database, route.params.attemptId]),
@@ -153,7 +161,9 @@ export function PlanVsActualScreen() {
 
   const { summary, zones, plan, reference } = loaded;
   const planLabel =
-    plan.kind === "imported"
+    plan.kind === "sent"
+      ? `the plan sent to your Karoo on ${formatRideDate(plan.sent.sentAtMs)} (${describeSentPlanSource(plan.sent.generatorType, plan.sent.generatorModelVersion)})`
+      : plan.kind === "imported"
       ? `${PLAN_SOURCE_LABELS[plan.plan.source]}${plan.plan.authorLabel === undefined ? "" : ` · ${plan.plan.authorLabel}`}`
       : plan.kind === "generated"
         ? `GritMap plan for a ${formatDurationMinutesSeconds(plan.goalDurationMs)} goal at ${Math.round(plan.ftpWatts)} W FTP`
@@ -166,8 +176,10 @@ export function PlanVsActualScreen() {
         {formatRideDate(loaded.startTimestampMs)} · {formatDurationMinutesSeconds(loaded.durationMs)}
       </Text>
       <Text style={styles.caption}>
-        Compared with: {planLabel}. This is the segment's plan as it is today, which may differ from the plan you rode
-        with.
+        Compared with: {planLabel}.{" "}
+        {plan.kind === "sent"
+          ? "That is the plan your Karoo was holding for this ride."
+          : "No send to a Karoo was recorded before this ride, so this is the segment's plan as it is today, which may differ from the plan you rode with."}
       </Text>
 
       {!loaded.hasPowerTrack ? (
@@ -191,6 +203,7 @@ export function PlanVsActualScreen() {
           </View>
 
           <View style={styles.card}>
+            {loaded.targetOutcome !== undefined && <Text style={styles.insight}>• {loaded.targetOutcome}</Text>}
             {summary.insights.map((line, index) => (
               <Text key={index} style={styles.insight}>
                 • {line}
@@ -240,6 +253,14 @@ export function PlanVsActualScreen() {
       )}
     </ScrollView>
   );
+}
+
+function describeSentPlanSource(generatorType: string, modelVersion: string): string {
+  if (generatorType === "phone-ai") return "GritMap generated plan";
+  if (modelVersion === "human-coach") return "coach plan";
+  if (modelVersion === "ai-coach") return "AI coach plan";
+  if (modelVersion === "self") return "your own plan";
+  return "imported plan";
 }
 
 function deviationStyle(zone: PlanVsActualZone) {

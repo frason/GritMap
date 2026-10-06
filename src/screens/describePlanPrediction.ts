@@ -42,3 +42,15 @@ export function describePlanPrediction(input: {
   }
   return lines;
 }
+
+/** Within this of the target reads as "right on" rather than a miss. */
+const ON_TARGET_TIME_TOLERANCE_MS = 5_000;
+
+/** How an effort's real time compared with the target time the Karoo was given for it. */
+export function describeTargetOutcome(targetSeconds: number, actualDurationMs: number): string {
+  const targetMs = targetSeconds * 1_000;
+  const gapMs = actualDurationMs - targetMs;
+  const target = formatDurationMinutesSeconds(targetMs);
+  if (Math.abs(gapMs) <= ON_TARGET_TIME_TOLERANCE_MS) return `Finished right on the ${target} target your Karoo was given.`;
+  return `Finished ${formatTimeDelta(Math.abs(gapMs)).slice(1)} ${gapMs > 0 ? "slower" : "faster"} than the ${target} target your Karoo was given.`;
+}

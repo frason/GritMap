@@ -1,3 +1,4 @@
+import type { SentPlan } from "../db/planSends.ts";
 import type { SavedSegmentPlan } from "../db/segmentPlans.ts";
 import type { SegmentReferencePoint } from "../segments/resamplePolyline.ts";
 import { buildTargetPowerZones } from "./buildTargetPowerZones.ts";
@@ -30,4 +31,23 @@ export function resolveSegmentPlan(input: {
   const anchor = computeAnchorPowerWatts(input.ftpWatts, input.goalDurationMs);
   const zones = buildTargetPowerZones(computeAdaptiveZoneGrades(input.referencePolyline), anchor, input.ftpWatts);
   return { kind: "generated", ftpWatts: input.ftpWatts, goalDurationMs: input.goalDurationMs, zones };
+}
+
+export type PlanForEffort = ResolvedSegmentPlan | { kind: "sent"; sent: SentPlan; zones: PlanZoneLike[] };
+
+/**
+ * The plan to judge a past effort against: the one that was actually on the Karoo for that ride
+ * (the latest send before it), when the phone recorded one; otherwise the segment's plan as it
+ * stands now, which the screen labels as a best guess.
+ */
+export function resolvePlanForEffort(input: {
+  sentPlan?: SentPlan;
+  activePlan?: SavedSegmentPlan;
+  ftpWatts?: number;
+  goalDurationMs?: number;
+  referencePolyline: readonly SegmentReferencePoint[];
+}): PlanForEffort {
+  if (input.sentPlan !== undefined) return { kind: "sent", sent: input.sentPlan, zones: input.sentPlan.zones };
+  const { sentPlan: _unused, ...rest } = input;
+  return resolveSegmentPlan(rest);
 }

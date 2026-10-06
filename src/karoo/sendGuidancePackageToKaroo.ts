@@ -1,10 +1,16 @@
 import type { SegmentDetail } from "../db/getSegmentDetail.ts";
 import { toPortableSegmentJson } from "../segments/toPortableSegmentJson.ts";
 import { buildBaselinePacingPlan, toBaselinePlanWire } from "../pacing/buildBaselinePacingPlan.ts";
+import type { SentBaselinePlan } from "../db/planSends.ts";
 import type { SavedSegmentPlan } from "../db/segmentPlans.ts";
 import { buildRiderHistoryPackage } from "../pacing/buildRiderHistoryPackage.ts";
 import type { SendSegmentResult } from "./sendSegmentToKaroo.ts";
 import { karooTransferEndpoint } from "./karooTransferEndpoint.ts";
+
+export interface SendGuidanceResult extends SendSegmentResult {
+  /** The exact baseline plan that was acknowledged by the Karoo's receiver; present only when `ok`. */
+  baselinePlan?: SentBaselinePlan;
+}
 
 export interface GuidancePackageRiderInput {
   ftpWatts: number;
@@ -40,7 +46,7 @@ export async function sendGuidancePackageToKaroo(
   packageId: string,
   nowMs: number,
   importedPlan?: SavedSegmentPlan,
-): Promise<SendSegmentResult> {
+): Promise<SendGuidanceResult> {
   let baselinePacingPlan: object;
   if (importedPlan !== undefined) {
     if (importedPlan.ftpWatts !== Math.round(rider.ftpWatts)) {
@@ -108,7 +114,11 @@ export async function sendGuidancePackageToKaroo(
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(json),
     });
-    return { ok: response.ok, statusCode: response.status };
+    return {
+      ok: response.ok,
+      statusCode: response.status,
+      ...(response.ok ? { baselinePlan: baselinePacingPlan as SentBaselinePlan } : {}),
+    };
   } catch (error) {
     return { ok: false, unreachable: true, message: error instanceof Error ? error.message : String(error) };
   }

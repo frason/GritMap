@@ -32,6 +32,7 @@ import { parseTargetDurationInput } from "./parseTargetDuration";
 import type { SegmentsStackParamList } from "../navigation/types";
 import { sendGuidancePackageToKaroo } from "../karoo/sendGuidancePackageToKaroo";
 import { describeSendResult } from "../karoo/describeSendResult";
+import { recordPlanSend } from "../db/planSends";
 import { getSavedKarooAddress, saveKarooAddress } from "../karoo/savedKarooAddress";
 import { colors } from "../theme/colors";
 import { Icon } from "../theme/Icon";
@@ -259,13 +260,15 @@ export function SegmentDetailScreen() {
     }
     setPacingSending(true);
     setPacingSendStatus("Sending…");
+    const packageId = generateId();
+    const sentAtMs = Date.now();
     const result = await sendGuidancePackageToKaroo(
       segment,
       { ftpWatts, weightKg, ...(maxHeartRateBpm === undefined ? {} : { maxHeartRateBpm }) },
       activePlan === undefined ? activeGoal?.targetDurationMs : undefined,
       trimmed,
-      generateId(),
-      Date.now(),
+      packageId,
+      sentAtMs,
       // A coach plan with no target time of its own gets the predicted finish, so the Karoo's
       // "Goal" and its pacer have a time to work to instead of "Fastest sustainable".
       activePlan !== undefined && activePlan.targetFinishSeconds === undefined && planPrediction !== undefined
@@ -273,6 +276,17 @@ export function SegmentDetailScreen() {
         : activePlan,
     );
     setPacingSending(false);
+    // Keep what the Karoo was handed, so a later ride is judged against this plan and not against
+    // whatever the segment's plan has become by then.
+    if (result.ok && result.baselinePlan !== undefined) {
+      recordPlanSend(database, {
+        id: generateId(),
+        segmentId: segment.segmentId,
+        sentAtMs,
+        packageId,
+        plan: result.baselinePlan,
+      });
+    }
     if (result.ok && activePlan !== undefined) {
       markSegmentPlanSent(database, activePlan.id, Date.now());
       setActivePlan(getActiveSegmentPlan(database, activePlan.segmentId));

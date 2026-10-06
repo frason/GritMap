@@ -52,7 +52,8 @@ describe("sendGuidancePackageToKaroo", () => {
       1_700_000,
     );
 
-    assert.deepEqual(result, { ok: true, statusCode: 200 });
+    assert.equal(result.ok, true);
+    assert.equal(result.statusCode, 200);
     assert.equal(calls.length, 1);
     assert.equal(calls[0]?.url, "http://192.168.1.42:8734/transfer");
     assert.equal(calls[0]?.init.method, "POST");
@@ -90,6 +91,29 @@ describe("sendGuidancePackageToKaroo", () => {
 
     const expectedRiderHistory = buildRiderHistoryPackage(rider);
     assert.deepEqual(body.riderHistory, expectedRiderHistory);
+  });
+
+  it("returns the exact baseline plan it sent, so the phone can record what the Karoo received", async () => {
+    let sentBody: Record<string, unknown> | undefined;
+    globalThis.fetch = (async (_url: string, init: RequestInit) => {
+      sentBody = JSON.parse(init.body as string);
+      return { ok: true, status: 200 } as Response;
+    }) as typeof fetch;
+
+    const result = await sendGuidancePackageToKaroo(
+      sampleSegment(), sampleRider(), 39 * 60_000, "192.168.1.42:8734", "plan-1", 1_700_000,
+    );
+
+    assert.deepEqual(result.baselinePlan, sentBody!.baselinePacingPlan);
+    assert.equal(result.baselinePlan!.generator.type, "phone-ai");
+  });
+
+  it("returns no plan when the Karoo did not acknowledge the transfer", async () => {
+    globalThis.fetch = (async () => ({ ok: false, status: 500 }) as Response) as typeof fetch;
+    const result = await sendGuidancePackageToKaroo(
+      sampleSegment(), sampleRider(), 39 * 60_000, "192.168.1.42:8734", "plan-1", 1_700_000,
+    );
+    assert.deepEqual(result, { ok: false, statusCode: 500 });
   });
 
   it("omits maxHeartRateBpm from the rider profile when the caller didn't provide it", async () => {
@@ -187,7 +211,9 @@ describe("sendGuidancePackageToKaroo", () => {
       const result = await sendGuidancePackageToKaroo(
         sampleSegment(), sampleRider(), undefined, "192.168.1.42:8734", "pkg-9", 2_000, importedPlan(),
       );
-      assert.deepEqual(result, { ok: true, statusCode: 200 });
+      assert.equal(result.ok, true);
+      assert.equal(result.statusCode, 200);
+      assert.deepEqual(result.baselinePlan, bodies[0]!.baselinePacingPlan);
       assert.deepEqual(bodies[0]!.baselinePacingPlan, {
         schemaVersion: 1,
         id: "pkg-9",

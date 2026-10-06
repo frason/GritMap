@@ -446,6 +446,30 @@ export const migrations: readonly Migration[] = [
       ) STRICT;
     `,
   },
+  {
+    version: 13,
+    name: "plan_sends",
+    sql: `
+      -- One row per pacing plan the phone handed to a Karoo (the exact baselinePacingPlan JSON that went
+      -- on the wire, generated or imported), so a ride can later be compared with the plan that was
+      -- actually on the Karoo, not whatever the segment's plan has become since. A row means the Karoo's
+      -- receiver acknowledged the bytes; the Karoo imports afterwards and may still reject it.
+      CREATE TABLE plan_sends (
+        id TEXT PRIMARY KEY,
+        segment_id TEXT NOT NULL,
+        sent_at_ms INTEGER NOT NULL,
+        package_id TEXT NOT NULL,
+        generator_type TEXT NOT NULL,
+        generator_model_version TEXT NOT NULL,
+        ftp_watts INTEGER NOT NULL CHECK (ftp_watts > 0),
+        target_finish_seconds INTEGER CHECK (target_finish_seconds IS NULL OR target_finish_seconds > 0),
+        plan_json TEXT NOT NULL CHECK (json_valid(plan_json)),
+        FOREIGN KEY (segment_id) REFERENCES segments(id) ON DELETE CASCADE
+      ) STRICT;
+
+      CREATE INDEX idx_plan_sends_segment_time ON plan_sends(segment_id, sent_at_ms);
+    `,
+  },
 ];
 
 export function configureDatabaseConnection(database: MigrationDatabase): void {
