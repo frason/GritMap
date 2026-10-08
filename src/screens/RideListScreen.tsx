@@ -9,6 +9,7 @@ import { colors } from "../theme/colors";
 import { Icon } from "../theme/Icon";
 import { radius, spacing } from "../theme/spacing";
 import { formatDistanceMiles, formatDurationHoursMinutes, formatRideDate } from "./formatRideStats";
+import { EmptyState } from "../theme/components";
 import { RidePreviewThumbnail } from "./RidePreviewThumbnail";
 
 type Navigation = NativeStackNavigationProp<RidesStackParamList>;
@@ -28,15 +29,15 @@ export function RideListScreen() {
 
   if (rides.length === 0) {
     return (
-      <View style={styles.emptyState}>
-        <Icon name="route" color="textTertiary" size={40} />
-        <Text style={styles.emptyTitle}>Import your first ride to get started</Text>
-        <TouchableOpacity
-          style={styles.emptyButton}
-          onPress={() => navigation.navigate("Import")}
-        >
-          <Text style={styles.emptyButtonLabel}>Import</Text>
-        </TouchableOpacity>
+      <View style={styles.container}>
+        <EmptyState
+          icon="route"
+          title="No rides yet"
+          body="Import a ride file (.fit or .gpx) from your bike computer. You can then make segments from it and see how you did on each one."
+          actions={[
+            { label: "Import a ride", onPress: () => navigation.navigate("Import"), icon: "download" },
+          ]}
+        />
       </View>
     );
   }

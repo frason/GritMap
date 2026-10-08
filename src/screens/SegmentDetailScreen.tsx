@@ -29,9 +29,10 @@ import { loadCalibrationAttempts } from "../pacing/loadCalibrationAttempts";
 import { predictPlanFinish, type PlanFinishPrediction } from "../pacing/predictPlanFinish";
 import { describePlanPrediction } from "./describePlanPrediction";
 import { parseTargetDurationInput } from "./parseTargetDuration";
-import type { SegmentsStackParamList } from "../navigation/types";
+import type { RootTabParamList, SegmentsStackParamList } from "../navigation/types";
 import { sendGuidancePackageToKaroo } from "../karoo/sendGuidancePackageToKaroo";
 import { describeSendResult } from "../karoo/describeSendResult";
+import { KAROO_ADDRESS_EXAMPLE, KAROO_RECEIVE_SCREEN, PHONE_SEND_BUTTON } from "../onboarding/onboardingCopy";
 import { recordPlanSend } from "../db/planSends";
 import { getSavedKarooAddress, saveKarooAddress } from "../karoo/savedKarooAddress";
 import { colors } from "../theme/colors";
@@ -40,6 +41,8 @@ import type { IconName } from "../theme/icons";
 import { radius, spacing } from "../theme/spacing";
 import { RouteMapView } from "./RouteMapView";
 import { ElevationSparkline } from "./ElevationSparkline";
+import type { BottomTabNavigationProp } from "@react-navigation/bottom-tabs";
+import { AppText, Button, Card } from "../theme/components";
 import { ElevationProfileChart, type ChartPlanZone } from "./ElevationProfileChart";
 import {
   formatDistanceMiles,
@@ -355,9 +358,13 @@ export function SegmentDetailScreen() {
           </TouchableOpacity>
         ) : (
           <>
+            <Text style={styles.sendHint}>
+              On your Karoo, open GritMap and tap {KAROO_RECEIVE_SCREEN}; it shows the address to type here. Both devices need to be on the same Wi-Fi.
+            </Text>
             <TextInput
               style={styles.addressInput}
-              placeholder="IP or full Karoo URL"
+              accessibilityLabel="Karoo address"
+              placeholder={`e.g. ${KAROO_ADDRESS_EXAMPLE}`}
               placeholderTextColor={colors.textTertiary}
               value={karooAddress}
               onChangeText={setKarooAddress}
@@ -370,7 +377,7 @@ export function SegmentDetailScreen() {
               onPress={handleSendPacingPlan}
               disabled={pacingSending || outdated}
             >
-              <Text style={styles.sendButtonLabel}>{pacingSending ? "Sending…" : "Send plan to Karoo"}</Text>
+              <Text style={styles.sendButtonLabel}>{pacingSending ? "Sending…" : PHONE_SEND_BUTTON}</Text>
             </TouchableOpacity>
             {pacingSendStatus !== undefined && <Text style={styles.sendStatusText}>{pacingSendStatus}</Text>}
             {activePlan.lastSentAtMs !== undefined && (
@@ -447,9 +454,13 @@ export function SegmentDetailScreen() {
           </TouchableOpacity>
         ) : (
           <>
+            <Text style={styles.sendHint}>
+              On your Karoo, open GritMap and tap {KAROO_RECEIVE_SCREEN}; it shows the address to type here. Both devices need to be on the same Wi-Fi.
+            </Text>
             <TextInput
               style={styles.addressInput}
-              placeholder="IP or full Karoo URL"
+              accessibilityLabel="Karoo address"
+              placeholder={`e.g. ${KAROO_ADDRESS_EXAMPLE}`}
               placeholderTextColor={colors.textTertiary}
               value={karooAddress}
               onChangeText={setKarooAddress}
@@ -462,7 +473,7 @@ export function SegmentDetailScreen() {
               onPress={handleSendPacingPlan}
               disabled={pacingSending}
             >
-              <Text style={styles.sendButtonLabel}>{pacingSending ? "Sending…" : "Send pacing plan to Karoo"}</Text>
+              <Text style={styles.sendButtonLabel}>{pacingSending ? "Sending…" : PHONE_SEND_BUTTON}</Text>
             </TouchableOpacity>
             {pacingSendStatus !== undefined && <Text style={styles.sendStatusText}>{pacingSendStatus}</Text>}
           </>
@@ -489,7 +500,22 @@ export function SegmentDetailScreen() {
         <StatTile value={formatGradePercent(elevationStats?.averageGradePercent)} label="Grade" />
       </View>
 
-      {attempts.length > 0 && (
+      {attempts.length === 0 ? (
+        <Section title="Your Efforts">
+          <Card>
+            <AppText variant="headline">No efforts yet</AppText>
+            <AppText variant="subheadline" color="textSecondary">
+              Ride this segment, then import the ride file (Rides tab, then Import). Your time, how you did against your plan, and your progress on it show up here.
+            </AppText>
+            <Button
+              label="Import a ride"
+              icon="download"
+              variant="secondary"
+              onPress={() => navigation.getParent<BottomTabNavigationProp<RootTabParamList>>()?.navigate("RidesTab", { screen: "Import" })}
+            />
+          </Card>
+        </Section>
+      ) : (
         <Section title="Your Efforts">
           {mostRecentAttempt !== undefined && (
             <EffortRow
@@ -560,8 +586,7 @@ export function SegmentDetailScreen() {
         <Section title="Attempts">
           {attempts.length === 0 ? (
             <Text style={styles.attemptsEmptyText}>
-              No attempts detected yet. Import more rides that traverse this segment to see them
-              here.
+              No efforts found yet. Import rides that go over this segment and they will appear here.
             </Text>
           ) : (
             <>
@@ -615,7 +640,7 @@ export function SegmentDetailScreen() {
             onPress={handleRerunMatcher}
             disabled={rerunning}
           >
-            <Text style={styles.rerunButtonLabel}>{rerunning ? "Rerunning…" : "Rerun matcher"}</Text>
+            <Text style={styles.rerunButtonLabel}>{rerunning ? "Checking…" : "Check my rides again"}</Text>
           </TouchableOpacity>
           {rerunSummary !== undefined && (
             <Text style={styles.rerunSummaryText}>

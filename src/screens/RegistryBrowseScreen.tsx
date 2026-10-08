@@ -1,30 +1,45 @@
-import { useCallback, useState } from "react";
-import { ActivityIndicator, FlatList, StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import { useCallback, useRef, useState } from "react";
+import { FlatList, StyleSheet, View } from "react-native";
 import { useFocusEffect, useNavigation } from "@react-navigation/native";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import * as Crypto from "expo-crypto";
 import { useDatabase } from "../db/DatabaseProvider";
 import { importRegistrySegment } from "../db/importRegistrySegment";
 import { defaultRegistryConfig } from "../registry/registryConfig";
+import { describeRegistryError } from "../registry/describeRegistryError";
 import { fetchRegistrySegment, listRegistrySegments, type RegistryEntry } from "../registry/registryClient";
+import { summarizeRegistrySegment, type RegistrySegmentSummary } from "../registry/summarizeRegistrySegment";
 import type { SegmentsStackParamList } from "../navigation/types";
 import { colors } from "../theme/colors";
-import { Icon } from "../theme/Icon";
-import { radius, spacing } from "../theme/spacing";
+import { AppText, Button, EmptyState, ErrorState, LoadingState } from "../theme/components";
+import { MIN_TOUCH_TARGET, SCREEN_PADDING } from "../theme/layout";
+import { spacing } from "../theme/spacing";
+import { formatDistanceMiles } from "./formatRideStats";
 
 type Navigation = NativeStackNavigationProp<SegmentsStackParamList>;
 
 const generateId = () => Crypto.randomUUID();
 
+/** Segment files are fetched to read their names; cap it so a very large registry cannot flood the phone. */
+const MAX_DETAILS_TO_LOAD = 60;
+
 type RowStatus = { kind: "idle" } | { kind: "importing" } | { kind: "done"; message: string } | { kind: "error"; message: string };
 
+/**
+ * Open Segments: segments other riders have shared, free for anyone. The registry itself is just a
+ * folder of files named by fingerprint, so each file is read to show its real name and length;
+ * a rider never sees the fingerprint.
+ */
 export function RegistryBrowseScreen() {
   const database = useDatabase();
   const navigation = useNavigation<Navigation>();
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | undefined>(undefined);
   const [entries, setEntries] = useState<RegistryEntry[]>([]);
+  const [summaries, setSummaries] = useState<Record<string, RegistrySegmentSummary | "unreadable">>({});
   const [rowStatus, setRowStatus] = useState<Record<string, RowStatus>>({});
+  // The fetched segment files, kept so adding one does not download it a second time.
+  const fetchedRaw = useRef<Record<string, unknown>>({});
 
   const refresh = useCallback(() => {
     setLoading(true);
@@ -32,192 +47,140 @@ export function RegistryBrowseScreen() {
     listRegistrySegments(defaultRegistryConfig()).then((result) => {
       setLoading(false);
       if (!result.ok) {
-        setLoadError(result.message ?? `Could not load the registry (HTTP ${result.statusCode ?? "?"})`);
+        setLoadError(
+          describeRegistryError({
+            ...(result.statusCode === undefined ? {} : { statusCode: result.statusCode }),
+            ...(result.message === undefined ? {} : { message: result.message }),
+          }),
+        );
         return;
       }
       setEntries(result.entries);
+      for (const entry of result.entries.slice(0, MAX_DETAILS_TO_LOAD)) {
+        fetchRegistrySegment(defaultRegistryConfig(), entry.fingerprint).then((fetched) => {
+          const summary = fetched.ok ? summarizeRegistrySegment(fetched.segment) : undefined;
+          if (fetched.ok) fetchedRaw.current[entry.fingerprint] = fetched.segment;
+          setSummaries((current) => ({ ...current, [entry.fingerprint]: summary ?? "unreadable" }));
+        });
+      }
     });
   }, []);
 
   useFocusEffect(refresh);
 
-  async function handleImport(entry: RegistryEntry) {
+  function fail(entry: RegistryEntry, statusCode: number | undefined, message: string | undefined) {
+    setRowStatus((current) => ({
+      ...current,
+      [entry.fingerprint]: {
+        kind: "error",
+        message: describeRegistryError({
+          ...(statusCode === undefined ? {} : { statusCode }),
+          ...(message === undefined ? {} : { message }),
+        }),
+      },
+    }));
+  }
+
+  async function handleAdd(entry: RegistryEntry) {
     setRowStatus((current) => ({ ...current, [entry.fingerprint]: { kind: "importing" } }));
 
-    const fetched = await fetchRegistrySegment(defaultRegistryConfig(), entry.fingerprint);
-    if (!fetched.ok) {
-      setRowStatus((current) => ({
-        ...current,
-        [entry.fingerprint]: { kind: "error", message: fetched.message ?? `Fetch failed (HTTP ${fetched.statusCode ?? "?"})` },
-      }));
-      return;
+    let raw = fetchedRaw.current[entry.fingerprint];
+    if (raw === undefined) {
+      const fetched = await fetchRegistrySegment(defaultRegistryConfig(), entry.fingerprint);
+      if (!fetched.ok) {
+        fail(entry, fetched.statusCode, fetched.message);
+        return;
+      }
+      raw = fetched.segment;
     }
 
-    const result = await importRegistrySegment(database, generateId, fetched.segment, Date.now());
+    const result = await importRegistrySegment(database, generateId, raw, Date.now());
     if (result.status === "invalid") {
-      setRowStatus((current) => ({ ...current, [entry.fingerprint]: { kind: "error", message: result.error } }));
+      setRowStatus((current) => ({
+        ...current,
+        [entry.fingerprint]: { kind: "error", message: "This segment's file is damaged, so it can't be added." },
+      }));
       return;
     }
 
     setRowStatus((current) => ({
       ...current,
-      [entry.fingerprint]: {
-        kind: "done",
-        message: result.status === "already-imported" ? "Already in your library" : "Imported",
-      },
+      [entry.fingerprint]: { kind: "done", message: result.status === "already-imported" ? "Already in your segments" : "Added" },
     }));
     navigation.navigate("SegmentDetail", { segmentId: result.segmentId });
   }
 
-  if (loading) {
-    return (
-      <View style={styles.centered}>
-        <ActivityIndicator color={colors.brand} />
-      </View>
-    );
-  }
+  if (loading) return <LoadingState label="Loading Open Segments…" />;
 
   if (loadError !== undefined) {
-    return (
-      <View style={styles.centered}>
-        <Icon name="alertTriangle" color="statusWarning" size={32} />
-        <Text style={styles.emptyText}>{loadError}</Text>
-        <TouchableOpacity style={styles.retryButton} onPress={refresh}>
-          <Text style={styles.retryButtonLabel}>Retry</Text>
-        </TouchableOpacity>
-      </View>
-    );
+    return <ErrorState title="Couldn't load Open Segments" message={loadError} onRetry={refresh} />;
   }
 
-  if (entries.length === 0) {
+  // Files that turned out not to be readable segments are left out rather than shown as blank rows.
+  const visible = entries.filter((entry) => summaries[entry.fingerprint] !== "unreadable");
+
+  if (entries.length === 0 || (visible.length === 0 && Object.keys(summaries).length >= Math.min(entries.length, MAX_DETAILS_TO_LOAD))) {
     return (
-      <View style={styles.centered}>
-        <Icon name="mapPin" color="textTertiary" size={40} />
-        <Text style={styles.emptyText}>
-          Nothing published to the registry yet. Publish a segment from its detail screen.
-        </Text>
-      </View>
+      <EmptyState
+        icon="mapPin"
+        title="No Open Segments yet"
+        body="Segments that riders share will appear here. Open one of your own segments and publish it from the menu to be the first."
+      />
     );
   }
 
   return (
     <FlatList
       style={styles.container}
-      data={entries}
+      contentContainerStyle={styles.list}
+      data={visible}
       keyExtractor={(entry) => entry.fingerprint}
-      renderItem={({ item }) => (
-        <RegistryRow entry={item} status={rowStatus[item.fingerprint] ?? { kind: "idle" }} onImport={() => handleImport(item)} />
-      )}
+      renderItem={({ item }) => {
+        const summary = summaries[item.fingerprint];
+        const known = summary !== undefined && summary !== "unreadable" ? summary : undefined;
+        const status = rowStatus[item.fingerprint] ?? { kind: "idle" };
+        const name = known?.name ?? "Loading…";
+        return (
+          <View style={styles.row}>
+            <View style={styles.rowText}>
+              <AppText variant="headline">{name}</AppText>
+              <AppText variant="subheadline" color="textSecondary">
+                {known?.distanceMeters === undefined ? "Shared by another rider" : `${formatDistanceMiles(known.distanceMeters)} · shared by another rider`}
+              </AppText>
+              {status.kind === "done" ? <AppText variant="footnote" color="statusSuccess">{status.message}</AppText> : null}
+              {status.kind === "error" ? (
+                <AppText variant="footnote" color="statusDanger" accessibilityRole="alert">
+                  {status.message}
+                </AppText>
+              ) : null}
+            </View>
+            <Button
+              label={status.kind === "done" ? "Added" : "Add"}
+              variant="secondary"
+              fullWidth={false}
+              loading={status.kind === "importing"}
+              disabled={known === undefined || status.kind === "done"}
+              onPress={() => handleAdd(item)}
+              accessibilityHint={`Adds ${name} to your segments`}
+            />
+          </View>
+        );
+      }}
     />
   );
 }
 
-function RegistryRow({
-  entry,
-  status,
-  onImport,
-}: {
-  entry: RegistryEntry;
-  status: RowStatus;
-  onImport: () => void;
-}) {
-  return (
-    <View style={styles.row}>
-      <View style={styles.routeChip}>
-        <Icon name="mapPin" color="brand" size={20} />
-      </View>
-      <View style={styles.rowText}>
-        <Text style={styles.rowTitle} numberOfLines={1}>
-          {entry.fingerprint}
-        </Text>
-        {status.kind === "done" && <Text style={styles.rowStatusDone}>{status.message}</Text>}
-        {status.kind === "error" && <Text style={styles.rowStatusError}>{status.message}</Text>}
-      </View>
-      {status.kind === "importing" ? (
-        <ActivityIndicator color={colors.brand} />
-      ) : (
-        <TouchableOpacity style={styles.importButton} onPress={onImport} disabled={status.kind === "done"}>
-          <Text style={styles.importButtonLabel}>{status.kind === "done" ? "Imported" : "Import"}</Text>
-        </TouchableOpacity>
-      )}
-    </View>
-  );
-}
-
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: colors.background,
-  },
-  centered: {
-    flex: 1,
-    alignItems: "center",
-    justifyContent: "center",
-    gap: spacing.space16,
-    paddingHorizontal: spacing.space24,
-    backgroundColor: colors.background,
-  },
-  emptyText: {
-    fontSize: 15,
-    color: colors.textSecondary,
-    textAlign: "center",
-  },
-  retryButton: {
-    backgroundColor: colors.brandSubtle,
-    borderRadius: radius.md,
-    paddingHorizontal: spacing.space20,
-    paddingVertical: spacing.space12,
-  },
-  retryButtonLabel: {
-    color: colors.brand,
-    fontSize: 15,
-    fontWeight: "600",
-  },
+  container: { flex: 1, backgroundColor: colors.background },
+  list: { paddingHorizontal: SCREEN_PADDING },
   row: {
     flexDirection: "row",
     alignItems: "center",
     gap: spacing.space12,
-    paddingVertical: spacing.space16,
-    paddingHorizontal: spacing.space20,
-    backgroundColor: colors.surface,
+    minHeight: MIN_TOUCH_TARGET,
+    paddingVertical: spacing.space12,
     borderBottomWidth: 1,
     borderBottomColor: colors.border,
   },
-  routeChip: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: colors.brandSubtle,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  rowText: {
-    flex: 1,
-    gap: spacing.space4 - 2,
-  },
-  rowTitle: {
-    fontSize: 13,
-    fontWeight: "600",
-    color: colors.textPrimary,
-    fontFamily: "monospace",
-  },
-  rowStatusDone: {
-    fontSize: 12,
-    color: colors.statusSuccess,
-  },
-  rowStatusError: {
-    fontSize: 12,
-    color: colors.statusDanger,
-  },
-  importButton: {
-    backgroundColor: colors.brand,
-    borderRadius: radius.md,
-    paddingHorizontal: spacing.space16,
-    paddingVertical: spacing.space8,
-  },
-  importButtonLabel: {
-    color: colors.textOnBrand,
-    fontSize: 13,
-    fontWeight: "600",
-  },
+  rowText: { flex: 1, gap: spacing.space2 },
 });

@@ -8,9 +8,10 @@ import type { RootTabParamList } from "./types";
 
 const Tab = createBottomTabNavigator<RootTabParamList>();
 
-export function RootNavigator() {
+export function RootNavigator({ initialTab = "HomeTab" }: { initialTab?: keyof RootTabParamList }) {
   return (
     <Tab.Navigator
+      initialRouteName={initialTab}
       screenOptions={{
         headerShown: false,
         tabBarActiveTintColor: colors.brand,

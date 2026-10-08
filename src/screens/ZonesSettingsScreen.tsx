@@ -1,171 +1,159 @@
 import { useCallback, useState } from "react";
-import { ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from "react-native";
+import { ScrollView, StyleSheet, View } from "react-native";
 import { useFocusEffect } from "@react-navigation/native";
 import { useDatabase } from "../db/DatabaseProvider";
 import { getAthleteProfile } from "../db/getAthleteProfile";
 import { setAthleteProfile } from "../db/setAthleteProfile";
+import {
+  defaultWeightUnit,
+  kilogramsToDisplay,
+  parseFtpInput,
+  parseMaxHeartRateInput,
+  parseWeightInput,
+  type WeightUnit,
+} from "../onboarding/riderNumbers";
 import { colors } from "../theme/colors";
-import { radius, spacing } from "../theme/spacing";
+import { AppText, Button, SegmentedControl, TextField } from "../theme/components";
+import { SCREEN_PADDING } from "../theme/layout";
+import { spacing } from "../theme/spacing";
+import { FTP_HELP } from "../onboarding/onboardingCopy";
 
+/**
+ * "Your Profile": the numbers GritMap uses to build pacing plans, predict finish times and show
+ * power and heart-rate zones. Weight can be entered in pounds or kilograms; it is stored in kilograms.
+ */
 export function ZonesSettingsScreen() {
   const database = useDatabase();
   const [ftpInput, setFtpInput] = useState("");
   const [maxHrInput, setMaxHrInput] = useState("");
   const [weightInput, setWeightInput] = useState("");
-  const [status, setStatus] = useState<string | undefined>(undefined);
+  const [weightUnit, setWeightUnit] = useState<WeightUnit>(() => defaultWeightUnit(deviceLocale()));
+  const [errors, setErrors] = useState<{ ftp?: string; maxHr?: string; weight?: string }>({});
+  const [saved, setSaved] = useState(false);
 
   useFocusEffect(
     useCallback(() => {
       const profile = getAthleteProfile(database);
       setFtpInput(profile.ftpWatts === undefined ? "" : String(profile.ftpWatts));
       setMaxHrInput(profile.maxHeartRateBpm === undefined ? "" : String(profile.maxHeartRateBpm));
-      setWeightInput(profile.weightKg === undefined ? "" : String(profile.weightKg));
+      setWeightInput(profile.weightKg === undefined ? "" : kilogramsToDisplay(profile.weightKg, weightUnit));
+      setSaved(false);
+      // The unit is deliberately not a dependency: switching it converts in place (below), not by reloading.
+      // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [database]),
   );
 
+  function changeUnit(unit: WeightUnit) {
+    if (unit === weightUnit) return;
+    const parsed = parseWeightInput(weightInput, weightUnit);
+    if (parsed.ok) setWeightInput(kilogramsToDisplay(parsed.value, unit));
+    setWeightUnit(unit);
+    setErrors((current) => ({ ...current, weight: undefined }));
+  }
+
   function handleSave() {
-    const ftpWatts = parsePositiveInt(ftpInput);
-    const maxHeartRateBpm = parsePositiveInt(maxHrInput);
-    const weightKg = parsePositiveNumber(weightInput);
-    if (ftpInput.trim().length > 0 && ftpWatts === undefined) {
-      setStatus("FTP must be a positive whole number of watts");
-      return;
-    }
-    if (maxHrInput.trim().length > 0 && maxHeartRateBpm === undefined) {
-      setStatus("Max heart rate must be a positive whole number of bpm");
-      return;
-    }
-    if (weightInput.trim().length > 0 && weightKg === undefined) {
-      setStatus("Weight must be a positive number of kg");
-      return;
-    }
-    setAthleteProfile(database, { ftpWatts, maxHeartRateBpm, weightKg, nowMs: Date.now() });
-    setStatus("Saved");
+    const next: { ftp?: string; maxHr?: string; weight?: string } = {};
+    const ftp = ftpInput.trim().length === 0 ? undefined : parseFtpInput(ftpInput);
+    const maxHr = maxHrInput.trim().length === 0 ? undefined : parseMaxHeartRateInput(maxHrInput);
+    const weight = weightInput.trim().length === 0 ? undefined : parseWeightInput(weightInput, weightUnit);
+    if (ftp !== undefined && !ftp.ok) next.ftp = ftp.error;
+    if (maxHr !== undefined && !maxHr.ok) next.maxHr = maxHr.error;
+    if (weight !== undefined && !weight.ok) next.weight = weight.error;
+    setErrors(next);
+    setSaved(false);
+    if (next.ftp !== undefined || next.maxHr !== undefined || next.weight !== undefined) return;
+
+    setAthleteProfile(database, {
+      ...(ftp?.ok ? { ftpWatts: ftp.value } : {}),
+      ...(maxHr?.ok ? { maxHeartRateBpm: maxHr.value } : {}),
+      ...(weight?.ok ? { weightKg: weight.value } : {}),
+      nowMs: Date.now(),
+    });
+    setSaved(true);
   }
 
   return (
-    <ScrollView style={styles.container} contentContainerStyle={styles.content}>
-      <Text style={styles.hint}>
-        Used to show which power/heart-rate zone you were in during each attempt, alongside
-        the raw values. Leave either blank to hide that zone breakdown.
-      </Text>
+    <ScrollView style={styles.container} contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
+      <AppText variant="body" color="textSecondary">
+        GritMap uses these to build pacing plans, predict your finish time, and show which power and heart-rate zone you were in. They stay on your phone.
+      </AppText>
 
-      <View style={styles.field}>
-        <Text style={styles.label}>FTP (watts)</Text>
-        <TextInput
-          style={styles.input}
-          placeholder="e.g. 250"
-          placeholderTextColor={colors.textTertiary}
-          value={ftpInput}
-          onChangeText={setFtpInput}
-          keyboardType="number-pad"
+      <TextField
+        label="FTP"
+        unit="watts"
+        value={ftpInput}
+        onChangeText={(text) => {
+          setFtpInput(text);
+          setErrors((current) => ({ ...current, ftp: undefined }));
+          setSaved(false);
+        }}
+        placeholder="e.g. 250"
+        hint={FTP_HELP}
+        keyboardType="number-pad"
+        {...(errors.ftp === undefined ? {} : { error: errors.ftp })}
+      />
+
+      <View style={styles.weightGroup}>
+        <SegmentedControl
+          accessibilityLabel="Weight unit"
+          value={weightUnit}
+          onChange={changeUnit}
+          options={[
+            { value: "lb", label: "lb", accessibilityLabel: "Pounds" },
+            { value: "kg", label: "kg", accessibilityLabel: "Kilograms" },
+          ]}
         />
-      </View>
-
-      <View style={styles.field}>
-        <Text style={styles.label}>Max heart rate (bpm)</Text>
-        <TextInput
-          style={styles.input}
-          placeholder="e.g. 185"
-          placeholderTextColor={colors.textTertiary}
-          value={maxHrInput}
-          onChangeText={setMaxHrInput}
-          keyboardType="number-pad"
-        />
-      </View>
-
-      <View style={styles.field}>
-        <Text style={styles.label}>Weight (kg)</Text>
-        <Text style={styles.fieldHint}>
-          Needed to send a pacing plan to the Karoo. Entered manually for now; a future
-          Apple Health/Google Health Connect sync is meant to keep this value current
-          automatically rather than replace it.
-        </Text>
-        <TextInput
-          style={styles.input}
-          placeholder="e.g. 75.5"
-          placeholderTextColor={colors.textTertiary}
+        <TextField
+          label="Weight"
+          unit={weightUnit}
           value={weightInput}
-          onChangeText={setWeightInput}
+          onChangeText={(text) => {
+            setWeightInput(text);
+            setErrors((current) => ({ ...current, weight: undefined }));
+            setSaved(false);
+          }}
+          placeholder={weightUnit === "lb" ? "e.g. 165" : "e.g. 75"}
+          hint="Needed for pacing plans and finish-time predictions."
           keyboardType="decimal-pad"
+          {...(errors.weight === undefined ? {} : { error: errors.weight })}
         />
       </View>
 
-      <TouchableOpacity style={styles.saveButton} onPress={handleSave}>
-        <Text style={styles.saveButtonLabel}>Save</Text>
-      </TouchableOpacity>
-      {status !== undefined && <Text style={styles.statusText}>{status}</Text>}
+      <TextField
+        label="Max heart rate (optional)"
+        unit="bpm"
+        value={maxHrInput}
+        onChangeText={(text) => {
+          setMaxHrInput(text);
+          setErrors((current) => ({ ...current, maxHr: undefined }));
+          setSaved(false);
+        }}
+        placeholder="e.g. 185"
+        hint="Used for heart-rate zones. Leave blank to hide them."
+        keyboardType="number-pad"
+        {...(errors.maxHr === undefined ? {} : { error: errors.maxHr })}
+      />
+
+      <Button label="Save" onPress={handleSave} />
+      {saved ? (
+        <AppText variant="subheadline" color="statusSuccess" align="center" accessibilityRole="alert" accessibilityLiveRegion="polite">
+          Saved
+        </AppText>
+      ) : null}
     </ScrollView>
   );
 }
 
-/** Empty input parses to undefined (clears the threshold); a non-numeric or non-positive input parses to undefined too, but the caller distinguishes that case to show an error. */
-function parsePositiveInt(input: string): number | undefined {
-  const trimmed = input.trim();
-  if (trimmed.length === 0) return undefined;
-  const value = Number(trimmed);
-  return Number.isFinite(value) && Number.isInteger(value) && value > 0 ? value : undefined;
-}
-
-/** Same as parsePositiveInt, but allows a fractional value (e.g. 75.5kg). */
-function parsePositiveNumber(input: string): number | undefined {
-  const trimmed = input.trim();
-  if (trimmed.length === 0) return undefined;
-  const value = Number(trimmed);
-  return Number.isFinite(value) && value > 0 ? value : undefined;
+function deviceLocale(): string | undefined {
+  try {
+    return Intl.DateTimeFormat().resolvedOptions().locale;
+  } catch {
+    return undefined;
+  }
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: colors.background,
-  },
-  content: {
-    paddingHorizontal: spacing.space20,
-    paddingTop: spacing.space16,
-    paddingBottom: spacing.space32,
-    gap: spacing.space16,
-  },
-  hint: {
-    fontSize: 13,
-    color: colors.textSecondary,
-  },
-  field: {
-    gap: spacing.space8 - 2,
-  },
-  label: {
-    fontSize: 13,
-    fontWeight: "600",
-    color: colors.textPrimary,
-  },
-  fieldHint: {
-    fontSize: 12,
-    color: colors.textSecondary,
-  },
-  input: {
-    backgroundColor: colors.surface,
-    borderRadius: radius.md,
-    borderWidth: 1,
-    borderColor: colors.border,
-    paddingHorizontal: spacing.space16,
-    paddingVertical: spacing.space12,
-    fontSize: 15,
-    color: colors.textPrimary,
-  },
-  saveButton: {
-    backgroundColor: colors.brand,
-    borderRadius: radius.md,
-    paddingVertical: spacing.space12,
-    alignItems: "center",
-  },
-  saveButtonLabel: {
-    color: colors.textOnBrand,
-    fontSize: 15,
-    fontWeight: "600",
-  },
-  statusText: {
-    fontSize: 13,
-    color: colors.textSecondary,
-    textAlign: "center",
-  },
+  container: { flex: 1, backgroundColor: colors.background },
+  content: { paddingHorizontal: SCREEN_PADDING, paddingTop: spacing.space16, paddingBottom: spacing.space32, gap: spacing.space20 },
+  weightGroup: { gap: spacing.space12 },
 });

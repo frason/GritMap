@@ -24,9 +24,22 @@ export function SegmentsStackNavigator() {
         component={SegmentListScreen}
         options={({ navigation }) => ({
           title: "Segments",
+          headerLeft: () => (
+            <TouchableOpacity
+              onPress={() => navigation.navigate("ZonesSettings")}
+              accessibilityRole="button"
+              accessibilityLabel="Your profile"
+              accessibilityHint="Your FTP, weight and heart rate"
+              style={{ minHeight: 44, justifyContent: "center" }}
+            >
+              <Text style={{ color: colors.brand, fontSize: 17 }}>Profile</Text>
+            </TouchableOpacity>
+          ),
           headerRight: () => (
             <TouchableOpacity onPress={() => navigation.navigate("RegistryBrowse")}>
-              <Text style={{ color: colors.brand, fontSize: 15, fontWeight: "600" }}>Registry</Text>
+              <Text style={{ color: colors.brand, fontSize: 17 }} accessibilityRole="button" accessibilityLabel="Open Segments">
+                Open Segments
+              </Text>
             </TouchableOpacity>
           ),
         })}
@@ -38,8 +51,8 @@ export function SegmentsStackNavigator() {
         component={AttemptComparisonScreen}
         options={{ title: "Compare Attempts" }}
       />
-      <Stack.Screen name="RegistryBrowse" component={RegistryBrowseScreen} options={{ title: "Segment Registry" }} />
-      <Stack.Screen name="ZonesSettings" component={ZonesSettingsScreen} options={{ title: "Power/HR Zones" }} />
+      <Stack.Screen name="RegistryBrowse" component={RegistryBrowseScreen} options={{ title: "Open Segments" }} />
+      <Stack.Screen name="ZonesSettings" component={ZonesSettingsScreen} options={{ title: "Your Profile" }} />
       <Stack.Screen name="HistoricalBand" component={HistoricalBandScreen} options={{ title: "Historical Range" }} />
       <Stack.Screen name="SendToKaroo" component={SendToKarooScreen} options={{ title: "Send to Karoo" }} />
       <Stack.Screen

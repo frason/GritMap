@@ -18,6 +18,7 @@ import {
   formatDurationMinutesSeconds,
   formatRideDate,
 } from "./formatRideStats";
+import { EmptyState } from "../theme/components";
 import { parseTargetDurationInput } from "./parseTargetDuration";
 
 type Navigation = BottomTabNavigationProp<RootTabParamList>;
@@ -50,17 +51,25 @@ export function HomeScreen() {
 
   if (segments.length === 0) {
     return (
-      <View style={styles.emptyState}>
-        <Icon name="flag" color="textTertiary" size={40} />
-        <Text style={styles.emptyTitle}>
-          Import a ride and define your first segment to set a goal.
-        </Text>
-        <TouchableOpacity
-          style={styles.primaryButton}
-          onPress={() => navigation.navigate("RidesTab", { screen: "Import" })}
-        >
-          <Text style={styles.primaryButtonLabel}>Import a ride</Text>
-        </TouchableOpacity>
+      <View style={styles.container}>
+        <EmptyState
+          icon="flag"
+          title="Pick a segment to chase"
+          body="Add a segment, set a goal time, and GritMap builds you a pacing plan. Your progress toward the goal shows up here."
+          actions={[
+            {
+              label: "Browse Open Segments",
+              onPress: () => navigation.navigate("SegmentsTab", { screen: "RegistryBrowse" }),
+              icon: "search",
+            },
+            {
+              label: "Import a ride",
+              onPress: () => navigation.navigate("RidesTab", { screen: "Import" }),
+              variant: "secondary",
+              icon: "download",
+            },
+          ]}
+        />
       </View>
     );
   }

@@ -23,7 +23,7 @@ export interface ElevationProfileChartProps {
 
 /**
  * Fixed width per zone, not a share of the container -- a segment with many zones (a real
- * climb like Diablo has ~26 quarter-mile zones) gets a wider, horizontally-scrollable
+ * long climb can have 25 or more quarter-mile zones) gets a wider, horizontally-scrollable
  * chart instead of squeezing every band below legibility. At this width a watt label
  * always has room, so `MIN_LABEL_BAND_WIDTH` below is a defensive floor that should never
  * actually trigger, not the primary sizing mechanism it was before.
@@ -44,7 +44,7 @@ const CLASSIFICATION_COLORS: Record<PacingClassification, { fill: string; accent
  * pacing plan uses (computeZoneGrades.ts) -- plain ticks with no FTP/goal set, or
  * zone-colored bands with target watts once `zones` (buildTargetPowerZones.ts's output) is
  * passed in, so this chart doubles as the pacing-plan visualization rather than needing a
- * separate 25-plus-row table for a climb Diablo's length. Each zone gets an equal fixed
+ * separate 25-plus-row table for a long climb. Each zone gets an equal fixed
  * pixel width regardless of its real distance (the last zone is often a shorter remainder)
  * -- trading exact distance-proportionality for every zone being equally legible, which
  * matters more here since the point is reading each quarter-mile's own number.

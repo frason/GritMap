@@ -1,3 +1,15 @@
+# Handoff: first-run onboarding, design foundations and empty states on the phone (committed locally, not pushed)
+
+Phone-only; Karoo untouched. A fresh install now walks a four-step onboarding (what it does, FTP and weight in kg or lb,
+how to get a segment, how to connect the Karoo) and lands on an empty Segments screen; walked on a wiped simulator install
+with screenshots in `docs/screenshots/onboarding/`. New design system in `src/theme/` (type scale, light and dark palettes
+with a contrast test, Button/Card/ListRow/TextField/EmptyState/ErrorState/LoadingState). Found and fixed on the way: Open
+Segments listed raw fingerprints; FTP and weight could not be edited after being set (new Profile button). 608/608 tests,
+typecheck and web:smoke clean. **For Codex:** the in-app Karoo steps use exact strings **GritMap**, **Receive from Phone**,
+**Send plan to Karoo**, an address like `192.168.1.23:8734`, and a 10-minute window; keep `docs/BETA_KAROO_INSTALL.md`
+consistent (they live in `src/onboarding/onboardingCopy.ts`). VoiceOver not yet exercised. Details:
+`handoffs/archive/2026-10-08-1425-claude-onboarding-design-foundations.md`.
+
 # Coordinator: next task for Codex (2026-10-08)
 
 Read `docs/GOALS.md` first. Beta for 20+ strangers on iPhone + sideloaded Karoo APK, targeted ~2026-10-15.
