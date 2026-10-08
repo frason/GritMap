@@ -1,37 +1,33 @@
-# Coordinator: next task for Codex (2026-10-08)
+# Coordinator: next task for Codex (2026-10-08 16:20)
 
-Read `docs/GOALS.md` first. Beta for 20+ strangers on iPhone + sideloaded Karoo APK, targeted ~2026-10-15.
+Read `docs/GOALS.md` first. The previous task (signed beta APK, install guide, empty states) is **complete**
+(`1eb405f`, `01aeaf6`, tag `karoo-beta-0.10.42`). Coordinator QA: 176/176 JVM tests, lint and debug build pass;
+the device reads `0.10.42-beta`/65. (The 0.10.42 handoff's "175 tests" is superseded; QA counts match.)
 
-**Task: produce the beta Karoo build and its install guide.**
-- Tag a reproducible beta APK from a committed state (`karoo-beta-<version>`), signed so testers can
-  install it and later upgrade over it. Record the build command and SHA-256 in the handoff.
-- Verify on device that every GritMap field degrades cleanly with no H10, no power meter and no
-  segment loaded: no blank or broken states. GM H10 Cardiac stays in the build as optional and
-  experimental. GM Cardiac Drift stays the default.
-- Write `docs/BETA_KAROO_INSTALL.md` for a stranger: sideload steps, which fields to add to which
-  page, and how to find the Karoo's IP and open "Receive from Phone". The phone session is writing
-  matching onboarding copy, so keep the wording consistent and note the exact screen names in your handoff.
-- Out of scope: pairing (post-beta), Needle, visual polish beyond legibility.
+**HOLD on wording:** the phone renamed pacing "zones" to "sections"; the Karoo fields and
+`docs/BETA_KAROO_INSTALL.md` still say "zones". Jason is choosing one term. Do not rename anything yet.
 
-Done when: the tag exists, a clean install-and-upgrade test has run on the Karoo, the guide is
-committed, and the handoff includes the Goal alignment section.
+**Task: physical validation of GM H10 Cardiac (the GOALS.md H10 track milestone), plus support for stranger bug reports.**
+- Prepare a one-page rider checklist for Jason's next ride: add the field, ride an active segment with
+  the H10 for 3+ minutes, and what to watch for (`COLLECTING RR` → live α1, readability under effort).
+- After the ride, compare the displayed values with the saved RR artifact, and report stability and
+  dropout behavior with numbers.
+- Make sure a beta tester's problem report is actionable: the "Report a beta problem" section of the
+  guide should tell them exactly what to send (logs and version), and the Karoo should expose them.
+- Out of scope: automatic H10-driven pacing, Needle, pairing.
 
-# Coordinator: current phone task (2026-10-08 14:40, sent to the GritMap MVP session)
+Done when: the checklist is committed, the post-ride comparison is in a handoff with the Goal
+alignment section, and any beta-blocking H10 issue is listed first.
+
+# Coordinator: current phone task (2026-10-08 16:20, sent to the GritMap MVP session)
 
 For Codex's awareness. Do not edit these phone files.
 
-Previous phone task (onboarding + design foundations) is done in `be21320` (local, not pushed); the
-coordinator's QA independently confirmed typecheck, 608/608 tests and web:smoke.
+The previous phone tasks are done and pass coordinator QA: onboarding (`be21320`), Home fix (`3b3e590`),
+beta-loop screen migration (`078e131`); 616/616 tests. Unpushed, awaiting Jason.
 
-**Task: move the remaining beta-loop screens onto the `src/theme` design system.** In order:
-Segment Detail (goal and pacing plan) + coach-plan import; Send to Karoo; Import (FIT and segment
-JSON); post-ride (plan vs actual, progress over time, ride detail). Use theme tokens only, follow HIG
-and accessibility, design loading/empty/error states for every screen, and keep light mode for the beta.
-
-**Codex must match:** the phone's Karoo strings are fixed in `src/onboarding/onboardingCopy.ts`:
-**GritMap**, **Receive from Phone**, **Send plan to Karoo**, an address like `192.168.1.23:8734`, and
-the 10-minute window. Onboarding tells riders to follow "the Karoo install guide you were sent", so
-`docs/BETA_KAROO_INSTALL.md` is on the beta's critical path.
+**Task:** redesign Define Segment (with handle accessibility); bring the progress-over-time load under 2 s
+or give it a loading state; reflow live when the text size changes. The zones/sections wording is on hold.
 
 # Handoff: beta-loop screens moved onto the design system; Home safe-area fix (committed locally, not pushed)
 
