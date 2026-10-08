@@ -5,7 +5,8 @@ It computes experimental DFA alpha-1 only after an approximately two-minute clea
 bridges a known dropout, and shows RMSSD plus RR validity as supporting context in responsive large
 and compact views. The ordinary `GM Cardiac Drift` field remains the universal fallback. All 175
 JVM tests, lint and APK build pass; 0.10.42 is installed on the connected Karoo. A physical H10
-exercise validation remains. Details:
+exercise validation remains. Commit `0a6ac9f` consolidates all accumulated work through this
+milestone; the follow-up handoff-only commit leaves the worktree clean. Details:
 `handoffs/archive/2026-10-08-1035-codex-h10-cardiac-field.md`.
 
 # Handoff: Coco Jumbo physical live retest passed end to end

@@ -3,8 +3,8 @@
 - Updated: `2026-10-08 10:35 PDT`
 - Agent: `Codex`
 - Branch: `main`
-- Head: `9b5f594 feat: import a portable segment JSON file on the phone`
-- Worktree: `uncommitted; broad pre-existing phone/Karoo work plus the H10 field files below`
+- Head: `0a6ac9f feat: consolidate Karoo live pacing and H10 physiology`
+- Worktree: `clean after the follow-up handoff metadata commit`
 
 ## Outcome
 
@@ -16,6 +16,8 @@ unchanged as the fallback for ordinary Karoo heart-rate data.
 
 ## Changed
 
+- Commit `0a6ac9f` consolidates all accumulated phone, Karoo, UI, matching, transfer,
+  diagnostics, physiology, documentation, and test work through 0.10.42.
 - `physiology/RrWindowMetrics.kt`: DFA alpha-1 calculation over scales 4-16; refuses short
   windows and never bridges an explicit invalid/dropout observation.
 - `physiology/H10CaptureController.kt`: publishes current alpha-1 and a bounded 5-second,
@@ -54,7 +56,8 @@ unchanged as the fallback for ordinary Karoo heart-rate data.
 - The current hard acquisition validator flags impossible intervals/dropouts but does not yet
   implement a versioned ectopic-beat correction algorithm. Do not promote alpha-1 into automatic
   pacing adaptation until physical comparison and artifact validation are complete.
-- The repository contains extensive unrelated uncommitted work. Do not bulk reset or stage it.
+- The consolidation commit is intentionally large because it captures the previously accumulated
+  milestones; subsequent work should begin from this clean baseline.
 
 ## Next safe action
 
