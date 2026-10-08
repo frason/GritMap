@@ -79,6 +79,30 @@ describe("importRegistrySegment", () => {
     assert.equal(row.source_ride_id, null);
   });
 
+  it("treats expo-sqlite's null no-row result as not found", async () => {
+    const { raw, database } = migratedDatabase();
+    const expoShapedDatabase: SyncDatabase = {
+      ...database,
+      prepare: (sql) => {
+        const statement = database.prepare(sql);
+        if (sql.startsWith("SELECT id FROM segments WHERE fingerprint")) {
+          return { ...statement, get: () => null };
+        }
+        return statement;
+      },
+    };
+
+    const result = await importRegistrySegment(
+      expoShapedDatabase,
+      sequentialIdFactory("segment"),
+      validRegistryJson(),
+      5_000,
+    );
+
+    assert.deepEqual(result, { status: "imported", segmentId: "segment-1" });
+    assert.equal((raw.prepare("SELECT count(*) AS count FROM segments").get() as { count: number }).count, 1);
+  });
+
   it("reports already-imported (not a duplicate insert or an error) for a fingerprint already present", async () => {
     const { database } = migratedDatabase();
     const first = await importRegistrySegment(database, sequentialIdFactory("segment"), validRegistryJson(), 5_000);

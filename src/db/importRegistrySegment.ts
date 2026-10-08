@@ -27,8 +27,9 @@ export async function importRegistrySegment(
 
   const existing = database
     .prepare("SELECT id FROM segments WHERE fingerprint = ?")
-    .get(parsed.segment.fingerprint) as { id: string } | undefined;
-  if (existing !== undefined) {
+    .get(parsed.segment.fingerprint) as { id: string } | null | undefined;
+  // expo-sqlite returns null for no row; node:sqlite returns undefined. Both mean not found.
+  if (existing != null) {
     return { status: "already-imported", segmentId: existing.id };
   }
 

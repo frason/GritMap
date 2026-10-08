@@ -9,6 +9,9 @@ data class LiveUiState(
     val segmentName: String = "",
     val progressMeters: Double = 0.0,
     val totalDistanceMeters: Double = 0.0,
+    val distanceUnitSystem: UnitSystem = UnitSystem.IMPERIAL,
+    val elevationUnitSystem: UnitSystem = UnitSystem.IMPERIAL,
+    val routeProfile: List<RouteSample> = emptyList(),
     val elevationProfile: List<ElevationSample> = emptyList(),
     val pacingZones: List<PacingZone> = emptyList(),
     val recommendation: Recommendation? = null,
@@ -19,10 +22,22 @@ data class LiveUiState(
     val wPrime: WPrimeState? = null,
     val cardiacDriftPct: Double? = null,
     val cardiacDriftHistory: List<CardiacDriftSample> = emptyList(),
+    val cardiacEfficiencyWattsPerBpm: Double? = null,
+    val cardiacDriftRatePctPer10Min: Double? = null,
+    val cardiacDriftValidSeconds: Int = 0,
+    val cardiacDriftPairedPct: Int = 0,
+    val cardiacDriftPowerSteady: Boolean = false,
+    val h10EnhancedAvailable: Boolean = false,
+    val h10DfaAlpha1: Double? = null,
+    val h10RmssdMs: Double? = null,
+    val h10ValidRrPct: Int = 0,
+    val h10DfaHistory: List<H10DfaSample> = emptyList(),
     val plannedFinishSeconds: Int? = null,
     val predictedFinishSeconds: Int? = null,
     val elapsedAttemptSeconds: Double? = null,
     val planAdherencePct: Int? = null,
+    /** Completed quarter-mile deltas: positive seconds gained, negative seconds lost. */
+    val segmentSplitDeltasSeconds: List<Int> = emptyList(),
     val sensorStatus: SensorStatus = SensorStatus(),
     val matchStatus: MatchStatus = MatchStatus.IDLE,
 ) {
@@ -68,9 +83,29 @@ data class ElevationSample(
     val elevationMeters: Double,
 )
 
+enum class UnitSystem {
+    METRIC,
+    IMPERIAL,
+}
+
+/** Ordered segment-relative geography used by the offline head-up route renderer. */
+data class RouteSample(
+    val distanceMeters: Double,
+    val lat: Double,
+    val lng: Double,
+)
+
 data class CardiacDriftSample(
     val progressFraction: Float,
     val driftPct: Double,
+    val elapsedSeconds: Int = 0,
+    val powerIndex: Double = 100.0,
+    val heartRateIndex: Double = 100.0,
+)
+
+data class H10DfaSample(
+    val elapsedSeconds: Int,
+    val alpha1: Double,
 )
 
 /** Distance-keyed execution sample retained only in memory for the live profile visualization. */

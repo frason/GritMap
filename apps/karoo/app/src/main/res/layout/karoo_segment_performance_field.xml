@@ -21,6 +21,7 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:textColor="#FFC857"
+        android:gravity="center"
         android:textSize="13sp"
         android:textStyle="bold" />
 
@@ -28,6 +29,7 @@
         android:id="@+id/karoo_performance_finish"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
+        android:gravity="center"
         android:textColor="@color/gm_field_primary_text"
         android:textSize="22sp"
         android:textStyle="bold" />

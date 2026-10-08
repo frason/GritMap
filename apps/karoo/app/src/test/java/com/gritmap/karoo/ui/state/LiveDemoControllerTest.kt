@@ -8,8 +8,8 @@ class LiveDemoControllerTest {
     @Test
     fun `demo progresses through plan zones with complete field data`() {
         val recover = demoPlanState(1)
-        val hold = demoPlanState(12)
-        val push = demoPlanState(24)
+        val hold = demoPlanState(10)
+        val push = demoPlanState(26)
 
         assertEquals(GuidanceIcon.RECOVER, recover.recommendation?.icon)
         assertEquals(GuidanceIcon.HOLD, hold.recommendation?.icon)
@@ -19,8 +19,12 @@ class LiveDemoControllerTest {
         assertTrue(hold.rollingPowerWatts3s != null)
         assertTrue(hold.currentHeartRateBpm != null)
         assertTrue(hold.wattsPerHeartRate != null)
+        assertTrue(hold.wPrime != null)
+        assertTrue(requireNotNull(hold.wPrime).estimated)
+        assertTrue(requireNotNull(hold.wPrime).plannedRemainingPct != null)
+        assertTrue(requireNotNull(hold.wPrime).projectedFinishPct != null)
         assertTrue(hold.planAdherencePct != null)
-        assertEquals(13, hold.powerExecutionHistory.size)
+        assertEquals(11, hold.powerExecutionHistory.size)
         assertEquals(hold.progressMeters, hold.powerExecutionHistory.last().distanceMeters, 0.001)
         assertTrue(hold.powerExecutionHistory.all { it.actualWatts > 0 && it.targetWatts > 0 })
     }

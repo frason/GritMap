@@ -17,6 +17,12 @@ data class SegmentLibraryRow(
     val pointCount: Int,
     val lengthMeters: Double,
     val hasBaselinePlan: Boolean,
+    val planId: String?,
+    val planSource: String?,
+    val planFtpWatts: Int?,
+    val targetFinishTimeSeconds: Int?,
+    val planCreatedAtMs: Long?,
+    val pacingZoneCount: Int,
 )
 
 @Dao
@@ -43,10 +49,17 @@ interface SegmentDao {
         SELECT s.id, s.name, s.fingerprint, s.corridorMeters, s.requiredCoveragePct,
                COUNT(DISTINCT p.id) AS pointCount,
                COALESCE(MAX(p.distanceMeters), 0) AS lengthMeters,
-               CASE WHEN COUNT(pp.id) > 0 THEN 1 ELSE 0 END AS hasBaselinePlan
+               CASE WHEN COUNT(pp.id) > 0 THEN 1 ELSE 0 END AS hasBaselinePlan,
+               MAX(pp.id) AS planId,
+               MAX(pp.source) AS planSource,
+               MAX(pp.ftpWatts) AS planFtpWatts,
+               MAX(pp.targetFinishTimeSeconds) AS targetFinishTimeSeconds,
+               MAX(pp.createdAtMs) AS planCreatedAtMs,
+               COUNT(DISTINCT pz.id) AS pacingZoneCount
         FROM segments s
         LEFT JOIN segment_reference_points p ON p.segmentId = s.id
         LEFT JOIN pacing_plans pp ON pp.segmentId = s.id AND pp.isBaseline = 1
+        LEFT JOIN pacing_zones pz ON pz.planId = pp.id
         GROUP BY s.id
         ORDER BY s.name COLLATE NOCASE, s.id
     """)
@@ -114,6 +127,31 @@ interface RiderHistoryDao {
 
     @Query("SELECT * FROM rider_profiles WHERE singletonId = 1")
     suspend fun profile(): RiderProfileEntity?
+
+    @Query("""
+        UPDATE rider_profiles
+        SET ftpWatts = :ftpWatts, weightKg = :weightKg, maxHeartRateBpm = :maxHeartRateBpm
+        WHERE singletonId = 1
+    """)
+    suspend fun updateFromKaroo(ftpWatts: Int, weightKg: Double, maxHeartRateBpm: Int?): Int
+
+    @Insert(onConflict = OnConflictStrategy.IGNORE)
+    suspend fun insertProfileIfMissing(profile: RiderProfileEntity)
+
+    @Transaction
+    suspend fun syncFromKaroo(ftpWatts: Int, weightKg: Double, maxHeartRateBpm: Int?) {
+        if (updateFromKaroo(ftpWatts, weightKg, maxHeartRateBpm) == 0) {
+            insertProfileIfMissing(
+                RiderProfileEntity(
+                    schemaVersion = 1,
+                    ftpWatts = ftpWatts,
+                    weightKg = weightKg,
+                    maxHeartRateBpm = maxHeartRateBpm,
+                    thresholdHeartRateBpm = null,
+                ),
+            )
+        }
+    }
 
     @Transaction
     suspend fun replace(profile: RiderProfileEntity, loads: List<TrainingLoadEntity>, samples: List<HistoricalAttemptSampleEntity>) {

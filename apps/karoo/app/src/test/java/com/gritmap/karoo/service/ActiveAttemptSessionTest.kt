@@ -58,4 +58,20 @@ class ActiveAttemptSessionTest {
         val withoutPlan = ActiveAttemptSession("attempt", "segment", 0L, LiveUiState.Idle)
         assertEquals(null, withoutPlan.pacingPlanId)
     }
+
+    @Test
+    fun `quarter mile splits record positive gained time and negative lost time`() {
+        val session = ActiveAttemptSession("attempt", "segment", 0L, LiveUiState.Idle)
+        val total = 1_609.344
+        val planSeconds = 400
+
+        assertEquals(
+            listOf(10),
+            session.recordCompletedSplits(402.336, 90.0, total, planSeconds),
+        )
+        assertEquals(
+            listOf(10, -10),
+            session.recordCompletedSplits(804.672, 200.0, total, planSeconds),
+        )
+    }
 }

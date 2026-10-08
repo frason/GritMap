@@ -6,6 +6,17 @@
     <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_LOCATION" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_CONNECTED_DEVICE" />
+    <uses-permission
+        android:name="android.permission.BLUETOOTH"
+        android:maxSdkVersion="30" />
+    <uses-permission
+        android:name="android.permission.BLUETOOTH_ADMIN"
+        android:maxSdkVersion="30" />
+    <uses-permission
+        android:name="android.permission.BLUETOOTH_SCAN"
+        android:usesPermissionFlags="neverForLocation" />
+    <uses-permission android:name="android.permission.BLUETOOTH_CONNECT" />
     <!-- Local-network-only: the phone-to-Karoo transfer receiver (importing/HttpSegmentInbox.kt)
          listens on a plain ServerSocket. Android requires INTERNET even for LAN/localhost
          sockets, not just outbound internet access. -->
@@ -27,10 +38,15 @@
             </intent-filter>
         </activity>
 
+        <activity
+            android:name=".physiology.H10DiagnosticActivity"
+            android:exported="false"
+            android:label="GritMap H10 Diagnostics" />
+
         <service
             android:name=".service.LiveSegmentService"
             android:exported="false"
-            android:foregroundServiceType="location" />
+            android:foregroundServiceType="location|connectedDevice" />
 
         <service
             android:name=".karoo.GritMapKarooExtension"

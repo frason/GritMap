@@ -6,6 +6,7 @@ import type { SavedSegmentPlan } from "../db/segmentPlans.ts";
 import { buildRiderHistoryPackage } from "../pacing/buildRiderHistoryPackage.ts";
 import type { SendSegmentResult } from "./sendSegmentToKaroo.ts";
 import { karooTransferEndpoint } from "./karooTransferEndpoint.ts";
+import { fetchWithTimeout } from "./fetchWithTimeout.ts";
 
 export interface SendGuidanceResult extends SendSegmentResult {
   /** The exact baseline plan that was acknowledged by the Karoo's receiver; present only when `ok`. */
@@ -109,7 +110,7 @@ export async function sendGuidancePackageToKaroo(
   }
 
   try {
-    const response = await fetch(endpoint, {
+    const response = await fetchWithTimeout(endpoint, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(json),

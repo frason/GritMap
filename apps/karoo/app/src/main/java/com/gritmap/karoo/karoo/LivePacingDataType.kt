@@ -8,9 +8,12 @@ import android.widget.RemoteViews
 import com.gritmap.karoo.R
 import com.gritmap.karoo.service.LiveServiceStarter
 import com.gritmap.karoo.ui.ProfileBitmapRenderer
+import com.gritmap.karoo.ui.pacerTimeGapSeconds
 import com.gritmap.karoo.ui.karooVisualPalette
+import com.gritmap.karoo.ui.virtualPacerGap
 import com.gritmap.karoo.ui.state.LiveUiState
 import com.gritmap.karoo.ui.state.LiveUiStore
+import com.gritmap.karoo.ui.state.UnitSystem
 import io.hammerhead.karooext.extension.DataTypeImpl
 import io.hammerhead.karooext.internal.ViewEmitter
 import io.hammerhead.karooext.models.UpdateGraphicConfig
@@ -74,6 +77,18 @@ class PacingProfileDataFieldRenderer(
         val remoteViews = RemoteViews(context.packageName, R.layout.karoo_live_pacing_field)
         remoteViews.setTextViewText(R.id.karoo_segment_name, presentation.title)
         remoteViews.setTextViewText(R.id.karoo_profile_status, presentation.status)
+        if (layout == KarooFieldLayout.LARGE) {
+            remoteViews.setTextViewTextSize(
+                R.id.karoo_segment_name,
+                TypedValue.COMPLEX_UNIT_SP,
+                19.2f,
+            )
+            remoteViews.setTextViewTextSize(
+                R.id.karoo_profile_status,
+                TypedValue.COMPLEX_UNIT_SP,
+                14.4f,
+            )
+        }
         remoteViews.setTextViewText(R.id.karoo_profile_guidance, presentation.guidance)
         remoteViews.setTextColor(
             R.id.karoo_profile_guidance,
@@ -101,7 +116,9 @@ class PacingProfileDataFieldRenderer(
 
         val width = config.viewSize.first.coerceAtLeast(1)
         val height = presentation.bitmapHeight(config.viewSize.second)
-        val bitmap = if (presentation.compactStrip) {
+        val bitmap = if (layout == KarooFieldLayout.LARGE) {
+            profileRenderer.renderFirstPersonRoute(state, width, height)
+        } else if (presentation.compactStrip) {
             profileRenderer.renderPacingStrip(state, width, height)
         } else if (presentation.verticalPacer) {
             profileRenderer.renderVerticalPacer(state, width, height)
@@ -150,7 +167,8 @@ internal fun pacingProfilePresentation(
 ): PacingProfilePresentation {
     val title = state.segmentName.ifBlank { "GritMap" }
     val progress = if (state.totalDistanceMeters > 0.0) {
-        "${state.progressMeters.toInt()} / ${state.totalDistanceMeters.toInt()} m"
+        "${formatDistance(state.progressMeters, state.distanceUnitSystem)} / " +
+            formatDistance(state.totalDistanceMeters, state.distanceUnitSystem)
     } else {
         "Waiting for segment"
     }
@@ -167,7 +185,7 @@ internal fun pacingProfilePresentation(
         "3s $actual W$delta"
     } ?: "3s power --"
     val remaining = if (state.totalDistanceMeters > 0.0) {
-        "${(state.totalDistanceMeters - state.progressMeters).coerceAtLeast(0.0).toInt()} m left"
+        "${formatDistance((state.totalDistanceMeters - state.progressMeters).coerceAtLeast(0.0), state.distanceUnitSystem)} left"
     } else {
         ""
     }
@@ -241,18 +259,37 @@ internal fun pacingProfilePresentation(
         KarooFieldLayout.LARGE -> PacingProfilePresentation(
             title = title,
             status = progress,
-            guidance = immediate,
+            guidance = state.recommendation?.let {
+                val relation = largePaceRelation(state)
+                if (relation.isBlank()) it.icon.compactLabel() else "${it.icon.compactLabel()} • $relation"
+            } ?: immediate,
             execution = execution,
             remaining = remaining,
             showHeader = true,
             showGuidance = true,
-            showFooter = true,
+            // The head-up bitmap owns its pacing gap, watt cards, and elevation overview.
+            // Hiding the legacy footer prevents duplicate power text and gives the route room.
+            showFooter = false,
             compactStrip = false,
             verticalPacer = true,
-            graphFraction = 0.68,
+            graphFraction = 0.78,
         )
     }
 }
+
+private fun largePaceRelation(state: LiveUiState): String {
+    val pacer = virtualPacerGap(state) ?: return ""
+    if (kotlin.math.abs(pacer.gapMeters) < 3.0) return "ON PACE"
+    val seconds = kotlin.math.abs(pacerTimeGapSeconds(state, pacer))
+    return if (pacer.targetIsAhead) "${seconds}s BEHIND" else "${seconds}s AHEAD"
+}
+
+private fun formatDistance(meters: Double, system: UnitSystem): String =
+    if (system == UnitSystem.IMPERIAL) {
+        "${(meters * 3.28084).toInt()} ft"
+    } else {
+        "${meters.toInt()} m"
+    }
 
 private fun com.gritmap.karoo.ui.state.GuidanceIcon.compactLabel(): String = when (this) {
     com.gritmap.karoo.ui.state.GuidanceIcon.RECOVER -> "REST"

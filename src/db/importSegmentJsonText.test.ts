@@ -17,8 +17,8 @@ const { importSegmentJsonText, MAX_SEGMENT_JSON_CHARACTERS } = await import("./i
 const { applyMigrations } = await import("./migrations.ts");
 import type { SyncDatabase } from "./types.ts";
 
-/** What the Karoo already has installed for Coco Jumbo (read from its database on 2026-10-05). */
-const KAROO_COCO_JUMBO_FINGERPRINT = "ed56296f099c2f53aed3fbd55932b2b55bf39f24228fc6a2688a796062f94366";
+/** Coco Jumbo after adding the real Karoo FIT's barometric elevation profile. */
+const COCO_JUMBO_FINGERPRINT = "cfc9be45fea61eebdd9dbcacd6e5798fd6386afecacb575012657c045e995efc";
 
 function migrated(): { raw: DatabaseSync; database: SyncDatabase } {
   const raw = new DatabaseSync(":memory:");
@@ -47,16 +47,21 @@ const generateId = () => `id-${(counter += 1)}`;
 const cocoJumboText = () => readFile("apps/karoo/samples/Coco_Jumbo.segment.json", "utf8");
 
 describe("importSegmentJsonText", () => {
-  it("imports the Karoo's Coco Jumbo file (which has no fingerprint) with the same fingerprint the Karoo holds", async () => {
+  it("imports the elevation-enriched Coco Jumbo file and computes its stable fingerprint", async () => {
     const { raw, database } = migrated();
     const result = await importSegmentJsonText(database, generateId, await cocoJumboText(), 1_000);
     assert.equal(result.status, "imported");
     const row = raw.prepare("SELECT name, fingerprint, corridor_meters, required_coverage FROM segments").get()!;
     assert.equal(row.name, "Coco Jumbo");
-    assert.equal(row.fingerprint, KAROO_COCO_JUMBO_FINGERPRINT);
+    assert.equal(row.fingerprint, COCO_JUMBO_FINGERPRINT);
     assert.equal(row.corridor_meters, 30);
     assert.equal(row.required_coverage, 0.9);
     assert.equal(raw.prepare("SELECT COUNT(*) AS n FROM segment_reference_points").get()!.n, 55);
+    const elevations = raw
+      .prepare("SELECT MIN(elevation_meters) AS low, MAX(elevation_meters) AS high FROM segment_reference_points")
+      .get()!;
+    assert.equal(elevations.low, 110.8);
+    assert.equal(elevations.high, 188.2);
   });
 
   it("reports an already-imported segment instead of duplicating it", async () => {
@@ -71,7 +76,7 @@ describe("importSegmentJsonText", () => {
 
   it("verifies a fingerprint when the file carries one: correct is accepted, tampered is rejected", async () => {
     const original = JSON.parse(await cocoJumboText());
-    const good = { ...original, fingerprint: KAROO_COCO_JUMBO_FINGERPRINT };
+    const good = { ...original, fingerprint: COCO_JUMBO_FINGERPRINT };
     const { database } = migrated();
     assert.equal((await importSegmentJsonText(database, generateId, JSON.stringify(good), 1_000)).status, "imported");
 
@@ -95,7 +100,7 @@ describe("importSegmentJsonText", () => {
     const { raw, database } = migrated();
     const result = await importSegmentJsonText(database, generateId, JSON.stringify(original), 1_000);
     assert.equal(result.status, "imported");
-    assert.notEqual(raw.prepare("SELECT fingerprint FROM segments").get()!.fingerprint, KAROO_COCO_JUMBO_FINGERPRINT);
+    assert.notEqual(raw.prepare("SELECT fingerprint FROM segments").get()!.fingerprint, COCO_JUMBO_FINGERPRINT);
   });
 
   it("accepts a whole gritmap-transfer guidance package and imports its segment", async () => {

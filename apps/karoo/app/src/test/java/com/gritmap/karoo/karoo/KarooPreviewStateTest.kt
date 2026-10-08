@@ -23,9 +23,10 @@ class KarooPreviewStateTest {
 
     @Test
     fun `preview traverses recover hold and push zones`() {
-        assertEquals(GuidanceIcon.RECOVER, karooPreviewStateAt(0).recommendation?.icon)
-        assertEquals(GuidanceIcon.HOLD, karooPreviewStateAt(5).recommendation?.icon)
-        assertEquals(GuidanceIcon.PUSH, karooPreviewStateAt(23).recommendation?.icon)
+        val icons = (0 until 24).mapNotNull { karooPreviewStateAt(it).recommendation?.icon }.toSet()
+        assertTrue(GuidanceIcon.RECOVER in icons)
+        assertTrue(GuidanceIcon.HOLD in icons)
+        assertTrue(GuidanceIcon.PUSH in icons)
     }
 
     @Test

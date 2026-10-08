@@ -1,6 +1,7 @@
 import type { SegmentDetail } from "../db/getSegmentDetail.ts";
 import { toPortableSegmentJson } from "../segments/toPortableSegmentJson.ts";
 import { karooTransferEndpoint } from "./karooTransferEndpoint.ts";
+import { fetchWithTimeout } from "./fetchWithTimeout.ts";
 
 export interface SendSegmentResult {
   ok: boolean;
@@ -39,7 +40,7 @@ export async function sendSegmentToKaroo(
   }
 
   try {
-    const response = await fetch(endpoint, {
+    const response = await fetchWithTimeout(endpoint, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(json),

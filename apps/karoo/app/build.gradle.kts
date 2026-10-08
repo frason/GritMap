@@ -16,8 +16,8 @@ android {
         applicationId = "com.gritmap.karoo"
         minSdk = 31
         targetSdk = 31
-        versionCode = 13
-        versionName = "0.8.2"
+        versionCode = 65
+        versionName = "0.10.42"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables.useSupportLibrary = true

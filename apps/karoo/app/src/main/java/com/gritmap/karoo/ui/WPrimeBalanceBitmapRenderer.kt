@@ -4,13 +4,17 @@ import android.graphics.Bitmap
 import android.graphics.Canvas
 import android.graphics.Color
 import android.graphics.DashPathEffect
+import android.graphics.LinearGradient
 import android.graphics.Paint
 import android.graphics.Path
+import android.graphics.Shader
 import com.gritmap.karoo.ui.state.WPrimeState
 import com.gritmap.karoo.ui.state.EnergyFlowStatus
-import kotlin.math.atan2
+import com.gritmap.karoo.ui.state.LiveUiState
+import com.gritmap.karoo.ui.state.UnitSystem
 import kotlin.math.cos
 import kotlin.math.max
+import kotlin.math.roundToInt
 import kotlin.math.sin
 
 class WPrimeBalanceBitmapRenderer(
@@ -21,13 +25,40 @@ class WPrimeBalanceBitmapRenderer(
         val canvas = Canvas(bitmap)
         val left = width * 0.05f
         val right = width * 0.95f
-        val top = height * 0.24f
-        val bottom = height * 0.76f
+        val top = height * 0.18f
+        val bottom = height * 0.70f
         drawReserveTrack(canvas, left, top, right, bottom)
         val actualX = left + (right - left) * state.actualRemainingPct / 100f
         val empty = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = palette.surface; alpha = 205 }
         canvas.drawRect(actualX, top, right, bottom, empty)
         drawPlanMarker(canvas, state.plannedRemainingPct, left, right, top, bottom)
+        drawCenteredText(
+            canvas,
+            "W′ ${state.actualRemainingPct.roundToInt()}%",
+            width / 2f,
+            (top + bottom) / 2f,
+            (height * 0.30f).coerceIn(15f, 25f),
+            palette.primaryText,
+        )
+        val plan = state.plannedRemainingPct
+        val comparison = if (plan == null) {
+            "WAITING FOR PLAN"
+        } else {
+            val difference = (state.actualRemainingPct - plan).roundToInt()
+            when {
+                difference > 0 -> "$difference% ABOVE PLAN"
+                difference < 0 -> "${kotlin.math.abs(difference)}% BELOW PLAN"
+                else -> "ON PLAN"
+            }
+        }
+        drawCenteredText(
+            canvas,
+            comparison,
+            width / 2f,
+            height * 0.88f,
+            (height * 0.20f).coerceIn(11f, 17f),
+            palette.secondaryText,
+        )
         return bitmap
     }
 
@@ -43,12 +74,45 @@ class WPrimeBalanceBitmapRenderer(
         return bitmap
     }
 
-    fun renderTrajectory(state: WPrimeState, width: Int, height: Int): Bitmap {
+    fun renderTrajectory(
+        state: WPrimeState,
+        liveState: LiveUiState,
+        width: Int,
+        height: Int,
+    ): Bitmap {
         val bitmap = bitmap(width, height)
         val canvas = Canvas(bitmap)
-        val nodeY = height * 0.28f
-        val planX = width * 0.12f
-        val rideX = width * 0.88f
+        drawText(
+            canvas,
+            "GM POWER BALANCE",
+            width * 0.04f,
+            height * 0.052f,
+            (width * 0.052f).coerceIn(22f, 27f),
+            palette.primaryText,
+            Paint.Align.LEFT,
+        )
+        drawText(
+            canvas,
+            progressLabel(liveState),
+            width * 0.96f,
+            height * 0.052f,
+            (width * 0.047f).coerceIn(20f, 25f),
+            palette.secondaryText,
+            Paint.Align.RIGHT,
+        )
+        drawActionBanner(canvas, state, width, height)
+        drawCenteredText(
+            canvas,
+            projectedFinishHeadline(state),
+            width / 2f,
+            height * 0.255f,
+            (width * 0.05f).coerceIn(24f, 29f),
+            palette.primaryText,
+        )
+
+        val nodeY = height * 0.37f
+        val planX = width * 0.13f
+        val rideX = width * 0.87f
         val planNodePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
             color = planVisualColor()
             style = Paint.Style.FILL
@@ -62,7 +126,7 @@ class WPrimeBalanceBitmapRenderer(
             style = Paint.Style.STROKE
             strokeWidth = 4f
         }
-        val nodeRadius = (width * 0.09f).coerceIn(44f, 56f)
+        val nodeRadius = (width * 0.105f).coerceIn(46f, 56f)
         drawNode(canvas, "PLAN", planX, nodeY, nodeRadius, planNodePaint, nodeBorder, Color.BLACK)
         drawNode(canvas, "RIDE", rideX, nodeY, nodeRadius, rideNodePaint, nodeBorder, Color.WHITE)
 
@@ -73,26 +137,25 @@ class WPrimeBalanceBitmapRenderer(
             style = Paint.Style.STROKE
         }
 
-        val batteryLeft = width * 0.22f
-        val batteryRight = width * 0.78f
-        val batteryTop = height * 0.48f
-        val batteryBottom = height * 0.72f
+        val batteryLeft = width * 0.20f
+        val batteryRight = width * 0.80f
+        val batteryTop = height * 0.50f
+        val batteryBottom = height * 0.665f
         val batteryCenterY = (batteryTop + batteryBottom) / 2f
-        drawHorizontalBattery(canvas, batteryLeft, batteryTop, batteryRight, batteryBottom, state)
 
         val topStartX = planX + nodeRadius
         val topEndX = rideX - nodeRadius
         canvas.drawLine(topStartX, nodeY, topEndX, nodeY, routeLine)
         val planLeg = Path().apply {
             moveTo(batteryLeft, batteryCenterY)
-            lineTo(planX + 18f, batteryCenterY)
-            quadTo(planX, batteryCenterY, planX, batteryCenterY - 18f)
+            lineTo(planX + 22f, batteryCenterY)
+            cubicTo(planX + 8f, batteryCenterY, planX, batteryCenterY - 8f, planX, batteryCenterY - 22f)
             lineTo(planX, nodeY + nodeRadius)
         }
         val rideLeg = Path().apply {
             moveTo(batteryRight, batteryCenterY)
-            lineTo(rideX - 18f, batteryCenterY)
-            quadTo(rideX, batteryCenterY, rideX, batteryCenterY - 18f)
+            lineTo(rideX - 22f, batteryCenterY)
+            cubicTo(rideX - 8f, batteryCenterY, rideX, batteryCenterY - 8f, rideX, batteryCenterY - 22f)
             lineTo(rideX, nodeY + nodeRadius)
         }
         canvas.drawPath(planLeg, routeLine)
@@ -100,7 +163,7 @@ class WPrimeBalanceBitmapRenderer(
 
         val activeRouteLine = Paint(routeLine).apply {
             color = flowVisualColor()
-            strokeWidth = 14f
+            strokeWidth = 13f
         }
         val overextended = state.energyFlowStatus == EnergyFlowStatus.DRAINING_TOO_FAST ||
             state.energyFlowStatus == EnergyFlowStatus.BURNING_DURING_RECOVERY
@@ -129,7 +192,62 @@ class WPrimeBalanceBitmapRenderer(
             batteryRight = batteryRight,
             batteryCenterY = batteryCenterY,
         )
-        drawActionBanner(canvas, state, width, height)
+        // The battery sits above the connector endpoints so its border remains unbroken.
+        drawHorizontalBattery(canvas, batteryLeft, batteryTop, batteryRight, batteryBottom, state)
+        drawCenteredText(
+            canvas,
+            energyStatusLabel(state.energyFlowStatus),
+            width / 2f,
+            height * 0.715f,
+            (width * 0.037f).coerceIn(20f, 26f),
+            statusColor(state.energyFlowStatus),
+        )
+        val plannedRate = state.plannedBalanceChangeJoulesPerSecond
+        drawFlowMetricCard(
+            canvas,
+            "PLAN ${plannedRate?.let(::flowModeLabel) ?: "RATE"}",
+            plannedRate?.let(::signedReserveWatts) ?: "-- W",
+            width * 0.04f,
+            height * 0.77f,
+            width * 0.485f,
+            height * 0.965f,
+        )
+        drawFlowMetricCard(
+            canvas,
+            "ACTUAL ${flowModeLabel(state.actualBalanceChangeJoulesPerSecond)}",
+            signedReserveWatts(state.actualBalanceChangeJoulesPerSecond),
+            width * 0.515f,
+            height * 0.77f,
+            width * 0.96f,
+            height * 0.965f,
+        )
+        return bitmap
+    }
+
+    fun renderCalculating(width: Int, height: Int): Bitmap {
+        val bitmap = bitmap(width, height)
+        val canvas = Canvas(bitmap)
+        val left = width * 0.12f
+        val right = width * 0.88f
+        val top = height * 0.34f
+        val bottom = height * 0.62f
+        val border = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            color = palette.primaryText
+            style = Paint.Style.STROKE
+            strokeWidth = 5f
+        }
+        canvas.drawRoundRect(left, top, right, bottom, 14f, 14f, border)
+        canvas.drawRoundRect(
+            right,
+            height * 0.43f,
+            right + 12f,
+            height * 0.53f,
+            3f,
+            3f,
+            Paint(Paint.ANTI_ALIAS_FLAG).apply { color = palette.primaryText },
+        )
+        drawCenteredText(canvas, "CALCULATING", width / 2f, height * 0.46f, 30f, palette.primaryText)
+        drawCenteredText(canvas, "Waiting for segment power", width / 2f, height * 0.70f, 20f, palette.secondaryText)
         return bitmap
     }
 
@@ -159,7 +277,7 @@ class WPrimeBalanceBitmapRenderer(
         batteryRight: Float,
         batteryCenterY: Float,
     ) {
-        val color = flowVisualColor()
+        val color = Color.rgb(42, 145, 242)
         val phase = ((state.flowAnimationPhase % 1f) + 1f) % 1f
         val overextended = state.energyFlowStatus == EnergyFlowStatus.DRAINING_TOO_FAST ||
             state.energyFlowStatus == EnergyFlowStatus.BURNING_DURING_RECOVERY
@@ -167,115 +285,77 @@ class WPrimeBalanceBitmapRenderer(
             state.energyFlowStatus == EnergyFlowStatus.RECOVERING_TOO_SLOW
 
         if (underextended) {
-            drawChevronsOnPolyline(
-                canvas,
-                listOf(
-                    rideX to (nodeY + nodeRadius),
-                    rideX to (batteryCenterY - 18f),
-                    (rideX - 18f) to batteryCenterY,
-                    batteryRight to batteryCenterY,
-                ),
-                phase,
-                color,
-            )
+            // Ride returns reserve: down the ride leg, then left into the battery.
+            val verticalMid = ((nodeY + nodeRadius) + (batteryCenterY - 22f)) / 2f
+            drawIntegratedChevron(canvas, rideX, verticalMid + (phase - 0.5f) * 12f, Math.PI.toFloat() / 2f, color)
             return
         }
 
-        // Both on-plan and overextended states send the planned contribution to the ride.
-        drawChevronsOnPolyline(
-            canvas,
-            listOf((planX + nodeRadius) to nodeY, (rideX - nodeRadius) to nodeY),
-            phase,
-            color,
-        )
+        // Planned contribution always travels left-to-right toward the ride.
+        val topStart = planX + nodeRadius
+        val topEnd = rideX - nodeRadius
+        repeat(4) { index ->
+            val fraction = (index + 1f) / 5f
+            drawIntegratedChevron(canvas, topStart + (topEnd - topStart) * fraction, nodeY, 0f, color)
+        }
         if (overextended) {
-            drawChevronsOnPolyline(
-                canvas,
-                listOf(
-                    batteryRight to batteryCenterY,
-                    (rideX - 18f) to batteryCenterY,
-                    rideX to (batteryCenterY - 18f),
-                    rideX to (nodeY + nodeRadius),
-                ),
-                phase,
-                color,
-            )
+            // Extra effort drains reserve rightward, then upward into the ride.
+            val verticalMid = ((nodeY + nodeRadius) + (batteryCenterY - 22f)) / 2f
+            drawIntegratedChevron(canvas, rideX, verticalMid - (phase - 0.5f) * 12f, -Math.PI.toFloat() / 2f, color)
         } else {
-            drawChevronsOnPolyline(
-                canvas,
-                listOf(
-                    batteryLeft to batteryCenterY,
-                    (planX + 18f) to batteryCenterY,
-                    planX to (batteryCenterY - 18f),
-                    planX to (nodeY + nodeRadius),
-                ),
-                phase,
-                color,
-            )
+            // On plan, reserve is routed left and upward into the planned contribution.
+            val verticalMid = ((nodeY + nodeRadius) + (batteryCenterY - 22f)) / 2f
+            drawIntegratedChevron(canvas, planX, verticalMid - (phase - 0.5f) * 12f, -Math.PI.toFloat() / 2f, color)
         }
     }
 
-    private fun drawChevronsOnPolyline(
-        canvas: Canvas,
-        points: List<Pair<Float, Float>>,
-        phase: Float,
-        color: Int,
-    ) {
-        val segmentCount = points.lastIndex.coerceAtLeast(1)
-        repeat(6) { index ->
-            val progress = ((index + phase) / 6f).coerceIn(0f, 0.98f)
-            val scaled = progress * segmentCount
-            val segment = scaled.toInt().coerceAtMost(points.lastIndex - 1)
-            val local = scaled - segment
-            val start = points[segment]
-            val end = points[segment + 1]
-            drawChevron(
-                canvas,
-                start.first + (end.first - start.first) * local,
-                start.second + (end.second - start.second) * local,
-                atan2(end.second - start.second, end.first - start.first),
-                color,
-            )
-        }
-    }
-
-    private fun drawChevron(canvas: Canvas, x: Float, y: Float, angle: Float, color: Int) {
-        val length = 15f
-        val wing = 10f
-        val backX = x - cos(angle) * length
-        val backY = y - sin(angle) * length
-        val normalX = -sin(angle) * wing
-        val normalY = cos(angle) * wing
+    private fun drawIntegratedChevron(canvas: Canvas, x: Float, y: Float, angle: Float, color: Int) {
+        fun point(forward: Float, lateral: Float): Pair<Float, Float> =
+            (x + cos(angle) * forward - sin(angle) * lateral) to
+                (y + sin(angle) * forward + cos(angle) * lateral)
+        // Broad, solid chevrons are integrated into the stroke, matching the approved mock.
+        val tip = point(17f, 0f)
+        val outerTop = point(-2f, -14f)
+        val innerTop = point(-11f, -14f)
+        val innerPoint = point(7f, 0f)
+        val innerBottom = point(-11f, 14f)
+        val outerBottom = point(-2f, 14f)
         val path = Path().apply {
-            moveTo(backX + normalX, backY + normalY)
-            lineTo(x, y)
-            lineTo(backX - normalX, backY - normalY)
+            moveTo(tip.first, tip.second)
+            lineTo(outerTop.first, outerTop.second)
+            lineTo(innerTop.first, innerTop.second)
+            lineTo(innerPoint.first, innerPoint.second)
+            lineTo(innerBottom.first, innerBottom.second)
+            lineTo(outerBottom.first, outerBottom.second)
+            close()
         }
-        canvas.drawPath(path, Paint(Paint.ANTI_ALIAS_FLAG).apply {
-            this.color = color
-            style = Paint.Style.STROKE
-            strokeWidth = 8f
-            strokeCap = Paint.Cap.ROUND
-            strokeJoin = Paint.Join.ROUND
-        })
+        canvas.drawPath(path, Paint(Paint.ANTI_ALIAS_FLAG).apply { this.color = color })
     }
 
     private fun drawActionBanner(canvas: Canvas, state: WPrimeState, width: Int, height: Int) {
-        val (label, color, textColor) = when (state.energyFlowStatus) {
+        val (action, color, textColor) = when (state.energyFlowStatus) {
             EnergyFlowStatus.DRAINING_TOO_FAST,
             EnergyFlowStatus.BURNING_DURING_RECOVERY -> Triple("REST", Color.rgb(32, 170, 91), Color.BLACK)
             EnergyFlowStatus.RECOVERING,
             EnergyFlowStatus.RECOVERING_TOO_SLOW -> Triple("PUSH", Color.rgb(231, 91, 64), Color.WHITE)
             else -> Triple("HOLD", Color.rgb(29, 125, 220), Color.WHITE)
         }
-        val left = width * 0.05f
-        val right = width * 0.95f
-        val top = height * 0.02f
-        val bottom = height * 0.15f
+        val label = "$action • ${comparisonForBanner(state)}"
+        val left = width * 0.04f
+        val right = width * 0.96f
+        val top = height * 0.085f
+        val bottom = height * 0.20f
         canvas.drawRoundRect(left, top, right, bottom, 18f, 18f, Paint(Paint.ANTI_ALIAS_FLAG).apply {
             this.color = color
         })
-        drawCenteredText(canvas, label, width / 2f, (top + bottom) / 2f, 44f, textColor)
+        drawCenteredText(
+            canvas,
+            label,
+            width / 2f,
+            (top + bottom) / 2f,
+            (width * 0.065f).coerceIn(30f, 36f),
+            textColor,
+        )
     }
 
     private fun drawHorizontalBattery(
@@ -287,12 +367,14 @@ class WPrimeBalanceBitmapRenderer(
         state: WPrimeState,
     ) {
         val borderColor = palette.primaryText
+        val shadow = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = Color.argb(150, 0, 0, 0) }
+        canvas.drawRoundRect(left + 5f, top + 7f, right + 5f, bottom + 7f, 14f, 14f, shadow)
         val border = Paint(Paint.ANTI_ALIAS_FLAG).apply {
             color = borderColor
             style = Paint.Style.STROKE
             strokeWidth = 6f
         }
-        val terminalWidth = 12f
+        val terminalWidth = 15f
         val terminalHeight = (bottom - top) * 0.42f
         canvas.drawRoundRect(
             right,
@@ -303,10 +385,21 @@ class WPrimeBalanceBitmapRenderer(
             3f,
             Paint(Paint.ANTI_ALIAS_FLAG).apply { color = borderColor },
         )
-        val fillRight = left + (right - left) * state.actualRemainingPct / 100f
-        canvas.drawRoundRect(left + 5f, top + 5f, fillRight, bottom - 5f, 8f, 8f, Paint().apply {
-            color = batteryVisualColor()
+        val innerLeft = left + 7f
+        val innerTop = top + 7f
+        val innerRight = right - 7f
+        val innerBottom = bottom - 7f
+        val fillRight = innerLeft + (innerRight - innerLeft) * state.actualRemainingPct / 100f
+        val innerShape = Path().apply { addRoundRect(innerLeft, innerTop, innerRight, innerBottom, 8f, 8f, Path.Direction.CW) }
+        canvas.save()
+        canvas.clipPath(innerShape)
+        canvas.drawRect(innerLeft, innerTop, innerRight, innerBottom, Paint().apply {
+            shader = LinearGradient(innerLeft, innerTop, innerRight, innerBottom, Color.rgb(30, 35, 42), Color.rgb(12, 15, 19), Shader.TileMode.CLAMP)
         })
+        canvas.drawRect(innerLeft, innerTop, fillRight, innerBottom, Paint().apply {
+            shader = LinearGradient(innerLeft, innerTop, fillRight.coerceAtLeast(innerLeft + 1f), innerBottom, Color.rgb(45, 151, 245), Color.rgb(24, 112, 207), Shader.TileMode.CLAMP)
+        })
+        canvas.restore()
         canvas.drawRoundRect(left, top, right, bottom, 12f, 12f, border)
         state.plannedRemainingPct?.let { planned ->
             val x = left + (right - left) * planned / 100f
@@ -316,7 +409,7 @@ class WPrimeBalanceBitmapRenderer(
                 strokeCap = Paint.Cap.ROUND
             }
             canvas.drawLine(x, top - 10f, x, bottom + 7f, markerPaint)
-            drawCenteredText(canvas, "PLAN ${planned.toInt()}%", x, top - 32f, 25f, planVisualColor())
+            drawCenteredText(canvas, "PLAN ${planned.toInt()}%", x, top - 30f, 24f, planVisualColor())
         }
         drawCenteredText(
             canvas,
@@ -326,6 +419,57 @@ class WPrimeBalanceBitmapRenderer(
             40f,
             palette.primaryText,
         )
+    }
+
+    private fun comparisonForBanner(state: WPrimeState): String {
+        val planned = state.plannedRemainingPct ?: return "BUILDING RESERVE PLAN"
+        val difference = (state.actualRemainingPct - planned).toInt()
+        return when {
+            difference > 0 -> "$difference% ABOVE"
+            difference < 0 -> "${kotlin.math.abs(difference)}% BELOW"
+            else -> "ON PLAN"
+        }
+    }
+
+    private fun projectedFinishHeadline(state: WPrimeState): String =
+        state.projectedFinishPct?.let { "PROJECTED FINISH ${it.toInt()}%" }
+            ?: "PROJECTED FINISH --"
+
+    private fun energyStatusLabel(status: EnergyFlowStatus): String = when (status) {
+        EnergyFlowStatus.DRAINING_TOO_FAST -> "DRAINING TOO FAST"
+        EnergyFlowStatus.BURNING_DURING_RECOVERY -> "BURNING DURING RECOVERY"
+        EnergyFlowStatus.RECOVERING_TOO_SLOW -> "RECOVERING TOO SLOW"
+        EnergyFlowStatus.RECOVERING -> "RECOVERING"
+        EnergyFlowStatus.CONTROLLED_BURN -> "CONTROLLED BURN"
+        EnergyFlowStatus.ON_ENERGY_PLAN -> "ON ENERGY PLAN"
+    }
+
+    private fun flowModeLabel(rateWatts: Double): String =
+        if (rateWatts < 0.0) "DRAIN" else "RECOVERY"
+
+    private fun signedReserveWatts(rateWatts: Double): String =
+        "${if (rateWatts >= 0.0) "+" else "−"}${kotlin.math.abs(rateWatts).toInt()} W"
+
+    private fun drawFlowMetricCard(
+        canvas: Canvas,
+        label: String,
+        value: String,
+        left: Float,
+        top: Float,
+        right: Float,
+        bottom: Float,
+    ) {
+        val surface = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = palette.surface }
+        val border = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            color = palette.divider
+            style = Paint.Style.STROKE
+            strokeWidth = 3f
+        }
+        canvas.drawRoundRect(left, top, right, bottom, 14f, 14f, surface)
+        canvas.drawRoundRect(left, top, right, bottom, 14f, 14f, border)
+        val centerX = (left + right) / 2f
+        drawCenteredText(canvas, label, centerX, top + (bottom - top) * 0.30f, 21f, palette.secondaryText)
+        drawCenteredText(canvas, value, centerX, top + (bottom - top) * 0.68f, 35f, palette.primaryText)
     }
 
     private fun statusColor(status: EnergyFlowStatus): Int = when (status) {
@@ -456,6 +600,41 @@ class WPrimeBalanceBitmapRenderer(
         canvas.drawPath(path, Paint(Paint.ANTI_ALIAS_FLAG).apply { this.color = color })
     }
 
+    private fun progressLabel(state: LiveUiState): String {
+        if (state.totalDistanceMeters <= 0.0) return "-- / --"
+        return if (state.distanceUnitSystem == UnitSystem.IMPERIAL) {
+            val progressMiles = state.progressMeters / 1_609.344
+            val totalMiles = state.totalDistanceMeters / 1_609.344
+            String.format(java.util.Locale.US, "%.1f / %.1f mi", progressMiles, totalMiles)
+        } else {
+            "${state.progressMeters.roundToInt()} / ${state.totalDistanceMeters.roundToInt()} m"
+        }
+    }
+
+    private fun drawText(
+        canvas: Canvas,
+        text: String,
+        x: Float,
+        centerY: Float,
+        size: Float,
+        color: Int,
+        align: Paint.Align,
+    ) {
+        val paint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            this.color = color
+            textSize = size
+            textAlign = align
+            isFakeBoldText = true
+            typeface = android.graphics.Typeface.create("sans-serif-condensed", android.graphics.Typeface.BOLD)
+        }
+        canvas.drawText(
+            text,
+            x,
+            centerY - (paint.fontMetrics.ascent + paint.fontMetrics.descent) / 2f,
+            paint,
+        )
+    }
+
     private fun drawCenteredText(
         canvas: Canvas,
         text: String,
@@ -469,6 +648,7 @@ class WPrimeBalanceBitmapRenderer(
             textSize = size
             textAlign = Paint.Align.CENTER
             isFakeBoldText = true
+            typeface = android.graphics.Typeface.create("sans-serif-condensed", android.graphics.Typeface.BOLD)
         }
         canvas.drawText(
             text,

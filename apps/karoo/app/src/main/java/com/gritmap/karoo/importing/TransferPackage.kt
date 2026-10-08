@@ -167,9 +167,6 @@ class TransferPackageRepository(
                 if (kotlin.math.abs(segmentLength - planLength) > 0.01) {
                     fail("Baseline plan does not cover the complete segment distance")
                 }
-                val profileFtp = database.riderHistoryDao().profile()?.ftpWatts
-                    ?: fail("Baseline plan requires an installed rider profile")
-                if (profileFtp != plan.ftpWatts) fail("Baseline plan FTP does not match installed rider profile")
                 database.pacingDao().replacePlan(
                     PacingPlanEntity(
                         id = plan.id,

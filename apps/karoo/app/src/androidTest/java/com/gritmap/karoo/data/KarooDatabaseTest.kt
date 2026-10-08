@@ -79,4 +79,25 @@ class KarooDatabaseTest {
         assertEquals(true, row.hasBaselinePlan)
         assertEquals("phone-ai", db.pacingDao().baseline("packaged")?.source)
     }
+
+    @Test fun karooProfileSyncCreatesAndThenUpdatesGlobalRiderSettings() = runBlocking {
+        db.riderHistoryDao().syncFromKaroo(ftpWatts = 280, weightKg = 92.5, maxHeartRateBpm = 178)
+        assertEquals(280, db.riderHistoryDao().profile()?.ftpWatts)
+
+        db.riderHistoryDao().saveProfile(
+            RiderProfileEntity(
+                schemaVersion = 1,
+                ftpWatts = 275,
+                weightKg = 90.0,
+                maxHeartRateBpm = 178,
+                thresholdHeartRateBpm = 165,
+            ),
+        )
+        db.riderHistoryDao().syncFromKaroo(ftpWatts = 285, weightKg = 91.0, maxHeartRateBpm = 180)
+        val updated = db.riderHistoryDao().profile()
+        assertEquals(285, updated?.ftpWatts)
+        assertEquals(91.0, updated?.weightKg ?: 0.0, 0.001)
+        assertEquals(180, updated?.maxHeartRateBpm)
+        assertEquals(165, updated?.thresholdHeartRateBpm)
+    }
 }

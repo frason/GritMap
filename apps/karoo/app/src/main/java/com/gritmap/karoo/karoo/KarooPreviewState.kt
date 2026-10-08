@@ -2,6 +2,7 @@ package com.gritmap.karoo.karoo
 
 import com.gritmap.karoo.ui.state.Effort
 import com.gritmap.karoo.ui.state.CardiacDriftSample
+import com.gritmap.karoo.ui.state.H10DfaSample
 import com.gritmap.karoo.ui.state.ElevationSample
 import com.gritmap.karoo.ui.state.GuidanceIcon
 import com.gritmap.karoo.ui.state.LiveUiState
@@ -11,7 +12,9 @@ import com.gritmap.karoo.ui.state.PowerExecutionSample
 import com.gritmap.karoo.ui.state.WPrimePoint
 import com.gritmap.karoo.ui.state.WPrimeState
 import com.gritmap.karoo.ui.state.Recommendation
+import com.gritmap.karoo.ui.state.RouteSample
 import com.gritmap.karoo.ui.state.SensorStatus
+import com.gritmap.karoo.ui.state.demoPacingZones
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
@@ -22,6 +25,16 @@ internal val KarooPreviewState = LiveUiState(
     segmentName = "Coco Jumbo",
     progressMeters = 215.0,
     totalDistanceMeters = 533.0,
+    routeProfile = listOf(
+        RouteSample(0.0, 37.88000, -121.93000),
+        RouteSample(70.0, 37.88045, -121.92955),
+        RouteSample(145.0, 37.88105, -121.92970),
+        RouteSample(215.0, 37.88155, -121.92915),
+        RouteSample(300.0, 37.88215, -121.92895),
+        RouteSample(390.0, 37.88265, -121.92935),
+        RouteSample(470.0, 37.88325, -121.92905),
+        RouteSample(533.0, 37.88385, -121.92855),
+    ),
     elevationProfile = listOf(
         ElevationSample(0.0, 42.0),
         ElevationSample(70.0, 45.0),
@@ -32,11 +45,7 @@ internal val KarooPreviewState = LiveUiState(
         ElevationSample(470.0, 94.0),
         ElevationSample(533.0, 101.0),
     ),
-    pacingZones = listOf(
-        PacingZone(0.0, 145.0, 225, Effort.RECOVER),
-        PacingZone(145.0, 390.0, 260, Effort.HOLD),
-        PacingZone(390.0, 533.0, 295, Effort.PUSH),
-    ),
+    pacingZones = demoPacingZones(533.0),
     recommendation = Recommendation(260, "Hold steady", GuidanceIcon.HOLD),
     currentPowerWatts = 247,
     rollingPowerWatts3s = 247,
@@ -44,17 +53,31 @@ internal val KarooPreviewState = LiveUiState(
     wPrime = previewWPrime(215.0 / 533.0, 68f, 76f, 310.0, 295.0),
     cardiacDriftPct = 3.8,
     cardiacDriftHistory = listOf(
-        CardiacDriftSample(0.0f, 0.0),
-        CardiacDriftSample(0.2f, 0.8),
-        CardiacDriftSample(0.4f, 1.7),
-        CardiacDriftSample(0.6f, 2.5),
-        CardiacDriftSample(0.8f, 3.2),
-        CardiacDriftSample(1.0f, 3.8),
+        CardiacDriftSample(0.0f, 0.0, 180, 100.0, 100.0),
+        CardiacDriftSample(0.2f, 0.8, 360, 100.2, 101.0),
+        CardiacDriftSample(0.4f, 1.7, 540, 100.0, 101.7),
+        CardiacDriftSample(0.6f, 2.5, 720, 100.3, 102.8),
+        CardiacDriftSample(0.8f, 3.2, 900, 100.1, 103.3),
+        CardiacDriftSample(1.0f, 3.8, 1080, 100.2, 104.0),
+    ),
+    cardiacEfficiencyWattsPerBpm = 1.86,
+    cardiacDriftRatePctPer10Min = 2.1,
+    cardiacDriftValidSeconds = 1_104,
+    cardiacDriftPairedPct = 94,
+    cardiacDriftPowerSteady = true,
+    h10EnhancedAvailable = true,
+    h10DfaAlpha1 = 0.82,
+    h10RmssdMs = 21.4,
+    h10ValidRrPct = 98,
+    h10DfaHistory = listOf(
+        H10DfaSample(120, 1.08), H10DfaSample(180, 1.01), H10DfaSample(240, 0.94),
+        H10DfaSample(300, 0.88), H10DfaSample(360, 0.82),
     ),
     plannedFinishSeconds = 160,
     predictedFinishSeconds = 168,
     elapsedAttemptSeconds = 68.0,
     planAdherencePct = 91,
+    segmentSplitDeltasSeconds = listOf(2, 1, -3, 4, 2, -1, 3, 2, 1, -2, 2, 1),
     sensorStatus = SensorStatus(
         gps = true,
         power = true,
@@ -112,9 +135,17 @@ internal fun karooPreviewStateAt(step: Int): LiveUiState {
     val heartRate = 126 + (progressFraction * 38).roundToInt()
     val driftValues = doubleArrayOf(-2.4, -1.8, -1.1, -0.4, 0.2, 0.9, 1.6, 2.4, 3.1, 3.8, 4.5, 5.2)
     val drift = driftValues[signalStep]
+    val alpha = (1.08 - normalizedStep * 0.027).coerceAtLeast(0.46)
     val driftHistory = (0..normalizedStep).map { historyStep ->
         val historyProgress = 0.15 + historyStep * (0.77 / (PREVIEW_STEP_COUNT - 1))
-        CardiacDriftSample(historyProgress.toFloat(), driftValues[historyStep % driftValues.size])
+        val pointDrift = driftValues[historyStep % driftValues.size]
+        CardiacDriftSample(
+            historyProgress.toFloat(),
+            pointDrift,
+            180 + historyStep * 90,
+            100.0 + kotlin.math.sin(historyStep.toDouble()) * 0.25,
+            100.0 + pointDrift,
+        )
     }
     val executionHistory = (0..normalizedStep).map { historyStep ->
         val historyProgress = 0.15 + historyStep * (0.77 / (PREVIEW_STEP_COUNT - 1))
@@ -148,11 +179,25 @@ internal fun karooPreviewStateAt(step: Int): LiveUiState {
         ),
         cardiacDriftPct = drift,
         cardiacDriftHistory = driftHistory,
+        cardiacEfficiencyWattsPerBpm = actualPower.toDouble() / heartRate,
+        cardiacDriftRatePctPer10Min = if (normalizedStep > 0) drift * 0.75 else 0.0,
+        cardiacDriftValidSeconds = 180 + normalizedStep * 90,
+        cardiacDriftPairedPct = 94,
+        cardiacDriftPowerSteady = true,
+        h10EnhancedAvailable = normalizedStep >= 2,
+        h10DfaAlpha1 = if (normalizedStep >= 2) alpha else null,
+        h10RmssdMs = if (normalizedStep >= 2) (24.0 - normalizedStep * 0.35).coerceAtLeast(12.0) else null,
+        h10ValidRrPct = if (normalizedStep % 9 == 0) 91 else 98,
+        h10DfaHistory = (0..normalizedStep).map { historyStep ->
+            H10DfaSample(120 + historyStep * 5, (1.08 - historyStep * 0.027).coerceAtLeast(0.46))
+        },
         predictedFinishSeconds = 164 + powerOffsets[signalStep] / -2,
         elapsedAttemptSeconds = KarooPreviewState.plannedFinishSeconds!! *
             ((progressMeters + targetGapMeters) / KarooPreviewState.totalDistanceMeters)
                 .coerceIn(0.0, 1.0),
         planAdherencePct = (96 - kotlin.math.abs(powerOffsets[signalStep]) / 2).coerceIn(75, 99),
+        segmentSplitDeltasSeconds = listOf(2, 1, -3, 4, 2, -1, 3, 2, 1, -2, 2, 1)
+            .take((normalizedStep / 2 + 1).coerceAtMost(12)),
     )
 }
 

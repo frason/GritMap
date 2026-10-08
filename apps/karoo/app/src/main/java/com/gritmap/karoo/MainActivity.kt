@@ -4,6 +4,7 @@ import android.Manifest
 import android.content.Intent
 import android.net.Uri
 import android.os.Bundle
+import android.provider.Settings
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
@@ -19,6 +20,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -39,8 +41,12 @@ import com.gritmap.karoo.importing.SegmentInboxProcessor
 import com.gritmap.karoo.importing.SegmentLibraryRepository
 import com.gritmap.karoo.importing.StagedFileSegmentInbox
 import com.gritmap.karoo.importing.TransferPackageRepository
+import com.gritmap.karoo.physiology.H10DiagnosticActivity
 import com.gritmap.karoo.service.LiveDiagnostics
 import com.gritmap.karoo.service.LiveServiceStarter
+import com.gritmap.karoo.service.RiderProfileStore
+import com.gritmap.karoo.service.KarooRiderProfile
+import com.gritmap.karoo.ui.KarooHomeScreen
 import com.gritmap.karoo.ui.state.LiveDemoController
 import java.io.IOException
 import java.io.File
@@ -68,9 +74,13 @@ class MainActivity : ComponentActivity() {
             var locationGranted by remember {
                 mutableStateOf(LiveServiceStarter.hasLocationPermission(this@MainActivity))
             }
+            var overlayGranted by remember { mutableStateOf(Settings.canDrawOverlays(this@MainActivity)) }
             var diagnosticLines by remember { mutableStateOf<List<String>>(emptyList()) }
             var receiveInbox by remember { mutableStateOf<HttpSegmentInbox?>(null) }
             val demoRunning by LiveDemoController.running.collectAsState()
+            val liveRiderProfile by RiderProfileStore.profile.collectAsState()
+            var storedRiderProfile by remember { mutableStateOf<KarooRiderProfile?>(null) }
+            val riderProfile = liveRiderProfile ?: storedRiderProfile
             suspend fun refreshLibrary() {
                 segments = segmentLibrary.list()
             }
@@ -90,9 +100,18 @@ class MainActivity : ComponentActivity() {
                 }
                 lifecycleScope.launch { refreshDiagnostics() }
             }
+            val overlayPermissionLauncher = rememberLauncherForActivityResult(
+                ActivityResultContracts.StartActivityForResult(),
+            ) {
+                overlayGranted = Settings.canDrawOverlays(this@MainActivity)
+                status = if (overlayGranted) "Overlay enabled" else "Overlay permission not enabled"
+            }
             LaunchedEffect(Unit) {
                 refreshLibrary()
                 refreshDiagnostics()
+                storedRiderProfile = database.riderHistoryDao().profile()?.let {
+                    KarooRiderProfile(it.ftpWatts, it.weightKg, it.maxHeartRateBpm)
+                }
                 if (locationGranted) {
                     LiveServiceStarter.startIfPermitted(this@MainActivity, "launcher")
                 } else {
@@ -141,16 +160,29 @@ class MainActivity : ComponentActivity() {
                 }
             }
 
-            MaterialTheme {
-                Column(
-                    modifier = Modifier.fillMaxSize().background(Color(0xFF121417))
-                        .verticalScroll(rememberScrollState()).padding(20.dp),
-                    verticalArrangement = Arrangement.spacedBy(12.dp),
-                ) {
-                    Text("GritMap Karoo", color = Color.White, style = MaterialTheme.typography.headlineMedium)
-                    Text("Version ${BuildConfig.VERSION_NAME}", color = Color.Gray)
-                    Text(status, color = Color.White)
-                    Button(onClick = {
+            MaterialTheme(
+                colorScheme = darkColorScheme(
+                    primary = Color(0xFF2B84DE),
+                    onPrimary = Color.White,
+                    secondary = Color(0xFF24B66A),
+                    background = Color(0xFF0D1014),
+                    surface = Color(0xFF171B21),
+                    onBackground = Color.White,
+                    onSurface = Color.White,
+                ),
+            ) {
+                KarooHomeScreen(
+                    segments = segments,
+                    status = status,
+                    receiveActive = receiveInbox != null,
+                    locationGranted = locationGranted,
+                    overlayGranted = overlayGranted,
+                    demoRunning = demoRunning,
+                    versionName = BuildConfig.VERSION_NAME,
+                    diagnostics = diagnosticLines,
+                    riderProfile = riderProfile,
+                    pendingDeleteId = pendingDeleteId,
+                    onEnableLocation = {
                         if (LiveServiceStarter.hasLocationPermission(this@MainActivity)) {
                             locationGranted = true
                             LiveServiceStarter.startIfPermitted(this@MainActivity, "launcher-button")
@@ -163,10 +195,16 @@ class MainActivity : ComponentActivity() {
                                 ),
                             )
                         }
-                    }) {
-                        Text(if (locationGranted) "Location enabled" else "Enable location")
-                    }
-                    Button(onClick = {
+                    },
+                    onEnableOverlay = {
+                        overlayPermissionLauncher.launch(
+                            Intent(
+                                Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
+                                Uri.parse("package:$packageName"),
+                            ),
+                        )
+                    },
+                    onToggleDemo = {
                         if (demoRunning) {
                             LiveDemoController.stop()
                             status = "Data-field demo stopped"
@@ -174,16 +212,8 @@ class MainActivity : ComponentActivity() {
                             LiveDemoController.start()
                             status = "Data-field demo running; open a Karoo ride page"
                         }
-                    }) {
-                        Text(if (demoRunning) "Stop data-field demo" else "Start data-field demo")
-                    }
-                    Text(
-                        "Demo mode loops through a compressed planned segment without writing to the database. " +
-                            "A real detected segment automatically takes control.",
-                        color = Color.LightGray,
-                        style = MaterialTheme.typography.bodySmall,
-                    )
-                    Button(onClick = {
+                    },
+                    onImportSegment = {
                         lifecycleScope.launch {
                             status = "Checking GritMap import inbox…"
                             val inboxResult = runCatching {
@@ -220,20 +250,20 @@ class MainActivity : ComponentActivity() {
                                 onFailure = { status = "Inbox import failed: ${it.message}" },
                             )
                         }
-                    }) {
-                        Text("Import segment JSON")
-                    }
-                    Button(onClick = {
+                    },
+                    onReceive = {
                         val activeInbox = receiveInbox
                         if (activeInbox != null) {
                             activeInbox.stop()
+                            receiveInbox = null
                             status = "Cancelled"
                         } else {
                             val address = HttpSegmentInbox.localIpAddress()
                             val inbox = HttpSegmentInbox()
                             receiveInbox = inbox
                             status = if (address != null) {
-                                "Waiting for phone… send to http://$address:${HttpSegmentInbox.DEFAULT_PORT}/transfer"
+                                "Waiting ${HttpSegmentInbox.DEFAULT_TIMEOUT_MINUTES} min for phone… " +
+                                    "send to http://$address:${HttpSegmentInbox.DEFAULT_PORT}/transfer"
                             } else {
                                 "Waiting for phone… (connect to WiFi to see this Karoo's address)"
                             }
@@ -262,10 +292,8 @@ class MainActivity : ComponentActivity() {
                                 )
                             }
                         }
-                    }) {
-                        Text(if (receiveInbox != null) "Cancel receiving" else "Receive from Phone")
-                    }
-                    Button(onClick = {
+                    },
+                    onImportHistory = {
                         if (hasDocumentPicker()) {
                             historyPicker.launch(arrayOf("application/json", "text/plain"))
                         } else {
@@ -278,63 +306,21 @@ class MainActivity : ComponentActivity() {
                                 )
                             }
                         }
-                    }) {
-                        Text("Import rider history JSON")
-                    }
-                    Text(
-                        "Tracking activates only while Karoo reports a recorded ride. " +
-                            "Add GritMap Pacing Profile or Target Power to a ride page for live guidance.",
-                        color = Color.LightGray,
-                    )
-                    Text(
-                        "Installed segments (${segments.size})",
-                        color = Color.White,
-                        style = MaterialTheme.typography.titleMedium,
-                    )
-                    segments.forEach { segment ->
-                        Column(Modifier.fillMaxWidth()) {
-                                Text(segment.name, color = Color.White)
-                                Text(
-                                    "${segment.lengthMeters.toInt()} m · ${segment.pointCount} points · " +
-                                        if (segment.hasBaselinePlan) "baseline plan" else "no baseline plan",
-                                    color = Color.LightGray,
-                                )
-                                Text(
-                                    "forward · ${segment.corridorMeters} m corridor · " +
-                                        segment.fingerprint.take(12),
-                                    color = Color.Gray,
-                                )
-                                if (pendingDeleteId == segment.id) {
-                                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                                        Button(onClick = {
-                                            lifecycleScope.launch {
-                                                segmentLibrary.delete(segment.id)
-                                                pendingDeleteId = null
-                                                refreshLibrary()
-                                                status = "Deleted ${segment.name}"
-                                            }
-                                        }) { Text("Confirm delete") }
-                                        Button(onClick = { pendingDeleteId = null }) { Text("Cancel") }
-                                    }
-                                } else {
-                                    Button(onClick = { pendingDeleteId = segment.id }) { Text("Delete") }
-                                }
+                    },
+                    onRefreshDiagnostics = { lifecycleScope.launch { refreshDiagnostics() } },
+                    onOpenH10Diagnostics = {
+                        startActivity(Intent(this@MainActivity, H10DiagnosticActivity::class.java))
+                    },
+                    onRequestDelete = { pendingDeleteId = it },
+                    onConfirmDelete = { segment ->
+                        lifecycleScope.launch {
+                            segmentLibrary.delete(segment.id)
+                            pendingDeleteId = null
+                            refreshLibrary()
+                            status = "Deleted ${segment.name}"
                         }
-                    }
-                    Text(
-                        "Live diagnostics",
-                        color = Color.White,
-                        style = MaterialTheme.typography.titleMedium,
-                    )
-                    Button(onClick = {
-                        lifecycleScope.launch { refreshDiagnostics() }
-                    }) { Text("Refresh diagnostics") }
-                    Text(
-                        diagnosticLines.takeLast(8).joinToString("\n").ifBlank { "No live events recorded" },
-                        color = Color.LightGray,
-                        style = MaterialTheme.typography.bodySmall,
-                    )
-                }
+                    },
+                )
             }
         }
     }

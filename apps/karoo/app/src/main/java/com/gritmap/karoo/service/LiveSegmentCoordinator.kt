@@ -20,6 +20,7 @@ import com.gritmap.karoo.ui.state.LiveUiState
 import com.gritmap.karoo.ui.state.MatchStatus
 import com.gritmap.karoo.ui.state.PacingZone
 import com.gritmap.karoo.ui.state.Recommendation
+import com.gritmap.karoo.ui.state.RouteSample
 import com.gritmap.karoo.ui.state.SensorStatus
 import java.util.UUID
 import kotlin.math.cos
@@ -32,6 +33,7 @@ class LiveSegmentCoordinator(
     private val begin: (ActiveAttemptSession) -> Unit,
     private val update: (LiveTelemetry, LiveUiState, Double) -> Unit,
     private val finish: (String) -> Unit,
+    private val approach: (segmentId: String) -> Unit = {},
     private val diagnostic: (event: String, details: String) -> Unit = { _, _ -> },
 ) {
     private data class Candidate(
@@ -49,11 +51,12 @@ class LiveSegmentCoordinator(
     private val forwardProgressGate = ForwardProgressGate()
     private var selectedId: String? = null
     private var lastEmptyDiscoveryDiagnosticMs = 0L
+    private var lastApproachDiscoveryMs = 0L
 
     suspend fun process(sample: LiveTelemetry, sensors: SensorStatus) = mutex.withLock {
         val lat = sample.lat ?: return@withLock
         val lng = sample.lng ?: return@withLock
-        if (candidates.isEmpty()) discover(lat, lng)
+        if (candidates.isEmpty()) discover(lat, lng, sample.timestampMs)
         if (candidates.isEmpty()) {
             if (sample.timestampMs - lastEmptyDiscoveryDiagnosticMs >= DISCOVERY_DIAGNOSTIC_INTERVAL_MS) {
                 lastEmptyDiscoveryDiagnosticMs = sample.timestampMs
@@ -91,6 +94,13 @@ class LiveSegmentCoordinator(
         }
         val selected = selector.select(scores)
         if (selected == null) {
+            // A newly discovered candidate needs multiple samples before ForwardProgressGate
+            // can confirm its direction. Keep its matcher and gate history alive while that
+            // confirmation is pending. Resetting here makes every tick look like the first tick,
+            // so the required streak can never complete (observed on the real 2026-10-06 Coco
+            // Jumbo traversal: the same candidate was rediscovered for eight seconds but never
+            // selected, even though the completed FIT is a 100%-coverage forward match).
+            if (candidates.isNotEmpty()) return@withLock
             selectedId?.let { finish("no-valid-candidate") }
             reset()
             return@withLock
@@ -137,7 +147,8 @@ class LiveSegmentCoordinator(
         selectedId = null
     }
 
-    private suspend fun discover(lat: Double, lng: Double) {
+    private suspend fun discover(lat: Double, lng: Double, nowMs: Long) {
+        discoverApproaches(lat, lng, nowMs)
         val latDelta = START_SEARCH_METERS / 111_320.0
         val longitudeScale = cos(Math.toRadians(lat)).coerceAtLeast(0.01)
         val lngDelta = START_SEARCH_METERS / (111_320.0 * longitudeScale)
@@ -162,6 +173,23 @@ class LiveSegmentCoordinator(
                 )
                 diagnostic("candidate_discovered", "segment=${entity.id} nearby=${nearby.size}")
             }
+        }
+    }
+
+    private suspend fun discoverApproaches(lat: Double, lng: Double, nowMs: Long) {
+        if (nowMs - lastApproachDiscoveryMs < APPROACH_DISCOVERY_INTERVAL_MS) return
+        lastApproachDiscoveryMs = nowMs
+        val latDelta = APPROACH_SEARCH_METERS / 111_320.0
+        val longitudeScale = cos(Math.toRadians(lat)).coerceAtLeast(0.01)
+        val lngDelta = APPROACH_SEARCH_METERS / (111_320.0 * longitudeScale)
+        database.segmentDao().segmentStartsInBounds(
+            lat - latDelta,
+            lat + latDelta,
+            lng - lngDelta,
+            lng + lngDelta,
+        ).forEach { segment ->
+            diagnostic("segment_approaching", "segment=${segment.id}")
+            approach(segment.id)
         }
     }
 
@@ -201,6 +229,9 @@ class LiveSegmentCoordinator(
         val profile = definition.referencePolyline.map {
             ElevationSample(it.distanceMeters, it.elevationMeters ?: 0.0)
         }
+        val route = definition.referencePolyline.map {
+            RouteSample(it.distanceMeters, it.lat, it.lng)
+        }
         val provisional = if (candidate.baselineZones.isEmpty()) candidate.ftpWatts?.let {
             ProvisionalPacingPlanner.create(SegmentPacingInput(total, it))
         } else null
@@ -233,6 +264,7 @@ class LiveSegmentCoordinator(
             segmentName = definition.name,
             progressMeters = progressMeters.coerceIn(0.0, total),
             totalDistanceMeters = total,
+            routeProfile = route,
             elevationProfile = profile,
             pacingZones = zones,
             recommendation = baselineCurrent?.let {
@@ -260,6 +292,8 @@ class LiveSegmentCoordinator(
 
     companion object {
         private const val START_SEARCH_METERS = 30.0
+        private const val APPROACH_SEARCH_METERS = 250.0
+        private const val APPROACH_DISCOVERY_INTERVAL_MS = 10_000L
         private const val DISCOVERY_DIAGNOSTIC_INTERVAL_MS = 10_000L
     }
 }

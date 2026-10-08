@@ -6,6 +6,7 @@ import java.io.OutputStream
 import java.net.NetworkInterface
 import java.net.ServerSocket
 import java.net.Socket
+import java.net.SocketException
 import java.net.SocketTimeoutException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -29,6 +30,8 @@ class HttpSegmentInbox(
 ) : SegmentInbox {
     @Volatile
     private var serverSocket: ServerSocket? = null
+    @Volatile
+    private var stopped = false
 
     /**
      * The actually-bound port once [pending] has opened its socket -- differs from the
@@ -39,13 +42,31 @@ class HttpSegmentInbox(
 
     override suspend fun pending(): List<InboxItem> = withContext(Dispatchers.IO) {
         val server = ServerSocket(port)
-        server.soTimeout = timeoutMs
+        stopped = false
         serverSocket = server
+        val deadlineNanos = System.nanoTime() + timeoutMs * 1_000_000L
         try {
-            val socket = server.accept()
-            val payload = socket.use { readHttpPostBody(it) }
-            listOf(InboxItem(id = NETWORK_ITEM_ID, displayName = "Phone transfer", payload = payload))
-        } catch (timeout: SocketTimeoutException) {
+            while (!stopped) {
+                val remainingMs = ((deadlineNanos - System.nanoTime()) / 1_000_000L).toInt()
+                if (remainingMs <= 0) return@withContext emptyList()
+                server.soTimeout = remainingMs
+                val socket = try {
+                    server.accept()
+                } catch (_: SocketTimeoutException) {
+                    return@withContext emptyList()
+                } catch (closed: SocketException) {
+                    if (stopped || server.isClosed) return@withContext emptyList()
+                    throw closed
+                }
+                // Port probes, abandoned clients, and malformed requests must not consume the
+                // manual receive session. Keep accepting until one complete POST arrives.
+                val payload = runCatching { socket.use { readHttpPostBody(it) } }.getOrNull()
+                if (payload != null) {
+                    return@withContext listOf(
+                        InboxItem(id = NETWORK_ITEM_ID, displayName = "Phone transfer", payload = payload),
+                    )
+                }
+            }
             emptyList()
         } finally {
             runCatching { server.close() }
@@ -65,12 +86,19 @@ class HttpSegmentInbox(
 
     /** Stops an in-progress [pending] wait early (e.g. the user taps Cancel). */
     fun stop() {
+        stopped = true
         runCatching { serverSocket?.close() }
     }
 
     companion object {
         const val DEFAULT_PORT = 8734
-        private const val DEFAULT_TIMEOUT_MS = 120_000
+        /**
+         * Manual transfers often involve moving between the Karoo and phone after opening
+         * this screen. Two minutes proved too short on-device, so keep the receiver available
+         * for ten minutes while still avoiding a permanent background listener.
+         */
+        const val DEFAULT_TIMEOUT_MINUTES = 10
+        private const val DEFAULT_TIMEOUT_MS = DEFAULT_TIMEOUT_MINUTES * 60_000
         private const val NETWORK_ITEM_ID = "network-transfer"
 
         /** The device's LAN IPv4 address, for display so the phone user can type it in. */

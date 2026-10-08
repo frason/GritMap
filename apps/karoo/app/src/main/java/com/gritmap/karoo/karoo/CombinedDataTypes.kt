@@ -2,17 +2,18 @@ package com.gritmap.karoo.karoo
 
 import android.content.Context
 import android.view.View
-import android.util.TypedValue
 import android.widget.RemoteViews
 import com.gritmap.karoo.R
 import com.gritmap.karoo.service.LiveServiceStarter
 import com.gritmap.karoo.ui.PowerBalanceBitmapRenderer
-import com.gritmap.karoo.ui.CardiacDriftBitmapRenderer
+import com.gritmap.karoo.ui.PacingCoachBitmapRenderer
 import com.gritmap.karoo.ui.SegmentPerformanceBitmapRenderer
 import com.gritmap.karoo.ui.WPrimeBalanceBitmapRenderer
 import com.gritmap.karoo.ui.karooVisualPalette
 import com.gritmap.karoo.ui.state.LiveUiState
 import com.gritmap.karoo.ui.state.LiveUiStore
+import com.gritmap.karoo.ui.state.MatchStatus
+import com.gritmap.karoo.ui.state.UnitSystem
 import io.hammerhead.karooext.extension.DataTypeImpl
 import io.hammerhead.karooext.internal.ViewEmitter
 import io.hammerhead.karooext.models.UpdateGraphicConfig
@@ -36,6 +37,7 @@ abstract class StateGraphicDataType(
         state: LiveUiState,
         size: KarooFieldSize,
         layout: KarooFieldLayout,
+        viewSize: Pair<Int, Int>,
     ): RemoteViews
 
     override fun startView(context: Context, config: ViewConfig, emitter: ViewEmitter) {
@@ -45,14 +47,14 @@ abstract class StateGraphicDataType(
             if (config.preview) {
                 karooPreviewFlow().collect { preview ->
                     emitter.updateView(
-                        remoteViews(context, preview, karooFieldSize(config), karooFieldLayout(config)),
+                        remoteViews(context, preview, karooFieldSize(config), karooFieldLayout(config), config.viewSize),
                     )
                 }
             } else {
                 LiveServiceStarter.startIfPermitted(context, "$typeId-view")
                 state.collect {
                     emitter.updateView(
-                        remoteViews(context, it, karooFieldSize(config), karooFieldLayout(config)),
+                        remoteViews(context, it, karooFieldSize(config), karooFieldLayout(config), config.viewSize),
                     )
                 }
             }
@@ -67,43 +69,15 @@ class PacingCoachDataType(extensionId: String) : StateGraphicDataType(extensionI
         state: LiveUiState,
         size: KarooFieldSize,
         layout: KarooFieldLayout,
+        viewSize: Pair<Int, Int>,
     ): RemoteViews {
-        val text = pacingCoachText(state)
-        return RemoteViews(context.packageName, R.layout.karoo_pacing_coach_field).apply {
-            val compact = layout == KarooFieldLayout.SMALL || layout == KarooFieldLayout.SMALL_WIDE
-            val expanded = layout == KarooFieldLayout.LARGE || layout == KarooFieldLayout.NARROW
-            val actionSize = when (layout) {
-                KarooFieldLayout.SMALL, KarooFieldLayout.SMALL_WIDE -> 17f
-                KarooFieldLayout.MEDIUM, KarooFieldLayout.MEDIUM_WIDE -> 22f
-                KarooFieldLayout.LARGE, KarooFieldLayout.NARROW -> 28f
-            }
-            val targetSize = when (layout) {
-                KarooFieldLayout.SMALL, KarooFieldLayout.SMALL_WIDE -> 28f
-                KarooFieldLayout.MEDIUM, KarooFieldLayout.MEDIUM_WIDE -> 38f
-                KarooFieldLayout.LARGE, KarooFieldLayout.NARROW -> 48f
-            }
-            val icon = state.recommendation?.icon
-            setTextViewText(R.id.karoo_coach_action, coachActionLabel(icon))
-            setTextColor(R.id.karoo_coach_action, karooEffortTextColor(icon))
-            setInt(R.id.karoo_coach_action, "setBackgroundResource", coachBackgroundResource(icon))
-            setTextViewText(R.id.karoo_coach_target, "TARGET  ${text.target}")
-            setTextViewText(R.id.karoo_coach_actual, "ACTUAL  ${text.actual}")
-            setTextViewText(R.id.karoo_coach_next, text.next)
-            setTextColor(R.id.karoo_coach_target, karooEffortColor(icon))
-            setTextColor(
-                R.id.karoo_coach_actual,
-                powerDeltaColor(state.powerDeltaWatts, state.recommendation?.targetPowerWatts),
-            )
-            setTextViewTextSize(R.id.karoo_coach_action, TypedValue.COMPLEX_UNIT_SP, actionSize)
-            setTextViewTextSize(R.id.karoo_coach_target, TypedValue.COMPLEX_UNIT_SP, targetSize)
-            setViewVisibility(
-                R.id.karoo_coach_actual,
-                if (compact) View.GONE else View.VISIBLE,
-            )
-            setViewVisibility(
-                R.id.karoo_coach_next,
-                if (expanded) View.VISIBLE else View.GONE,
-            )
+        val bitmap = PacingCoachBitmapRenderer(karooVisualPalette(context)).render(
+            state,
+            viewSize.first.coerceAtLeast(1),
+            viewSize.second.coerceAtLeast(1),
+        )
+        return RemoteViews(context.packageName, R.layout.karoo_pacing_coach_dashboard_field).apply {
+            setImageViewBitmap(R.id.karoo_pacing_coach_dashboard, bitmap)
         }
     }
 
@@ -130,51 +104,21 @@ class SegmentPerformanceDataType(extensionId: String) : StateGraphicDataType(ext
         state: LiveUiState,
         size: KarooFieldSize,
         layout: KarooFieldLayout,
+        viewSize: Pair<Int, Int>,
     ): RemoteViews {
-        val text = segmentPerformanceText(state)
-        val compact = layout == KarooFieldLayout.SMALL || layout == KarooFieldLayout.SMALL_WIDE
-        val expanded = layout == KarooFieldLayout.LARGE || layout == KarooFieldLayout.NARROW
-        return RemoteViews(context.packageName, R.layout.karoo_segment_performance_field).apply {
-            setTextViewText(R.id.karoo_performance_name, text.segmentName)
-            setTextViewText(R.id.karoo_performance_plan, text.plannedFinish)
-            setTextViewText(R.id.karoo_performance_finish, text.predictedFinish)
-            setTextViewText(R.id.karoo_performance_adherence, text.adherence)
-            setTextViewText(R.id.karoo_performance_progress, text.progress)
-            setViewVisibility(
-                R.id.karoo_performance_name,
-                if (expanded) View.VISIBLE else View.GONE,
+        val renderer = SegmentPerformanceBitmapRenderer(karooVisualPalette(context))
+        val bitmap = if (layout == KarooFieldLayout.LARGE || layout == KarooFieldLayout.NARROW) {
+            renderer.renderDashboard(state, viewSize.first.coerceAtLeast(1), viewSize.second.coerceAtLeast(1))
+        } else {
+            renderer.renderCompactDashboard(
+                state = state,
+                width = viewSize.first.coerceAtLeast(1),
+                height = viewSize.second.coerceAtLeast(1),
+                showSupportingMetrics = layout == KarooFieldLayout.MEDIUM || layout == KarooFieldLayout.MEDIUM_WIDE,
             )
-            setViewVisibility(
-                R.id.karoo_performance_plan,
-                if (compact) View.GONE else View.VISIBLE,
-            )
-            setViewVisibility(
-                R.id.karoo_performance_adherence,
-                if (compact) View.GONE else View.VISIBLE,
-            )
-            setViewVisibility(
-                R.id.karoo_performance_progress,
-                if (expanded) View.VISIBLE else View.GONE,
-            )
-            setViewVisibility(
-                R.id.karoo_performance_graph,
-                if (compact) View.GONE else View.VISIBLE,
-            )
-            val width = when (layout) {
-                KarooFieldLayout.SMALL, KarooFieldLayout.MEDIUM, KarooFieldLayout.NARROW -> 320
-                KarooFieldLayout.SMALL_WIDE, KarooFieldLayout.MEDIUM_WIDE -> 520
-                KarooFieldLayout.LARGE -> 600
-            }
-            setImageViewBitmap(
-                R.id.karoo_performance_graph,
-                SegmentPerformanceBitmapRenderer(karooVisualPalette(context)).render(
-                    state.plannedFinishSeconds,
-                    state.predictedFinishSeconds,
-                    state.progressFraction,
-                    width,
-                    76,
-                ),
-            )
+        }
+        return RemoteViews(context.packageName, R.layout.karoo_segment_performance_dashboard_field).apply {
+            setImageViewBitmap(R.id.karoo_performance_dashboard, bitmap)
         }
     }
 
@@ -187,6 +131,7 @@ class PowerBalanceDataType(extensionId: String) : StateGraphicDataType(extension
         state: LiveUiState,
         size: KarooFieldSize,
         layout: KarooFieldLayout,
+        viewSize: Pair<Int, Int>,
     ): RemoteViews {
         val target = state.recommendation?.targetPowerWatts
         val actual = state.rollingPowerWatts3s
@@ -247,7 +192,7 @@ class PowerBalanceDataType(extensionId: String) : StateGraphicDataType(extension
                         val planShort = plannedRate?.let {
                             "${if (it >= 0.0) "+" else "−"}${kotlin.math.abs(it).toInt()}"
                         } ?: "--"
-                        "ACT $actualShort  •  PLAN $planShort J/s"
+                        "ACT $actualShort W  •  PLAN $planShort W"
                     } else buildList {
                         add("ACTUAL: $actualLabel")
                         if (plannedLabel != null) add(plannedLabel)
@@ -270,33 +215,37 @@ class PowerBalanceDataType(extensionId: String) : StateGraphicDataType(extension
                 if (compact || layout == KarooFieldLayout.LARGE) View.GONE else View.VISIBLE,
             )
             setViewVisibility(
+                R.id.karoo_power_balance_values,
+                if (compact || layout == KarooFieldLayout.LARGE) View.GONE else View.VISIBLE,
+            )
+            setViewVisibility(
                 R.id.karoo_power_balance_delta,
                 if (compact && layout != KarooFieldLayout.SMALL_WIDE) View.GONE else View.VISIBLE,
             )
             if (layout == KarooFieldLayout.LARGE) {
-                setTextViewTextSize(R.id.karoo_power_balance_values, TypedValue.COMPLEX_UNIT_SP, 24f)
-                setTextViewTextSize(R.id.karoo_power_balance_delta, TypedValue.COMPLEX_UNIT_SP, 13f)
+                setViewVisibility(R.id.karoo_power_balance_values, View.GONE)
+                setViewVisibility(R.id.karoo_power_balance_delta, View.GONE)
             }
             val width = when (layout) {
                 KarooFieldLayout.SMALL, KarooFieldLayout.MEDIUM, KarooFieldLayout.NARROW -> 320
                 KarooFieldLayout.SMALL_WIDE, KarooFieldLayout.MEDIUM_WIDE -> 520
-                KarooFieldLayout.LARGE -> 600
+                KarooFieldLayout.LARGE -> viewSize.first.coerceAtLeast(1)
             }
             val height = when (layout) {
                 KarooFieldLayout.SMALL, KarooFieldLayout.SMALL_WIDE -> 72
                 KarooFieldLayout.MEDIUM, KarooFieldLayout.MEDIUM_WIDE, KarooFieldLayout.NARROW -> 150
-                KarooFieldLayout.LARGE -> 520
+                KarooFieldLayout.LARGE -> viewSize.second.coerceAtLeast(1)
             }
             setImageViewBitmap(
                 R.id.karoo_power_balance_bar,
                 if (reserve == null) {
-                    PowerBalanceBitmapRenderer(karooVisualPalette(context)).render(actual, target, width, height)
+                    WPrimeBalanceBitmapRenderer(karooVisualPalette(context)).renderCalculating(width, height)
                 } else {
                     val renderer = WPrimeBalanceBitmapRenderer(karooVisualPalette(context))
                     when (layout) {
                         KarooFieldLayout.SMALL, KarooFieldLayout.SMALL_WIDE ->
                             renderer.renderCompact(reserve, width, height)
-                        KarooFieldLayout.LARGE -> renderer.renderTrajectory(reserve, width, height)
+                        KarooFieldLayout.LARGE -> renderer.renderTrajectory(reserve, state, width, height)
                         else -> renderer.renderTanks(reserve, width, height)
                     }
                 },
@@ -325,65 +274,6 @@ internal fun reserveComparisonHeadline(actualPct: Float, plannedPct: Float?): St
     }
 }
 
-class CardiacDriftDataType(extensionId: String) : StateGraphicDataType(extensionId, TYPE_ID) {
-    override fun remoteViews(
-        context: Context,
-        state: LiveUiState,
-        size: KarooFieldSize,
-        layout: KarooFieldLayout,
-    ): RemoteViews {
-        val drift = state.cardiacDriftPct
-        val direction = cardiacDriftTrend(state.cardiacDriftHistory)
-        val status = when {
-            drift == null -> "Building 45s baseline"
-            drift < -0.5 -> "Improving"
-            drift < 3.0 -> "Stable"
-            drift < 5.0 -> "Drifting"
-            else -> "High strain"
-        } + if (drift == null) "" else "  $direction"
-        val compact = layout == KarooFieldLayout.SMALL
-        val width = when (size) {
-            KarooFieldSize.SMALL -> 320
-            KarooFieldSize.MEDIUM -> 480
-            KarooFieldSize.LARGE -> 600
-        }
-        val height = when (size) {
-            KarooFieldSize.SMALL -> 42
-            KarooFieldSize.MEDIUM -> 80
-            KarooFieldSize.LARGE -> 150
-        }
-        return RemoteViews(context.packageName, R.layout.karoo_cardiac_drift_field).apply {
-            setTextViewText(
-                R.id.karoo_drift_value,
-                formatCardiacDrift(drift),
-            )
-            setTextViewText(R.id.karoo_drift_status, status)
-            setViewVisibility(
-                R.id.karoo_drift_title,
-                if (compact) View.GONE else View.VISIBLE,
-            )
-            setViewVisibility(
-                R.id.karoo_drift_status,
-                if (compact) View.GONE else View.VISIBLE,
-            )
-            setImageViewBitmap(
-                R.id.karoo_drift_graph,
-                CardiacDriftBitmapRenderer(karooVisualPalette(context)).render(
-                    state.cardiacDriftHistory,
-                    width,
-                    height,
-                ),
-            )
-        }
-    }
-
-    companion object { const val TYPE_ID = "cardiac-drift" }
-}
-
-internal fun formatCardiacDrift(driftPct: Double?): String = driftPct?.let {
-    "${if (it >= 0.0) "+" else ""}${"%.1f".format(it)}%"
-} ?: "--"
-
 internal fun powerTrend(state: LiveUiState): String {
     val samples = state.powerExecutionHistory
     if (samples.size < 2) return "→"
@@ -391,18 +281,6 @@ internal fun powerTrend(state: LiveUiState): String {
     return when {
         change >= 8 -> "↑"
         change <= -8 -> "↓"
-        else -> "→"
-    }
-}
-
-internal fun cardiacDriftTrend(
-    history: List<com.gritmap.karoo.ui.state.CardiacDriftSample>,
-): String {
-    if (history.size < 2) return "→"
-    val change = history.last().driftPct - history[history.lastIndex - 1].driftPct
-    return when {
-        change >= 0.35 -> "↑"
-        change <= -0.35 -> "↓"
         else -> "→"
     }
 }
@@ -436,10 +314,13 @@ internal fun karooFieldSize(config: ViewConfig): KarooFieldSize = when (config.g
 }
 
 internal data class PacingCoachText(
+    val header: String,
     val action: String,
     val target: String,
     val actual: String,
     val next: String,
+    val paceRelation: String,
+    val quality: String,
 )
 
 internal fun pacingCoachText(state: LiveUiState): PacingCoachText {
@@ -447,6 +328,15 @@ internal fun pacingCoachText(state: LiveUiState): PacingCoachText {
     val delta = state.powerDeltaWatts
     val next = state.nextPacingZone
     return PacingCoachText(
+        header = buildString {
+            append(state.segmentName.ifBlank { "GM PACING COACH" })
+            if (state.totalDistanceMeters > 0.0) {
+                append("  ·  ")
+                append(formatCoachDistance(state.progressMeters, state.distanceUnitSystem))
+                append(" / ")
+                append(formatCoachDistance(state.totalDistanceMeters, state.distanceUnitSystem))
+            }
+        },
         action = recommendation?.instruction ?: "Waiting for pacing plan",
         target = recommendation?.targetPowerWatts?.let { "$it W" } ?: "-- W",
         actual = (state.rollingPowerWatts3s ?: state.currentPowerWatts)?.let { actual ->
@@ -454,11 +344,53 @@ internal fun pacingCoachText(state: LiveUiState): PacingCoachText {
             "3s $actual W$deltaText"
         } ?: state.sensorStatus.warning.orEmpty().ifBlank { "Waiting for power" },
         next = next?.let {
-            "${it.effort.name.lowercase().replaceFirstChar(Char::uppercase)} ${it.targetPowerWatts} W " +
-                "in ${state.distanceToNextZoneMeters} m"
+            "NEXT ${it.effort.name}  ·  ${it.targetPowerWatts} W  ·  " +
+                formatCoachDistance(state.distanceToNextZoneMeters?.toDouble() ?: 0.0, state.distanceUnitSystem)
         } ?: "Final pacing zone",
+        paceRelation = coachPaceRelation(state),
+        quality = coachGuidanceQuality(state),
     )
 }
+
+private fun coachPaceRelation(state: LiveUiState): String {
+    val elapsed = state.elapsedAttemptSeconds ?: return ""
+    val planned = state.plannedFinishSeconds?.takeIf { it > 0 } ?: return ""
+    if (state.totalDistanceMeters <= 0.0) return ""
+    val targetProgress = (elapsed / planned * state.totalDistanceMeters)
+        .coerceIn(0.0, state.totalDistanceMeters)
+    val signedSecondsAhead = ((state.progressMeters - targetProgress) / state.totalDistanceMeters * planned)
+        .roundToInt()
+    if (kotlin.math.abs(signedSecondsAhead) <= 1) return "ON PACE"
+    return if (signedSecondsAhead > 0) {
+        "${signedSecondsAhead}s AHEAD"
+    } else {
+        "${kotlin.math.abs(signedSecondsAhead)}s BEHIND"
+    }
+}
+
+private fun coachGuidanceQuality(state: LiveUiState): String {
+    if (state.recommendation == null) return "GUIDANCE UNAVAILABLE"
+    if (state.matchStatus == MatchStatus.UNCERTAIN) return "ESTIMATED  ·  ROUTE UNCERTAIN"
+    if (!state.sensorStatus.gps || !state.sensorStatus.power) {
+        val missing = buildList {
+            if (!state.sensorStatus.gps) add("GPS")
+            if (!state.sensorStatus.power) add("POWER")
+        }
+        return "STALE  ·  ${missing.joinToString(" + ")} MISSING"
+    }
+    return if (state.sensorStatus.adaptiveGuidanceAvailable) {
+        "LIVE  ·  ADAPTIVE"
+    } else {
+        "LIVE  ·  BASELINE PLAN"
+    }
+}
+
+private fun formatCoachDistance(meters: Double, units: UnitSystem): String =
+    if (units == UnitSystem.IMPERIAL) {
+        "${(meters * 3.28084).roundToInt()} ft"
+    } else {
+        "${meters.roundToInt()} m"
+    }
 
 internal data class SegmentPerformanceText(
     val segmentName: String,
@@ -466,6 +398,7 @@ internal data class SegmentPerformanceText(
     val predictedFinish: String,
     val adherence: String,
     val progress: String,
+    val variance: String,
 )
 
 internal fun segmentPerformanceText(state: LiveUiState) = SegmentPerformanceText(
@@ -486,7 +419,16 @@ internal fun segmentPerformanceText(state: LiveUiState) = SegmentPerformanceText
     } else {
         "Waiting for segment"
     },
+    variance = finishVarianceLabel(state.plannedFinishSeconds, state.predictedFinishSeconds),
 )
+
+internal fun finishVarianceLabel(plannedSeconds: Int?, predictedSeconds: Int?): String {
+    if (plannedSeconds == null || predictedSeconds == null) return "--"
+    val delta = predictedSeconds - plannedSeconds
+    if (delta == 0) return "ON PLAN"
+    val direction = if (delta < 0) "AHEAD" else "BEHIND"
+    return "${formatDuration(kotlin.math.abs(delta))} $direction"
+}
 
 internal fun formatDuration(seconds: Int): String {
     val safe = seconds.coerceAtLeast(0)

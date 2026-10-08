@@ -1,6 +1,7 @@
 package com.gritmap.karoo.karoo
 
 import com.gritmap.karoo.ui.state.GuidanceIcon
+import com.gritmap.karoo.ui.state.UnitSystem
 import io.hammerhead.karooext.models.ViewConfig
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -42,16 +43,26 @@ class KarooFieldLayoutTest {
     }
 
     @Test
-    fun `large profile preserves complete guidance and elevation graph`() {
+    fun `large profile gives the head up route the legacy footer space`() {
         val presentation = pacingProfilePresentation(KarooPreviewState, KarooFieldLayout.LARGE)
 
         assertFalse(presentation.compactStrip)
         assertTrue(presentation.verticalPacer)
         assertTrue(presentation.showHeader)
         assertTrue(presentation.showGuidance)
-        assertTrue(presentation.showFooter)
-        assertEquals("HOLD", presentation.guidance)
+        assertFalse(presentation.showFooter)
+        assertEquals("HOLD • 3s BEHIND", presentation.guidance)
         assertEquals("3s 247 W · -13 W", presentation.execution)
+        assertEquals("1043 ft left", presentation.remaining)
+    }
+
+    @Test
+    fun `large profile follows metric distance preference`() {
+        val presentation = pacingProfilePresentation(
+            KarooPreviewState.copy(distanceUnitSystem = UnitSystem.METRIC),
+            KarooFieldLayout.LARGE,
+        )
+
         assertEquals("318 m left", presentation.remaining)
     }
 

@@ -35,49 +35,56 @@ class HttpSegmentInboxTest {
     }
 
     @Test
-    fun `rejects a non-POST request with 405 and does not surface it as an item`() = runBlocking {
+    fun `invalid connection does not consume receive session before valid POST`() = runBlocking {
         val inbox = HttpSegmentInbox(port = 0, timeoutMs = 5_000)
-        val pendingDeferred = async {
-            runCatching { inbox.pending() }
-        }
+        val pendingDeferred = async { inbox.pending() }
 
         val port = awaitBoundPort(inbox)
         val response = sendRaw(port, "GET / HTTP/1.1\r\nHost: x\r\nContent-Length: 0\r\n\r\n")
+        val body = """{"schemaVersion":1,"id":"after-probe"}"""
+        val validResponse = postRaw(port, body)
 
-        val result = pendingDeferred.await()
-        assertTrue(result.isFailure)
         assertTrue(response.startsWith("HTTP/1.1 405"))
+        assertTrue(validResponse.startsWith("HTTP/1.1 200"))
+        assertEquals(body, pendingDeferred.await().single().payload)
     }
 
     @Test
     fun `rejects an oversized Content-Length with 413`() = runBlocking {
         val inbox = HttpSegmentInbox(port = 0, timeoutMs = 5_000)
-        val pendingDeferred = async {
-            runCatching { inbox.pending() }
-        }
+        val pendingDeferred = async { inbox.pending() }
 
         val port = awaitBoundPort(inbox)
         val response = sendRaw(port, "POST / HTTP/1.1\r\nContent-Length: 999999999\r\n\r\n")
 
-        val result = pendingDeferred.await()
-        assertTrue(result.isFailure)
         assertTrue(response.startsWith("HTTP/1.1 413"))
+        inbox.stop()
+        assertTrue(pendingDeferred.await().isEmpty())
     }
 
     @Test
     fun `stop() ends an in-progress wait early`() = runBlocking {
         val inbox = HttpSegmentInbox(port = 0, timeoutMs = 30_000)
-        val pendingDeferred = async { runCatching { inbox.pending() } }
+        val pendingDeferred = async { inbox.pending() }
         awaitBoundPort(inbox)
 
         inbox.stop()
 
         withTimeout(5_000) {
-            val result = pendingDeferred.await()
-            // A closed ServerSocket makes accept() throw -- either outcome (failure, or an
-            // empty/failed result) is acceptable; what matters is stop() doesn't hang forever.
-            assertTrue(result.isFailure || result.getOrNull()?.isEmpty() == true)
+            assertTrue(pendingDeferred.await().isEmpty())
         }
+    }
+
+    @Test
+    fun `bare TCP probe cannot consume the next valid transfer`() = runBlocking {
+        val inbox = HttpSegmentInbox(port = 0, timeoutMs = 5_000)
+        val pendingDeferred = async { inbox.pending() }
+        val port = awaitBoundPort(inbox)
+
+        Socket("127.0.0.1", port).use { /* connect and close exactly like nc -z */ }
+        val body = """{"packageType":"gritmap-transfer"}"""
+        assertTrue(postRaw(port, body).startsWith("HTTP/1.1 200"))
+        assertEquals(body, pendingDeferred.await().single().payload)
     }
 
     private suspend fun awaitBoundPort(inbox: HttpSegmentInbox): Int {

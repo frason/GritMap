@@ -2,6 +2,9 @@ package com.gritmap.karoo.karoo
 
 import io.hammerhead.karooext.models.ViewConfig
 import io.hammerhead.karooext.models.StreamState
+import com.gritmap.karoo.ui.state.Effort
+import com.gritmap.karoo.ui.state.PacingZone
+import com.gritmap.karoo.ui.state.UnitSystem
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -18,10 +21,45 @@ class CombinedDataTypesTest {
     fun `coach combines target actual delta and next change`() {
         val text = pacingCoachText(KarooPreviewState)
 
+        assertEquals("Coco Jumbo  ·  705 ft / 1749 ft", text.header)
         assertEquals("Hold steady", text.action)
         assertEquals("260 W", text.target)
         assertEquals("3s 247 W · -13 W", text.actual)
-        assertEquals("Push 295 W in 175 m", text.next)
+        assertEquals("NEXT RECOVER  ·  245 W  ·  79 ft", text.next)
+        assertEquals("3s BEHIND", text.paceRelation)
+        assertEquals("LIVE  ·  ADAPTIVE", text.quality)
+    }
+
+    @Test
+    fun `coach exposes estimated and stale guidance instead of presenting it as live`() {
+        val uncertain = pacingCoachText(
+            KarooPreviewState.copy(matchStatus = com.gritmap.karoo.ui.state.MatchStatus.UNCERTAIN),
+        )
+        assertEquals("ESTIMATED  ·  ROUTE UNCERTAIN", uncertain.quality)
+
+        val stale = pacingCoachText(
+            KarooPreviewState.copy(
+                sensorStatus = KarooPreviewState.sensorStatus.copy(gps = false, power = false),
+            ),
+        )
+        assertEquals("STALE  ·  GPS + POWER MISSING", stale.quality)
+    }
+
+    @Test
+    fun `coach next preview follows adaptive plan zone boundaries`() {
+        val shortSegment = KarooPreviewState.copy(
+            progressMeters = 145.0,
+            distanceUnitSystem = UnitSystem.METRIC,
+            pacingZones = listOf(
+                PacingZone(0.0, 100.0, 225, Effort.RECOVER),
+                PacingZone(100.0, 200.0, 260, Effort.HOLD),
+                PacingZone(200.0, 300.0, 295, Effort.PUSH),
+            ),
+        )
+
+        val text = pacingCoachText(shortSegment)
+
+        assertEquals("NEXT PUSH  ·  295 W  ·  55 m", text.next)
     }
 
     @Test
@@ -32,6 +70,15 @@ class CombinedDataTypesTest {
         assertEquals("Predicted 2:48", text.predictedFinish)
         assertEquals("Adherence 91% · +0:08", text.adherence)
         assertEquals("215 / 533 m", text.progress)
+        assertEquals("0:08 BEHIND", text.variance)
+    }
+
+    @Test
+    fun `finish variance uses fixed ahead behind semantics`() {
+        assertEquals("0:20 AHEAD", finishVarianceLabel(400, 380))
+        assertEquals("0:20 BEHIND", finishVarianceLabel(400, 420))
+        assertEquals("ON PLAN", finishVarianceLabel(400, 400))
+        assertEquals("--", finishVarianceLabel(null, 400))
     }
 
     @Test

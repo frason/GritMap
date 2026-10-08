@@ -4,7 +4,7 @@
     displayName="@string/karoo_extension_name"
     icon="@drawable/karoo_ic_extension"
     scansDevices="false"
-    mapLayer="false"
+    mapLayer="true"
     fitFile="false">
     <DataType
         typeId="pacing-coach"

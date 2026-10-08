@@ -9,6 +9,7 @@ import com.gritmap.karoo.ui.state.PowerExecutionSample
 import com.gritmap.karoo.ui.state.WPrimePoint
 import com.gritmap.karoo.ui.state.WPrimeState
 import java.util.ArrayDeque
+import kotlin.math.roundToInt
 
 data class LiveTelemetry(
     val timestampMs: Long,
@@ -95,6 +96,9 @@ class ActiveAttemptSession(
         WPrimeEngine(WPrimeParameters.estimatedFromFtp(it))
     }
     private var lastRecordedTimestampMs: Long? = null
+    private val segmentSplitDeltasSeconds = ArrayDeque<Int>()
+    private var nextSplitBoundaryMeters = QUARTER_MILE_METERS
+    private var previousSplitElapsedSeconds = 0.0
 
     /** Records exactly one physical telemetry tick. UI or plan changes must not call this. */
     fun recordTelemetryTick(sample: LiveTelemetry, stateAtTick: LiveUiState = uiState): Boolean {
@@ -135,6 +139,29 @@ class ActiveAttemptSession(
     fun recentSamples(): List<LiveTelemetry> = samples.toList()
 
     fun powerExecutionSamples(): List<PowerExecutionSample> = powerExecutionHistory.toList()
+
+    fun recordCompletedSplits(
+        progressMeters: Double,
+        elapsedSeconds: Double,
+        totalDistanceMeters: Double,
+        plannedFinishSeconds: Int?,
+    ): List<Int> {
+        val planSeconds = plannedFinishSeconds?.takeIf { it > 0 }
+            ?: return segmentSplitDeltasSeconds.toList()
+        if (totalDistanceMeters <= 0.0) return segmentSplitDeltasSeconds.toList()
+        while (progressMeters >= nextSplitBoundaryMeters && nextSplitBoundaryMeters <= totalDistanceMeters) {
+            val plannedCumulative = planSeconds * (nextSplitBoundaryMeters / totalDistanceMeters)
+            val previousBoundary = nextSplitBoundaryMeters - QUARTER_MILE_METERS
+            val plannedPrevious = planSeconds * (previousBoundary.coerceAtLeast(0.0) / totalDistanceMeters)
+            val plannedSplit = plannedCumulative - plannedPrevious
+            val actualSplit = elapsedSeconds - previousSplitElapsedSeconds
+            segmentSplitDeltasSeconds.addLast((plannedSplit - actualSplit).roundToInt())
+            while (segmentSplitDeltasSeconds.size > MAX_PERFORMANCE_SPLITS) segmentSplitDeltasSeconds.removeFirst()
+            previousSplitElapsedSeconds = elapsedSeconds
+            nextSplitBoundaryMeters += QUARTER_MILE_METERS
+        }
+        return segmentSplitDeltasSeconds.toList()
+    }
 
     fun updateUiState(value: LiveUiState) {
         uiState = value
@@ -197,6 +224,8 @@ class ActiveAttemptSession(
     companion object {
         private const val MAX_EXECUTION_SAMPLES = 600
         private const val MAX_W_PRIME_SAMPLES = 240
+        private const val MAX_PERFORMANCE_SPLITS = 80
+        private const val QUARTER_MILE_METERS = 402.336
     }
 }
 

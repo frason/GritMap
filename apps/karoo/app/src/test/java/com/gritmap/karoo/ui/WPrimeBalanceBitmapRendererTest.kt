@@ -1,5 +1,6 @@
 package com.gritmap.karoo.ui
 
+import com.gritmap.karoo.karoo.KarooPreviewState
 import com.gritmap.karoo.ui.state.WPrimePoint
 import com.gritmap.karoo.ui.state.WPrimeState
 import org.junit.Assert.assertEquals
@@ -9,6 +10,8 @@ import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 import org.robolectric.annotation.GraphicsMode
+import java.io.File
+import java.io.FileOutputStream
 
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [31])
@@ -35,13 +38,38 @@ class WPrimeBalanceBitmapRendererTest {
         val renderer = WPrimeBalanceBitmapRenderer()
         val compact = renderer.renderCompact(state, 300, 72)
         val tanks = renderer.renderTanks(state, 320, 150)
-        val trajectory = renderer.renderTrajectory(state, 600, 280)
+        val trajectory = renderer.renderTrajectory(state, KarooPreviewState, 480, 624)
 
         assertEquals(300, compact.width)
         assertEquals(150, tanks.height)
-        assertEquals(600, trajectory.width)
+        assertEquals(480, trajectory.width)
         val pixels = IntArray(trajectory.width * trajectory.height)
         trajectory.getPixels(pixels, 0, trajectory.width, 0, 0, trajectory.width, trajectory.height)
         assertTrue(pixels.toSet().size > 5)
+        val preview = File("build/reports/power-balance-preview/large.png")
+        requireNotNull(preview.parentFile).mkdirs()
+        FileOutputStream(preview).use { trajectory.compress(android.graphics.Bitmap.CompressFormat.PNG, 100, it) }
+
+        val states = mapOf(
+            "on-plan" to state.copy(
+                actualBalanceJoules = 14_000.0,
+                actualBalanceChangeJoulesPerSecond = -24.0,
+            ),
+            "overextended" to state.copy(
+                actualBalanceJoules = 10_000.0,
+                actualBalanceChangeJoulesPerSecond = -48.0,
+            ),
+            "recovering" to state.copy(
+                actualBalanceJoules = 15_000.0,
+                actualBalanceChangeJoulesPerSecond = 28.0,
+                plannedBalanceChangeJoulesPerSecond = 8.0,
+            ),
+        )
+        states.forEach { (name, previewState) ->
+            val rendered = renderer.renderTrajectory(previewState, KarooPreviewState, 480, 624)
+            FileOutputStream(File(preview.parentFile, "$name.png")).use {
+                rendered.compress(android.graphics.Bitmap.CompressFormat.PNG, 100, it)
+            }
+        }
     }
 }

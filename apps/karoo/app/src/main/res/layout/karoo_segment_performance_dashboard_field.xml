@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@color/gm_field_background">
+
+    <ImageView
+        android:id="@+id/karoo_performance_dashboard"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:contentDescription="Projected finish, time bank, and quarter-mile split performance"
+        android:scaleType="fitXY" />
+</FrameLayout>

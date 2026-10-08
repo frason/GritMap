@@ -7,14 +7,26 @@
     android:padding="8dp">
 
     <TextView
+        android:id="@+id/karoo_coach_header"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:ellipsize="end"
+        android:maxLines="1"
+        android:paddingBottom="5dp"
+        android:textColor="@color/gm_field_secondary_text"
+        android:textSize="13sp"
+        android:textStyle="bold" />
+
+    <TextView
         android:id="@+id/karoo_coach_action"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:ellipsize="end"
         android:gravity="center"
         android:maxLines="1"
-        android:paddingTop="2dp"
-        android:paddingBottom="2dp"
+        android:minHeight="42dp"
+        android:paddingTop="5dp"
+        android:paddingBottom="5dp"
         android:textColor="@color/gm_field_primary_text"
         android:textSize="16sp"
         android:textStyle="bold" />
@@ -46,5 +58,18 @@
         android:gravity="center"
         android:maxLines="1"
         android:textColor="#FFC857"
-        android:textSize="12sp" />
+        android:textSize="16sp"
+        android:textStyle="bold" />
+
+    <TextView
+        android:id="@+id/karoo_coach_quality"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:ellipsize="end"
+        android:gravity="center"
+        android:maxLines="1"
+        android:paddingTop="6dp"
+        android:textColor="@color/gm_field_secondary_text"
+        android:textSize="13sp"
+        android:textStyle="bold" />
 </LinearLayout>

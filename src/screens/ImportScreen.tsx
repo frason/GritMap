@@ -1,6 +1,7 @@
 import * as Crypto from "expo-crypto";
 import * as DocumentPicker from "expo-document-picker";
 import { File } from "expo-file-system";
+import { readAsStringAsync } from "expo-file-system/legacy";
 import type { BottomTabNavigationProp } from "@react-navigation/bottom-tabs";
 import { useNavigation } from "@react-navigation/native";
 import { useRef, useState } from "react";
@@ -12,6 +13,7 @@ import { computeFileHash } from "../import/computeFileHash";
 import type { DuplicateRule } from "../import/findDuplicate";
 import { importRideFile, type ImportRideFileInput } from "../import/importRideFile";
 import { deleteRetainedFile, retainRideFile } from "../import/retainFitFile";
+import { readTextWithFallback } from "../import/readTextWithFallback";
 import { runMatcherForRide, runMatcherForSegment } from "../matcher/runMatcher";
 import type { RootTabParamList } from "../navigation/types";
 import { colors } from "../theme/colors";
@@ -134,14 +136,26 @@ export function ImportScreen() {
    * plan can be created and sent back. Existing rides are matched against it straight away.
    */
   async function handleImportSegmentJsonPress() {
-    const picked = await DocumentPicker.getDocumentAsync({ multiple: false, type: "*/*" });
+    const picked = await DocumentPicker.getDocumentAsync({
+      multiple: false,
+      type: "*/*",
+      copyToCacheDirectory: true,
+    });
     if (picked.canceled) return;
     const asset = picked.assets[0];
     if (!asset) return;
 
     setIsImportingSegment(true);
     try {
-      const text = await new File(asset.uri).text();
+      const text = await readTextWithFallback([
+        () => new File(asset.uri).text(),
+        () => readAsStringAsync(asset.uri),
+        async () => {
+          const response = await fetch(asset.uri);
+          if (!response.ok) throw new Error(`URI fetch failed (${response.status})`);
+          return response.text();
+        },
+      ]);
       const result = await importSegmentJsonText(database, generateId, text, Date.now());
       if (result.status === "invalid") {
         Alert.alert("Couldn't import segment", `${asset.name}: ${result.error}`);

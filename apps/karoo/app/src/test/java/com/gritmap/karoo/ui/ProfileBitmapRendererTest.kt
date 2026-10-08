@@ -1,9 +1,12 @@
 package com.gritmap.karoo.ui
 
+import android.graphics.Bitmap
+import android.graphics.Canvas
 import android.graphics.Color
 import androidx.test.core.app.ApplicationProvider
 import com.gritmap.karoo.karoo.KarooPreviewState
 import com.gritmap.karoo.karoo.karooPreviewStateAt
+import com.gritmap.karoo.ui.state.UnitSystem
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -11,11 +14,38 @@ import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 import org.robolectric.annotation.GraphicsMode
+import java.io.File
+import java.io.FileOutputStream
 
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [31])
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
 class ProfileBitmapRendererTest {
+    @Test
+    fun `export pacing road visual regression contact sheet`() {
+        ApplicationProvider.getApplicationContext<android.content.Context>()
+        val width = 448
+        val height = 500
+        val states = listOf(0, 6, 12, 18).map(::karooPreviewStateAt)
+        val sheet = Bitmap.createBitmap(width * 2, height * 2, Bitmap.Config.ARGB_8888)
+        val canvas = Canvas(sheet)
+        states.forEachIndexed { index, state ->
+            val frame = ProfileBitmapRenderer().renderFirstPersonRoute(state, width, height)
+            canvas.drawBitmap(frame, ((index % 2) * width).toFloat(), ((index / 2) * height).toFloat(), null)
+            val frameOutput = File("build/reports/pacing-preview/frame-$index.png")
+            requireNotNull(frameOutput.parentFile).mkdirs()
+            FileOutputStream(frameOutput).use { stream ->
+                assertTrue(frame.compress(Bitmap.CompressFormat.PNG, 100, stream))
+            }
+        }
+        val output = File("build/reports/pacing-preview/contact-sheet.png")
+        requireNotNull(output.parentFile).mkdirs()
+        FileOutputStream(output).use { stream ->
+            assertTrue(sheet.compress(Bitmap.CompressFormat.PNG, 100, stream))
+        }
+        assertTrue(output.length() > 0L)
+    }
+
     @Test
     fun `profile bitmap honors light palette background`() {
         val bitmap = ProfileBitmapRenderer(KarooVisualPalette.Light)
@@ -107,6 +137,32 @@ class ProfileBitmapRendererTest {
     }
 
     @Test
+    fun `large first person profile keeps route elevation and colored watt cards`() {
+        ApplicationProvider.getApplicationContext<android.content.Context>()
+        val state = KarooPreviewState.copy(
+            progressMeters = 215.0,
+            plannedFinishSeconds = 160,
+            elapsedAttemptSeconds = 80.0,
+            rollingPowerWatts3s = 260,
+        )
+        val bitmap = ProfileBitmapRenderer().renderFirstPersonRoute(state, 300, 500)
+
+        assertEquals(300, bitmap.width)
+        assertEquals(500, bitmap.height)
+        // Target card follows the current HOLD plan and is therefore blue.
+        val targetCard = bitmap.getPixel(25, 330)
+        assertTrue(Color.blue(targetCard) > Color.red(targetCard))
+        // Actual exactly on target uses the green execution background.
+        val actualCard = bitmap.getPixel(275, 330)
+        assertTrue(Color.green(actualCard) > Color.red(actualCard))
+        // The lower fifth is retained for the full elevation overview, not left blank.
+        val elevationHasContent = (390 until 495).any { y ->
+            (5 until 295 step 5).any { x -> bitmap.getPixel(x, y) != KarooVisualPalette.Dark.background }
+        }
+        assertTrue(elevationHasContent)
+    }
+
+    @Test
     fun `virtual target rider moves ahead or behind from planned schedule`() {
         val behindPlan = KarooPreviewState.copy(
             progressMeters = 200.0,
@@ -125,6 +181,8 @@ class ProfileBitmapRendererTest {
         assertEquals(10, pacerTimeGapSeconds(behindPlan, redTargetAhead))
         assertEquals("+10s", formatPacerTimeGap(10))
         assertEquals("-1:12", formatPacerTimeGap(-72))
+        assertEquals("-164 ft", formatSignedPacerDistance(-50.0, UnitSystem.IMPERIAL))
+        assertEquals("+50 m", formatSignedPacerDistance(50.0, UnitSystem.METRIC))
     }
 
     @Test
@@ -136,6 +194,14 @@ class ProfileBitmapRendererTest {
         assertTrue(farRadius > closeRadius)
         assertEquals(10.0, pacerTickIntervalMeters(closeRadius), 0.001)
         assertEquals(10.0, pacerTickIntervalMeters(farRadius), 0.001)
+    }
+
+    @Test
+    fun `first person camera expands materially for distant targets in either direction`() {
+        assertEquals(200.0, firstPersonAheadMeters(5.0), 0.001)
+        assertTrue(firstPersonAheadMeters(600.0) > 900.0)
+        assertEquals(24.0, firstPersonPastMeters(5.0), 0.001)
+        assertTrue(firstPersonPastMeters(-120.0) > 180.0)
     }
 
     @Test
