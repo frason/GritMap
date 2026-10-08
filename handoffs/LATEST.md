@@ -33,6 +33,18 @@ and accessibility, design loading/empty/error states for every screen, and keep 
 the 10-minute window. Onboarding tells riders to follow "the Karoo install guide you were sent", so
 `docs/BETA_KAROO_INSTALL.md` is on the beta's critical path.
 
+# Handoff: signed Karoo beta 0.10.42 is tagged, installed and documented
+
+Karoo `0.10.42-beta`/code65 is built from the exact annotated tag `karoo-beta-0.10.42`, signed with
+a persistent private beta key, checksum-recorded, and installed on the physical Karoo. A clean
+0.10.41-beta install followed by an in-place 0.10.42-beta upgrade passed. The beta audit also found
+and fixed two release-facing defects: GM H10 Cardiac was absent from the extension manifest, and
+the large Pacing Profile was blank without a segment. All 176 JVM tests, lint, debug build, signed
+R8 build and signature verification pass. `docs/BETA_KAROO_INSTALL.md` now matches the phone's exact
+GritMap / Receive from Phone / Send plan to Karoo wording. The one-time debug-to-beta signature
+transition left the Karoo library empty; resend a segment and plan before its smoke ride. Details:
+`handoffs/archive/2026-10-08-1516-codex-karoo-beta-0.10.42.md`.
+
 # Handoff: first-run onboarding, design foundations and empty states on the phone (committed locally, not pushed)
 
 Phone-only; Karoo untouched. A fresh install now walks a four-step onboarding (what it does, FTP and weight in kg or lb,
