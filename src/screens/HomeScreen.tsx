@@ -1,5 +1,7 @@
 import { useCallback, useState } from "react";
-import { ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from "react-native";
+import type { ReactNode } from "react";
+import { StyleSheet, View } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 import { useFocusEffect, useNavigation } from "@react-navigation/native";
 import type { BottomTabNavigationProp } from "@react-navigation/bottom-tabs";
 import { useDatabase } from "../db/DatabaseProvider";
@@ -9,16 +11,15 @@ import { listSegments, type SegmentSummary } from "../db/listSegments";
 import { listAttemptsForSegment, type AttemptSummary } from "../db/listAttemptsForSegment";
 import { listRides, type RideSummary } from "../db/listRides";
 import type { RootTabParamList } from "../navigation/types";
-import { colors } from "../theme/colors";
-import { Icon } from "../theme/Icon";
-import { radius, spacing } from "../theme/spacing";
+import { spacing } from "../theme/spacing";
+import { useColors } from "../theme/useColors";
 import {
   formatDistanceMiles,
   formatDurationHoursMinutes,
   formatDurationMinutesSeconds,
   formatRideDate,
 } from "./formatRideStats";
-import { EmptyState } from "../theme/components";
+import { AppText, Button, Card, EmptyState, ListRow, Notice, ScreenScroll, Section, TextField } from "../theme/components";
 import { parseTargetDurationInput } from "./parseTargetDuration";
 
 type Navigation = BottomTabNavigationProp<RootTabParamList>;
@@ -51,7 +52,7 @@ export function HomeScreen() {
 
   if (segments.length === 0) {
     return (
-      <View style={styles.container}>
+      <HomeFrame>
         <EmptyState
           icon="flag"
           title="Pick a segment to chase"
@@ -70,19 +71,21 @@ export function HomeScreen() {
             },
           ]}
         />
-      </View>
+      </HomeFrame>
     );
   }
 
   if (goal === undefined || editingGoal) {
     return (
-      <GoalSetupForm
-        segments={segments}
-        initialSegmentId={goal?.segmentId}
-        initialTargetDurationMs={goal?.targetDurationMs}
-        onSave={handleSaveGoal}
-        onCancel={goal === undefined ? undefined : () => setEditingGoal(false)}
-      />
+      <HomeFrame>
+        <GoalSetupForm
+          segments={segments}
+          initialSegmentId={goal?.segmentId}
+          initialTargetDurationMs={goal?.targetDurationMs}
+          onSave={handleSaveGoal}
+          onCancel={goal === undefined ? undefined : () => setEditingGoal(false)}
+        />
+      </HomeFrame>
     );
   }
 
@@ -125,68 +128,88 @@ export function HomeScreen() {
   const gapMs = bestDurationMs === undefined ? undefined : bestDurationMs - goal.targetDurationMs;
 
   return (
-    <ScrollView style={styles.container} contentContainerStyle={styles.content}>
-      <View style={styles.goalHeader}>
-        <View style={styles.goalHeaderText}>
-          <Text style={styles.goalTitle}>{goalSegment?.name ?? "Goal"}</Text>
-          <Text style={styles.goalTarget}>Target {formatDurationMinutesSeconds(goal.targetDurationMs)}</Text>
+    <HomeFrame>
+      <ScreenScroll>
+        <View style={styles.goalHeader}>
+          <View style={styles.goalHeaderText}>
+            <AppText variant="title2" accessibilityRole="header">
+              {goalSegment?.name ?? "Goal"}
+            </AppText>
+            <AppText variant="subheadline" color="textSecondary">
+              Target {formatDurationMinutesSeconds(goal.targetDurationMs)}
+            </AppText>
+          </View>
+          <Button
+            label="Change"
+            variant="tertiary"
+            fullWidth={false}
+            accessibilityHint="Choose a different goal segment or time"
+            onPress={() => setEditingGoal(true)}
+          />
         </View>
-        <TouchableOpacity onPress={() => setEditingGoal(true)}>
-          <Text style={styles.changeGoalLink}>Change</Text>
-        </TouchableOpacity>
-      </View>
 
-      <View style={styles.statusCard}>
-        {bestDurationMs === undefined || gapMs === undefined ? (
-          <Text style={styles.statusHint}>
-            No confirmed attempts yet. Import more rides that traverse this segment to see your status.
-          </Text>
-        ) : (
-          <>
-            <Text style={styles.statusBest}>{formatDurationMinutesSeconds(bestDurationMs)}</Text>
-            <Text style={styles.statusGap}>
-              {gapMs <= 0
-                ? `${formatDurationMinutesSeconds(-gapMs)} under target`
-                : `${formatDurationMinutesSeconds(gapMs)} over target`}
-            </Text>
-          </>
-        )}
-        <TouchableOpacity style={styles.primaryButton} onPress={handleCompareCta}>
-          <Text style={styles.primaryButtonLabel}>
-            {secondBestAttempt !== undefined
-              ? "Compare best attempts"
-              : bestAttempt !== undefined
-                ? "Review best attempt"
-                : "View segment"}
-          </Text>
-        </TouchableOpacity>
-      </View>
+        <Card>
+          {bestDurationMs === undefined || gapMs === undefined ? (
+            <AppText variant="subheadline" color="textSecondary" align="center">
+              No confirmed efforts yet. Import rides that go over this segment to see how you are doing against your goal.
+            </AppText>
+          ) : (
+            <View style={styles.status} accessible accessibilityLabel={`Best time ${formatDurationMinutesSeconds(bestDurationMs)}, ${gapMs <= 0 ? `${formatDurationMinutesSeconds(-gapMs)} under target` : `${formatDurationMinutesSeconds(gapMs)} over target`}`}>
+              <AppText variant="largeTitle" align="center" importantForAccessibility="no">
+                {formatDurationMinutesSeconds(bestDurationMs)}
+              </AppText>
+              <AppText variant="subheadline" color="textSecondary" align="center" importantForAccessibility="no">
+                {gapMs <= 0
+                  ? `${formatDurationMinutesSeconds(-gapMs)} under target`
+                  : `${formatDurationMinutesSeconds(gapMs)} over target`}
+              </AppText>
+            </View>
+          )}
+          <Button
+            label={
+              secondBestAttempt !== undefined
+                ? "Compare best attempts"
+                : bestAttempt !== undefined
+                  ? "Review best attempt"
+                  : "View segment"
+            }
+            onPress={handleCompareCta}
+          />
+        </Card>
 
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Recent rides</Text>
-        {recentRides.length === 0 ? (
-          <Text style={styles.statusHint}>No rides imported yet.</Text>
-        ) : (
-          recentRides.map((ride) => (
-            <TouchableOpacity
-              key={ride.rideId}
-              style={styles.rideRow}
-              onPress={() => navigation.navigate("RidesTab", { screen: "RideDetail", params: { rideId: ride.rideId } })}
-            >
-              <View style={styles.rideRowText}>
-                <Text style={styles.rideRowTitle}>
-                  {ride.startTimestampMs === undefined ? ride.originalFilename : formatRideDate(ride.startTimestampMs)}
-                </Text>
-                <Text style={styles.rideRowSubtitle}>
-                  {formatDistanceMiles(ride.totalDistanceMeters)} · {formatDurationHoursMinutes(ride.durationMs)}
-                </Text>
-              </View>
-              <Icon name="chevronRight" color="textSecondary" size={18} />
-            </TouchableOpacity>
-          ))
-        )}
-      </View>
-    </ScrollView>
+        <Section title="Recent rides">
+          {recentRides.length === 0 ? (
+            <AppText variant="subheadline" color="textSecondary">
+              No rides imported yet.
+            </AppText>
+          ) : (
+            <View>
+              {recentRides.map((ride) => (
+                <ListRow
+                  key={ride.rideId}
+                  title={ride.startTimestampMs === undefined ? ride.originalFilename : formatRideDate(ride.startTimestampMs)}
+                  subtitle={`${formatDistanceMiles(ride.totalDistanceMeters)} · ${formatDurationHoursMinutes(ride.durationMs)}`}
+                  onPress={() => navigation.navigate("RidesTab", { screen: "RideDetail", params: { rideId: ride.rideId } })}
+                />
+              ))}
+            </View>
+          )}
+        </Section>
+      </ScreenScroll>
+    </HomeFrame>
+  );
+}
+
+/**
+ * Home has no navigation bar (the tab navigator hides it), so nothing else keeps its content out
+ * from under the status bar and Dynamic Island: this frame applies the top safe-area inset.
+ */
+function HomeFrame({ children }: { children: ReactNode }) {
+  const palette = useColors();
+  return (
+    <SafeAreaView edges={["top"]} style={[styles.frame, { backgroundColor: palette.background }]}>
+      {children}
+    </SafeAreaView>
   );
 }
 
@@ -213,225 +236,58 @@ function GoalSetupForm({
 
   function handleSave() {
     if (selectedSegmentId === undefined) {
-      setError("Choose a segment");
+      setError("Choose the segment you want to chase.");
       return;
     }
     const targetDurationMs = parseTargetDurationInput(minutesInput, secondsInput);
     if (targetDurationMs === undefined) {
-      setError("Enter a valid target time");
+      setError("Enter a target time, for example 40 minutes and 0 seconds.");
       return;
     }
     onSave(selectedSegmentId, targetDurationMs);
   }
 
   return (
-    <ScrollView style={styles.container} contentContainerStyle={styles.content}>
-      <Text style={styles.sectionTitle}>Choose your goal segment</Text>
-      {segments.map((segment) => (
-        <TouchableOpacity
-          key={segment.segmentId}
-          style={[styles.segmentOption, selectedSegmentId === segment.segmentId && styles.segmentOptionSelected]}
-          onPress={() => setSelectedSegmentId(segment.segmentId)}
-        >
-          <Icon
-            name="flag"
-            color={selectedSegmentId === segment.segmentId ? "brand" : "textTertiary"}
-            size={20}
-          />
-          <Text style={styles.segmentOptionLabel}>{segment.name}</Text>
-        </TouchableOpacity>
-      ))}
+    <ScreenScroll>
+      <Section title="Choose your goal segment" description="This is the segment Home tracks for you.">
+        <View>
+          {segments.map((segment) => (
+            <ListRow
+              key={segment.segmentId}
+              icon="flag"
+              iconColor={selectedSegmentId === segment.segmentId ? "brand" : "textTertiary"}
+              selected={selectedSegmentId === segment.segmentId}
+              title={segment.name}
+              showChevron={false}
+              onPress={() => setSelectedSegmentId(segment.segmentId)}
+            />
+          ))}
+        </View>
+      </Section>
 
-      <Text style={styles.label}>Target time</Text>
-      <View style={styles.targetTimeRow}>
-        <TextInput
-          style={styles.targetTimeInput}
-          placeholder="min"
-          placeholderTextColor={colors.textTertiary}
-          value={minutesInput}
-          onChangeText={setMinutesInput}
-          keyboardType="number-pad"
-        />
-        <Text style={styles.targetTimeSeparator}>:</Text>
-        <TextInput
-          style={styles.targetTimeInput}
-          placeholder="sec"
-          placeholderTextColor={colors.textTertiary}
-          value={secondsInput}
-          onChangeText={setSecondsInput}
-          keyboardType="number-pad"
-        />
-      </View>
+      <Section title="Target time">
+        <View style={styles.targetTimeRow}>
+          <View style={styles.targetTimeField}>
+            <TextField label="Minutes" value={minutesInput} onChangeText={setMinutesInput} keyboardType="number-pad" placeholder="40" />
+          </View>
+          <View style={styles.targetTimeField}>
+            <TextField label="Seconds" value={secondsInput} onChangeText={setSecondsInput} keyboardType="number-pad" placeholder="00" />
+          </View>
+        </View>
+      </Section>
 
-      <TouchableOpacity style={styles.primaryButton} onPress={handleSave}>
-        <Text style={styles.primaryButtonLabel}>Save goal</Text>
-      </TouchableOpacity>
-      {error !== undefined && <Text style={styles.errorText}>{error}</Text>}
-      {onCancel !== undefined && (
-        <TouchableOpacity onPress={onCancel}>
-          <Text style={styles.changeGoalLink}>Cancel</Text>
-        </TouchableOpacity>
-      )}
-    </ScrollView>
+      {error === undefined ? null : <Notice tone="error" live>{error}</Notice>}
+      <Button label="Save goal" onPress={handleSave} />
+      {onCancel === undefined ? null : <Button label="Cancel" variant="tertiary" onPress={onCancel} />}
+    </ScreenScroll>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: colors.background,
-  },
-  content: {
-    paddingHorizontal: spacing.space20,
-    paddingTop: spacing.space16,
-    paddingBottom: spacing.space32,
-    gap: spacing.space16,
-  },
-  emptyState: {
-    flex: 1,
-    alignItems: "center",
-    justifyContent: "center",
-    gap: spacing.space16,
-    paddingHorizontal: spacing.space24,
-    backgroundColor: colors.background,
-  },
-  emptyTitle: {
-    fontSize: 15,
-    color: colors.textSecondary,
-    textAlign: "center",
-  },
-  goalHeader: {
-    flexDirection: "row",
-    alignItems: "flex-start",
-    justifyContent: "space-between",
-  },
-  goalHeaderText: {
-    gap: spacing.space4,
-  },
-  goalTitle: {
-    fontSize: 22,
-    fontWeight: "600",
-    color: colors.textPrimary,
-  },
-  goalTarget: {
-    fontSize: 14,
-    color: colors.textSecondary,
-  },
-  changeGoalLink: {
-    fontSize: 13,
-    color: colors.brand,
-    fontWeight: "600",
-  },
-  statusCard: {
-    backgroundColor: colors.surface,
-    borderRadius: radius.md,
-    padding: spacing.space20,
-    alignItems: "center",
-    gap: spacing.space8,
-  },
-  statusBest: {
-    fontSize: 36,
-    fontWeight: "700",
-    color: colors.textPrimary,
-  },
-  statusGap: {
-    fontSize: 14,
-    color: colors.textSecondary,
-  },
-  statusHint: {
-    fontSize: 14,
-    color: colors.textSecondary,
-    textAlign: "center",
-  },
-  primaryButton: {
-    backgroundColor: colors.brand,
-    borderRadius: radius.md,
-    paddingVertical: spacing.space12,
-    paddingHorizontal: spacing.space24,
-    alignItems: "center",
-    marginTop: spacing.space8,
-  },
-  primaryButtonLabel: {
-    color: colors.textOnBrand,
-    fontSize: 15,
-    fontWeight: "600",
-  },
-  section: {
-    gap: spacing.space8 + 2,
-  },
-  sectionTitle: {
-    fontSize: 15,
-    fontWeight: "600",
-    color: colors.textPrimary,
-  },
-  rideRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: spacing.space12,
-    backgroundColor: colors.surface,
-    borderRadius: radius.md,
-    paddingVertical: spacing.space12,
-    paddingHorizontal: spacing.space16,
-  },
-  rideRowText: {
-    flex: 1,
-    gap: spacing.space4 - 2,
-  },
-  rideRowTitle: {
-    fontSize: 14,
-    fontWeight: "600",
-    color: colors.textPrimary,
-  },
-  rideRowSubtitle: {
-    fontSize: 12,
-    color: colors.textSecondary,
-  },
-  segmentOption: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: spacing.space12,
-    backgroundColor: colors.surface,
-    borderRadius: radius.md,
-    padding: spacing.space16,
-    borderWidth: 1,
-    borderColor: colors.border,
-  },
-  segmentOptionSelected: {
-    borderColor: colors.brand,
-  },
-  segmentOptionLabel: {
-    fontSize: 15,
-    color: colors.textPrimary,
-  },
-  label: {
-    fontSize: 13,
-    fontWeight: "600",
-    color: colors.textPrimary,
-  },
-  targetTimeRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: spacing.space8,
-  },
-  targetTimeInput: {
-    flex: 1,
-    backgroundColor: colors.surface,
-    borderRadius: radius.md,
-    borderWidth: 1,
-    borderColor: colors.border,
-    paddingHorizontal: spacing.space16,
-    paddingVertical: spacing.space12,
-    fontSize: 15,
-    color: colors.textPrimary,
-    textAlign: "center",
-  },
-  targetTimeSeparator: {
-    fontSize: 18,
-    color: colors.textSecondary,
-  },
-  errorText: {
-    fontSize: 13,
-    color: colors.statusDanger,
-    textAlign: "center",
-  },
+  frame: { flex: 1 },
+  goalHeader: { flexDirection: "row", alignItems: "flex-start", justifyContent: "space-between", gap: spacing.space8 },
+  goalHeaderText: { flex: 1, gap: spacing.space4 },
+  status: { gap: spacing.space4 },
+  targetTimeRow: { flexDirection: "row", gap: spacing.space12 },
+  targetTimeField: { flex: 1 },
 });

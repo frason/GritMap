@@ -25,6 +25,8 @@ type Props = {
   autoCapitalize?: "none" | "sentences" | "words" | "characters";
   autoCorrect?: boolean;
   maxLength?: number;
+  /** A tall box for pasting or writing several lines (a plan, notes). */
+  multiline?: boolean;
   testID?: string;
 };
 
@@ -43,6 +45,7 @@ export function TextField({
   autoCapitalize = "none",
   autoCorrect = false,
   maxLength,
+  multiline = false,
   testID,
 }: Props) {
   const palette = useColors();
@@ -67,12 +70,14 @@ export function TextField({
           autoCapitalize={autoCapitalize}
           autoCorrect={autoCorrect}
           maxLength={maxLength}
+          multiline={multiline}
+          textAlignVertical={multiline ? "top" : "center"}
           onFocus={() => setFocused(true)}
           onBlur={() => setFocused(false)}
           accessibilityLabel={fieldAccessibilityLabel({ label, ...(unit === undefined ? {} : { unit }), ...(error === undefined ? {} : { error }) })}
           {...(hint === undefined ? {} : { accessibilityHint: hint })}
           maxFontSizeMultiplier={typography.body.maxFontSizeMultiplier}
-          style={[styles.input, { color: palette.textPrimary }]}
+          style={[styles.input, multiline ? styles.multiline : null, { color: palette.textPrimary }]}
         />
         {unit === undefined ? null : (
           <AppText variant="body" color="textSecondary" accessibilityElementsHidden importantForAccessibility="no">
@@ -110,4 +115,5 @@ const styles = StyleSheet.create({
     fontSize: typography.body.fontSize,
     paddingVertical: spacing.space12,
   },
+  multiline: { minHeight: 140, maxHeight: 280 },
 });

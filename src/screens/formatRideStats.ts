@@ -1,11 +1,17 @@
 const METERS_PER_MILE = 1609.344;
 const METERS_PER_FOOT = 0.3048;
 
-export function formatRideDate(ms: number): string {
-  return new Date(ms).toLocaleDateString(undefined, {
+/**
+ * "Monday, Oct 5". A ride from an earlier (or later) year carries its year ("Sunday, Nov 9, 2025"),
+ * so a list sorted newest-first never looks out of order. `nowMs` is only for tests.
+ */
+export function formatRideDate(ms: number, nowMs: number = Date.now()): string {
+  const date = new Date(ms);
+  return date.toLocaleDateString(undefined, {
     weekday: "long",
     month: "short",
     day: "numeric",
+    ...(date.getFullYear() === new Date(nowMs).getFullYear() ? {} : { year: "numeric" }),
   });
 }
 

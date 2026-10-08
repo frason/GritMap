@@ -28,6 +28,7 @@ const iconGlyphs = {
   people: "people-outline",
   speedometer: "speedometer-outline",
   refresh: "refresh",
+  info: "information-circle-outline",
 } as const satisfies Record<string, ComponentProps<typeof Ionicons>["name"]>;
 
 export type IconName = keyof typeof iconGlyphs;

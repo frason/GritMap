@@ -1,4 +1,5 @@
 import { Pressable, StyleSheet, View } from "react-native";
+import type { ColorToken } from "../colors";
 import { Icon } from "../Icon";
 import type { IconName } from "../icons";
 import { MIN_TOUCH_TARGET } from "../layout";
@@ -11,6 +12,10 @@ type Props = {
   title: string;
   subtitle?: string;
   icon?: IconName;
+  /** The icon's color token; brand unless the row reports a state (a warning, a selection). */
+  iconColor?: ColorToken;
+  /** Marks the row as chosen (a multi-select list): highlighted and announced as selected. */
+  selected?: boolean;
   /** A short value on the right, such as "Not set". */
   value?: string;
   /** Makes the row a button; a chevron is shown unless `showChevron` is false. */
@@ -21,11 +26,11 @@ type Props = {
 };
 
 /** A tappable (or static) row: icon, title and subtitle, optional value, chevron. At least 44 pt tall. */
-export function ListRow({ title, subtitle, icon, value, onPress, showChevron = true, accessibilityHint, testID }: Props) {
+export function ListRow({ title, subtitle, icon, iconColor = "brand", selected, value, onPress, showChevron = true, accessibilityHint, testID }: Props) {
   const palette = useColors();
   const content = (
     <View style={styles.row}>
-      {icon === undefined ? null : <Icon name={icon} size={22} color="brand" />}
+      {icon === undefined ? null : <Icon name={icon} size={22} color={iconColor} />}
       <View style={styles.text}>
         <AppText variant="body">{title}</AppText>
         {subtitle === undefined ? null : (
@@ -57,7 +62,12 @@ export function ListRow({ title, subtitle, icon, value, onPress, showChevron = t
       accessibilityRole="button"
       accessibilityLabel={rowAccessibilityLabel([title, subtitle, value])}
       {...(accessibilityHint === undefined ? {} : { accessibilityHint })}
-      style={({ pressed }) => [styles.container, { borderColor: palette.border, opacity: pressed ? 0.7 : 1 }]}
+      {...(selected === undefined ? {} : { accessibilityState: { selected } })}
+      style={({ pressed }) => [
+        styles.container,
+        { borderColor: palette.border, opacity: pressed ? 0.7 : 1 },
+        selected === true ? { backgroundColor: palette.brandSubtle } : null,
+      ]}
     >
       {content}
     </Pressable>
