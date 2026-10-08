@@ -1,10 +1,9 @@
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
-import { Text, TouchableOpacity } from "react-native";
 import { RideDetailScreen } from "../screens/RideDetailScreen";
 import { RideListScreen } from "../screens/RideListScreen";
 import { ImportScreen } from "../screens/ImportScreen";
 import { DefineSegmentScreen } from "../screens/DefineSegmentScreen";
-import { colors } from "../theme/colors";
+import { HeaderButton } from "../theme/components";
 import type { RidesStackParamList } from "./types";
 
 const Stack = createNativeStackNavigator<RidesStackParamList>();
@@ -18,9 +17,7 @@ export function RidesStackNavigator() {
         options={({ navigation }) => ({
           title: "Rides",
           headerRight: () => (
-            <TouchableOpacity onPress={() => navigation.navigate("Import")}>
-              <Text style={{ color: colors.brand, fontSize: 15, fontWeight: "600" }}>Import</Text>
-            </TouchableOpacity>
+            <HeaderButton label="Import" accessibilityLabel="Import rides" onPress={() => navigation.navigate("Import")} />
           ),
         })}
       />
@@ -28,7 +25,7 @@ export function RidesStackNavigator() {
       <Stack.Screen
         name="Import"
         component={ImportScreen}
-        options={{ title: "Import Rides", presentation: "card" }}
+        options={{ title: "Import", presentation: "card" }}
       />
       <Stack.Screen
         name="DefineSegment"

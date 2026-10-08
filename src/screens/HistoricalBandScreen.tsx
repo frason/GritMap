@@ -1,73 +1,119 @@
-import { useEffect, useState } from "react";
-import { ScrollView, StyleSheet, Text, View } from "react-native";
-import { useRoute, type RouteProp } from "@react-navigation/native";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { useNavigation, useRoute, type RouteProp } from "@react-navigation/native";
+import type { BottomTabNavigationProp } from "@react-navigation/bottom-tabs";
+import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import type { SegmentAttempt } from "../comparison/compareAttempts";
 import { computeHistoricalBand, type HistoricalBandSample } from "../comparison/computeHistoricalBand";
 import { useDatabase } from "../db/DatabaseProvider";
 import { getAttemptDetail } from "../db/getAttemptDetail";
 import { getAttemptTrack } from "../db/getAttemptTrack";
 import { listAttemptsForSegment } from "../db/listAttemptsForSegment";
-import type { SegmentsStackParamList } from "../navigation/types";
-import { colors } from "../theme/colors";
-import { radius, spacing } from "../theme/spacing";
+import type { RootTabParamList, SegmentsStackParamList } from "../navigation/types";
+import { AppText, Card, EmptyState, ErrorState, LoadingState, Notice, ScreenScroll } from "../theme/components";
 import { ChannelChart, type ChannelSeriesPoint } from "./ChannelChart";
 
 type HistoricalBandRoute = RouteProp<SegmentsStackParamList, "HistoricalBand">;
+type Navigation = NativeStackNavigationProp<SegmentsStackParamList, "HistoricalBand">;
 
+/** A band needs at least this many efforts to say anything about a range. */
+const MIN_EFFORTS_FOR_BAND = 3;
+
+/**
+ * Progress over time on one segment: for power, heart rate and elevation, the shaded band is the
+ * range (lowest to highest) across all of the rider's efforts at each point along the segment, and
+ * the dark line is the effort they came from. Needs three efforts before a range means anything.
+ */
 export function HistoricalBandScreen() {
   const database = useDatabase();
   const route = useRoute<HistoricalBandRoute>();
-  const [attempts, setAttempts] = useState<SegmentAttempt[] | undefined>(undefined);
+  const navigation = useNavigation<Navigation>();
+  const [attempts, setAttempts] = useState<SegmentAttempt[] | "error" | undefined>(undefined);
 
-  useEffect(() => {
-    const summaries = listAttemptsForSegment(database, route.params.segmentId).filter(
-      (attempt) => attempt.decision === "accept" || attempt.manuallyApproved,
-    );
-    const loaded = summaries.flatMap((summary): SegmentAttempt[] => {
-      const detail = getAttemptDetail(database, summary.attemptId);
-      if (detail === undefined) return [];
-      return [
-        {
-          id: detail.attemptId,
-          segmentId: detail.segmentId,
-          rideId: detail.rideId,
-          startTimestampMs: detail.startTimestampMs,
-          endTimestampMs: detail.endTimestampMs,
-          points: getAttemptTrack(database, detail.rideId, detail.startPointIndex, detail.endPointIndex),
-        },
-      ];
-    });
-    setAttempts(loaded);
+  const load = useCallback(() => {
+    try {
+      const summaries = listAttemptsForSegment(database, route.params.segmentId).filter(
+        (attempt) => attempt.decision === "accept" || attempt.manuallyApproved,
+      );
+      const loaded = summaries.flatMap((summary): SegmentAttempt[] => {
+        const detail = getAttemptDetail(database, summary.attemptId);
+        if (detail === undefined) return [];
+        return [
+          {
+            id: detail.attemptId,
+            segmentId: detail.segmentId,
+            rideId: detail.rideId,
+            startTimestampMs: detail.startTimestampMs,
+            endTimestampMs: detail.endTimestampMs,
+            points: getAttemptTrack(database, detail.rideId, detail.startPointIndex, detail.endPointIndex),
+          },
+        ];
+      });
+      setAttempts(loaded);
+    } catch {
+      setAttempts("error");
+    }
   }, [database, route.params.segmentId]);
 
-  if (attempts === undefined) {
-    return <View style={styles.container} />;
-  }
+  useEffect(load, [load]);
 
-  if (attempts.length < 3) {
+  const bands = useMemo(
+    () =>
+      attempts === undefined || attempts === "error" || attempts.length < MIN_EFFORTS_FOR_BAND
+        ? undefined
+        : {
+            power: computeHistoricalBand(attempts, route.params.currentAttemptId, "power"),
+            heartRate: computeHistoricalBand(attempts, route.params.currentAttemptId, "heartRate"),
+            elevation: computeHistoricalBand(attempts, route.params.currentAttemptId, "elevationMeters"),
+          },
+    [attempts, route.params.currentAttemptId],
+  );
+
+  if (attempts === undefined) {
     return (
-      <View style={styles.emptyState}>
-        <Text style={styles.emptyText}>
-          Need at least 3 confirmed attempts to show a historical range. You have {attempts.length} so far.
-        </Text>
-      </View>
+      <ScreenScroll>
+        <LoadingState label="Loading your efforts…" />
+      </ScreenScroll>
     );
   }
 
-  const powerBand = computeHistoricalBand(attempts, route.params.currentAttemptId, "power");
-  const heartRateBand = computeHistoricalBand(attempts, route.params.currentAttemptId, "heartRate");
-  const elevationBand = computeHistoricalBand(attempts, route.params.currentAttemptId, "elevationMeters");
+  if (attempts === "error") {
+    return (
+      <ErrorState
+        title="Couldn't load your efforts"
+        message="GritMap couldn't read the rides for this segment. Go back and try again."
+        onRetry={load}
+      />
+    );
+  }
+
+  if (bands === undefined) {
+    return (
+      <EmptyState
+        icon="pulse"
+        title="Not enough efforts yet"
+        body={`Progress over time needs at least ${MIN_EFFORTS_FOR_BAND} efforts on this segment. You have ${attempts.length} so far. Import more rides that go over it and this screen fills in.`}
+        actions={[
+          {
+            label: "Import a ride",
+            icon: "download",
+            onPress: () =>
+              navigation.getParent<BottomTabNavigationProp<RootTabParamList>>()?.navigate("RidesTab", { screen: "Import" }),
+          },
+        ]}
+      />
+    );
+  }
 
   return (
-    <ScrollView style={styles.container} contentContainerStyle={styles.content}>
-      <Text style={styles.hint}>
-        The shaded band shows the range across all {attempts.length} confirmed attempts; the bold
-        line is this attempt.
-      </Text>
-      <BandSection title="Power" unit="W" band={powerBand} />
-      <BandSection title="Heart rate" unit="bpm" band={heartRateBand} />
-      <BandSection title="Elevation" unit="m" band={elevationBand} />
-    </ScrollView>
+    <ScreenScroll>
+      <AppText variant="subheadline" color="textSecondary">
+        The shaded band shows the range across all {attempts.length} of your efforts on this segment: the highest and lowest
+        at each point. The dark line is the effort you opened this from.
+      </AppText>
+      <BandSection title="Power" unit="W" band={bands.power} />
+      <BandSection title="Heart rate" unit="bpm" band={bands.heartRate} />
+      <BandSection title="Elevation" unit="m" band={bands.elevation} />
+    </ScreenScroll>
   );
 }
 
@@ -80,58 +126,18 @@ function BandSection({ title, unit, band }: { title: string; unit: string; band:
     current: sample.current,
   }));
 
+  if (!hasAnyData) return <Notice tone="info">{`${title}: no data was recorded in these efforts.`}</Notice>;
+
   return (
-    <View style={styles.section}>
-      {hasAnyData ? (
-        <ChannelChart
-          title={title}
-          unit={unit}
-          series={series}
-          primaryLabel="Max"
-          comparisonLabel="Min"
-          currentLabel="This attempt"
-        />
-      ) : (
-        <Text style={styles.noDataText}>{title}: no data recorded across these attempts.</Text>
-      )}
-    </View>
+    <Card>
+      <ChannelChart
+        title={title}
+        unit={unit}
+        series={series}
+        primaryLabel="Highest"
+        comparisonLabel="Lowest"
+        currentLabel="This effort"
+      />
+    </Card>
   );
 }
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: colors.background,
-  },
-  content: {
-    paddingHorizontal: spacing.space20,
-    paddingTop: spacing.space16,
-    paddingBottom: spacing.space32,
-    gap: spacing.space20,
-  },
-  emptyState: {
-    flex: 1,
-    alignItems: "center",
-    justifyContent: "center",
-    padding: spacing.space24,
-    backgroundColor: colors.background,
-  },
-  emptyText: {
-    fontSize: 15,
-    color: colors.textSecondary,
-    textAlign: "center",
-  },
-  hint: {
-    fontSize: 13,
-    color: colors.textSecondary,
-  },
-  section: {
-    backgroundColor: colors.surface,
-    borderRadius: radius.md,
-    padding: spacing.space16,
-  },
-  noDataText: {
-    fontSize: 13,
-    color: colors.textTertiary,
-  },
-});

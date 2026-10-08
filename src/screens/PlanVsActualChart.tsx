@@ -1,20 +1,22 @@
-import { ScrollView, StyleSheet, Text, View } from "react-native";
+import { ScrollView, StyleSheet, View } from "react-native";
 import Svg, { G, Line, Rect, Text as SvgText } from "react-native-svg";
 import type { PlanVsActualZone, ZoneStatus } from "../pacing/computePlanVsActual";
-import { colors } from "../theme/colors";
+import type { ColorPalette } from "../theme/colors";
+import { AppText } from "../theme/components";
 import { spacing } from "../theme/spacing";
+import { typography } from "../theme/typography";
+import { useColors } from "../theme/useColors";
 
+/** SVG text does not follow Dynamic Type, so chart labels use the smallest readable type-scale size. */
+const CHART_LABEL_SIZE = typography.caption1.fontSize;
 const ZONE_PIXEL_WIDTH = 36;
 const BAR_WIDTH = 24;
 const AXIS_LABEL_HEIGHT = 18;
 const TOP_LABEL_HEIGHT = 14;
 
-const STATUS_COLORS: Record<ZoneStatus, string> = {
-  over: colors.statusWarning,
-  under: colors.statusInfo,
-  on: colors.statusSuccess,
-  nodata: colors.border,
-};
+function statusColors(palette: ColorPalette): Record<ZoneStatus, string> {
+  return { over: palette.statusWarning, under: palette.statusInfo, on: palette.statusSuccess, nodata: palette.border };
+}
 
 /**
  * One column per plan zone: a bar for the power actually ridden (colored by how it compared) with
@@ -23,7 +25,9 @@ const STATUS_COLORS: Record<ZoneStatus, string> = {
  * legible watt label however many there are.
  */
 export function PlanVsActualChart({ zones, height = 170 }: { zones: readonly PlanVsActualZone[]; height?: number }) {
+  const palette = useColors();
   if (zones.length === 0) return null;
+  const STATUS_COLORS = statusColors(palette);
   const width = zones.length * ZONE_PIXEL_WIDTH;
   const plotHeight = height - AXIS_LABEL_HEIGHT - TOP_LABEL_HEIGHT;
   const maxWatts = Math.max(100, ...zones.map((zone) => Math.max(zone.targetPowerWatts, zone.actualPowerWatts ?? 0))) * 1.08;
@@ -33,11 +37,15 @@ export function PlanVsActualChart({ zones, height = 170 }: { zones: readonly Pla
   for (let watts = 100; watts < maxWatts; watts += 100) gridLines.push(watts);
 
   return (
-    <View style={styles.container}>
+    <View
+      style={styles.container}
+      accessible
+      accessibilityLabel={`Bar chart of power per section, ${zones.length} sections, the power you rode against the plan's target. The same numbers are listed in section detail below.`}
+    >
       <ScrollView horizontal showsHorizontalScrollIndicator={zones.length > 8}>
         <Svg width={width} height={height} viewBox={`0 0 ${width} ${height}`}>
           {gridLines.map((watts) => (
-            <Line key={watts} x1={0} x2={width} y1={y(watts)} y2={y(watts)} stroke={colors.border} strokeWidth={0.5} />
+            <Line key={watts} x1={0} x2={width} y1={y(watts)} y2={y(watts)} stroke={palette.border} strokeWidth={0.5} />
           ))}
           {zones.map((zone) => {
             const x = zone.index * ZONE_PIXEL_WIDTH;
@@ -58,9 +66,9 @@ export function PlanVsActualChart({ zones, height = 170 }: { zones: readonly Pla
                     <SvgText
                       x={centerX}
                       y={Math.max(10, y(Math.max(actual, zone.targetPowerWatts)) - 3)}
-                      fontSize={9}
+                      fontSize={CHART_LABEL_SIZE}
                       fontWeight="700"
-                      fill={colors.textPrimary}
+                      fill={palette.textPrimary}
                       textAnchor="middle"
                     >
                       {Math.round(actual)}
@@ -72,23 +80,23 @@ export function PlanVsActualChart({ zones, height = 170 }: { zones: readonly Pla
                   x2={x + ZONE_PIXEL_WIDTH - 3}
                   y1={y(zone.targetPowerWatts)}
                   y2={y(zone.targetPowerWatts)}
-                  stroke={colors.textPrimary}
+                  stroke={palette.textPrimary}
                   strokeWidth={2.5}
                 />
-                <SvgText x={centerX} y={height - 4} fontSize={9} fill={colors.textSecondary} textAnchor="middle">
+                <SvgText x={centerX} y={height - 4} fontSize={CHART_LABEL_SIZE} fill={palette.textSecondary} textAnchor="middle">
                   {zone.index + 1}
                 </SvgText>
               </G>
             );
           })}
-          <Line x1={0} x2={width} y1={baseline} y2={baseline} stroke={colors.textSecondary} strokeWidth={1} />
+          <Line x1={0} x2={width} y1={baseline} y2={baseline} stroke={palette.textSecondary} strokeWidth={1} />
         </Svg>
       </ScrollView>
       <View style={styles.legend}>
-        <LegendItem color={colors.textPrimary} label="Plan target" tick />
-        <LegendItem color={colors.statusWarning} label="Over" />
-        <LegendItem color={colors.statusSuccess} label="On target" />
-        <LegendItem color={colors.statusInfo} label="Under" />
+        <LegendItem color={palette.textPrimary} label="Plan target" tick />
+        <LegendItem color={palette.statusWarning} label="Over" />
+        <LegendItem color={palette.statusSuccess} label="On target" />
+        <LegendItem color={palette.statusInfo} label="Under" />
       </View>
     </View>
   );
@@ -98,7 +106,9 @@ function LegendItem({ color, label, tick = false }: { color: string; label: stri
   return (
     <View style={styles.legendItem}>
       <View style={[tick ? styles.legendTick : styles.legendSwatch, { backgroundColor: color }]} />
-      <Text style={styles.legendLabel}>{label}</Text>
+      <AppText variant="caption1" color="textSecondary">
+        {label}
+      </AppText>
     </View>
   );
 }
@@ -109,5 +119,4 @@ const styles = StyleSheet.create({
   legendItem: { flexDirection: "row", alignItems: "center", gap: spacing.space4 },
   legendSwatch: { width: 10, height: 10, borderRadius: 2 },
   legendTick: { width: 14, height: 3 },
-  legendLabel: { fontSize: 12, color: colors.textSecondary },
 });

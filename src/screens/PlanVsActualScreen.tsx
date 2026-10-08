@@ -1,5 +1,5 @@
 import { useCallback, useState } from "react";
-import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import { StyleSheet, View } from "react-native";
 import { useFocusEffect, useNavigation, useRoute, type RouteProp } from "@react-navigation/native";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { useDatabase } from "../db/DatabaseProvider";
@@ -18,8 +18,10 @@ import {
 } from "../pacing/computePlanVsActual";
 import { resolvePlanForEffort, type PlanForEffort } from "../pacing/resolveSegmentPlan";
 import type { SegmentsStackParamList } from "../navigation/types";
-import { colors } from "../theme/colors";
-import { radius, spacing } from "../theme/spacing";
+import type { ColorToken } from "../theme/colors";
+import { AppText, Card, EmptyState, ErrorState, LoadingState, Notice, ScreenScroll, Section, StatRow, StatTile } from "../theme/components";
+import { spacing } from "../theme/spacing";
+import { useColors } from "../theme/useColors";
 import { formatDurationMinutesSeconds, formatRideDate } from "./formatRideStats";
 import { describeTargetOutcome } from "./describePlanPrediction";
 import { formatTimeDelta } from "./formatTimeDelta";
@@ -42,23 +44,24 @@ interface LoadedComparison {
   reference?: { durationMs: number; date: number };
 }
 
+type LoadState = LoadedComparison | "missing" | "no-plan" | "error" | undefined;
+
 /**
  * How an effort's power compared with the plan, zone by zone: summary, a plain-language read,
- * a chart of actual vs target, and a table with the time gained or lost per zone against your
- * best other attempt. The plan is the one the segment has *now* (an imported plan, else the
- * generated one for the current goal) -- not necessarily the one you rode with, and the screen
- * says so.
+ * a chart of actual vs target, and a list with the time gained or lost per zone against your
+ * best other attempt. The plan is the one your Karoo was holding for that ride when GritMap
+ * recorded the send; otherwise the segment's plan as it is today -- and the screen says which.
  */
 export function PlanVsActualScreen() {
   const database = useDatabase();
   const route = useRoute<PlanVsActualRoute>();
   const navigation = useNavigation<Navigation>();
-  const [loaded, setLoaded] = useState<LoadedComparison | "missing" | "no-plan" | undefined>(undefined);
+  const [loaded, setLoaded] = useState<LoadState>(undefined);
   const [noPlanReason, setNoPlanReason] = useState<"no-ftp" | "no-goal" | undefined>(undefined);
   const [segmentIdForLinks, setSegmentIdForLinks] = useState<string | undefined>(undefined);
 
-  useFocusEffect(
-    useCallback(() => {
+  const load = useCallback(() => {
+    try {
       const attempt = getAttemptDetail(database, route.params.attemptId);
       if (attempt === undefined) {
         setLoaded("missing");
@@ -123,39 +126,61 @@ export function PlanVsActualScreen() {
           : {}),
         ...(best === undefined ? {} : { reference: { durationMs: best.durationMs, date: best.startTimestampMs } }),
       });
-    }, [database, route.params.attemptId]),
-  );
+    } catch {
+      setLoaded("error");
+    }
+  }, [database, route.params.attemptId]);
 
-  if (loaded === undefined) return <View style={styles.container} />;
+  useFocusEffect(load);
+
+  if (loaded === undefined) {
+    return (
+      <ScreenScroll>
+        <LoadingState label="Comparing your ride with the plan…" />
+      </ScreenScroll>
+    );
+  }
+
+  if (loaded === "error") {
+    return (
+      <ErrorState
+        title="Couldn't compare this effort"
+        message="GritMap couldn't read this ride to compare it with the plan. Go back and try again."
+        onRetry={load}
+      />
+    );
+  }
 
   if (loaded === "missing") {
     return (
-      <View style={styles.emptyState}>
-        <Text style={styles.body}>This effort is no longer available.</Text>
-      </View>
+      <ErrorState
+        title="This effort is no longer available"
+        message="It may have been removed when the segment or ride changed. Go back to the segment and pick another effort."
+      />
     );
   }
 
   if (loaded === "no-plan") {
+    const needsFtp = noPlanReason === "no-ftp";
     return (
-      <View style={styles.emptyState}>
-        <Text style={styles.title}>No plan to compare against</Text>
-        <Text style={styles.body}>
-          {noPlanReason === "no-ftp"
+      <EmptyState
+        icon="flag"
+        title="No plan to compare against"
+        body={
+          needsFtp
             ? "Set your FTP, then give this segment a goal time (or import a coach plan) and this screen will line your power up against it."
-            : "Give this segment a goal time, or import a coach plan, and this screen will line your power up against it."}
-        </Text>
-        <TouchableOpacity
-          style={styles.button}
-          onPress={() =>
-            noPlanReason === "no-ftp"
-              ? navigation.navigate("ZonesSettings")
-              : segmentIdForLinks !== undefined && navigation.navigate("SegmentDetail", { segmentId: segmentIdForLinks })
-          }
-        >
-          <Text style={styles.buttonLabel}>{noPlanReason === "no-ftp" ? "Set FTP" : "Open the segment"}</Text>
-        </TouchableOpacity>
-      </View>
+            : "Give this segment a goal time, or import a coach plan, and this screen will line your power up against it."
+        }
+        actions={[
+          {
+            label: needsFtp ? "Set your FTP" : "Open the segment",
+            onPress: () =>
+              needsFtp
+                ? navigation.navigate("ZonesSettings")
+                : segmentIdForLinks !== undefined && navigation.navigate("SegmentDetail", { segmentId: segmentIdForLinks }),
+          },
+        ]}
+      />
     );
   }
 
@@ -164,35 +189,39 @@ export function PlanVsActualScreen() {
     plan.kind === "sent"
       ? `the plan sent to your Karoo on ${formatRideDate(plan.sent.sentAtMs)} (${describeSentPlanSource(plan.sent.generatorType, plan.sent.generatorModelVersion)})`
       : plan.kind === "imported"
-      ? `${PLAN_SOURCE_LABELS[plan.plan.source]}${plan.plan.authorLabel === undefined ? "" : ` · ${plan.plan.authorLabel}`}`
-      : plan.kind === "generated"
-        ? `GritMap plan for a ${formatDurationMinutesSeconds(plan.goalDurationMs)} goal at ${Math.round(plan.ftpWatts)} W FTP`
-        : "";
+        ? `${PLAN_SOURCE_LABELS[plan.plan.source]}${plan.plan.authorLabel === undefined ? "" : ` · ${plan.plan.authorLabel}`}`
+        : plan.kind === "generated"
+          ? `GritMap plan for a ${formatDurationMinutesSeconds(plan.goalDurationMs)} goal at ${Math.round(plan.ftpWatts)} W FTP`
+          : "";
 
   return (
-    <ScrollView style={styles.container} contentContainerStyle={styles.content}>
-      <Text style={styles.title}>{loaded.segment.name}</Text>
-      <Text style={styles.body}>
-        {formatRideDate(loaded.startTimestampMs)} · {formatDurationMinutesSeconds(loaded.durationMs)}
-      </Text>
-      <Text style={styles.caption}>
+    <ScreenScroll>
+      <View style={styles.heading}>
+        <AppText variant="title2" accessibilityRole="header">
+          {loaded.segment.name}
+        </AppText>
+        <AppText variant="subheadline" color="textSecondary">
+          {formatRideDate(loaded.startTimestampMs)} · {formatDurationMinutesSeconds(loaded.durationMs)}
+        </AppText>
+      </View>
+      <AppText variant="footnote" color="textSecondary">
         Compared with: {planLabel}.{" "}
         {plan.kind === "sent"
           ? "That is the plan your Karoo was holding for this ride."
           : "No send to a Karoo was recorded before this ride, so this is the segment's plan as it is today, which may differ from the plan you rode with."}
-      </Text>
+      </AppText>
 
       {!loaded.hasPowerTrack ? (
-        <Text style={styles.body}>This effort has no power data, so it can't be compared with the plan.</Text>
+        <Notice tone="info">This effort has no power data, so it can't be compared with the plan.</Notice>
       ) : (
         <>
-          <View style={styles.tiles}>
-            <Tile
+          <StatRow>
+            <StatTile
               value={summary.averageActualWatts === null ? "—" : `${Math.round(summary.averageActualWatts)} W`}
               label={`Avg power (plan ${Math.round(summary.averageTargetWatts)} W)`}
             />
-            <Tile value={`${summary.zonesOnTarget}/${zones.length}`} label="Zones on target" />
-            <Tile
+            <StatTile value={`${summary.zonesOnTarget}/${zones.length}`} label="Sections on target" />
+            <StatTile
               value={summary.totalVsReferenceMs === null ? "—" : formatTimeDelta(summary.totalVsReferenceMs)}
               label={
                 reference === undefined
@@ -200,58 +229,37 @@ export function PlanVsActualScreen() {
                   : `vs best other (${formatDurationMinutesSeconds(reference.durationMs)})`
               }
             />
-          </View>
+          </StatRow>
 
-          <View style={styles.card}>
-            {loaded.targetOutcome !== undefined && <Text style={styles.insight}>• {loaded.targetOutcome}</Text>}
+          <Card>
+            {loaded.targetOutcome === undefined ? null : <AppText variant="subheadline">• {loaded.targetOutcome}</AppText>}
             {summary.insights.map((line, index) => (
-              <Text key={index} style={styles.insight}>
+              <AppText key={index} variant="subheadline">
                 • {line}
-              </Text>
+              </AppText>
             ))}
-          </View>
+          </Card>
 
-          <Text style={styles.sectionTitle}>Power by zone</Text>
-          <PlanVsActualChart zones={zones} />
+          <Section title="Power by section" description="Each bar is one section of the segment: the power you rode, against the plan's target.">
+            <PlanVsActualChart zones={zones} />
+          </Section>
 
-          <Text style={styles.sectionTitle}>Zone detail</Text>
-          <View style={styles.table}>
-            <View style={[styles.row, styles.headerRow]}>
-              <Text style={[styles.cell, styles.cellZone, styles.headerText]}>#</Text>
-              <Text style={[styles.cell, styles.cellRange, styles.headerText]}>Distance</Text>
-              <Text style={[styles.cell, styles.cellNumber, styles.headerText]}>Plan</Text>
-              <Text style={[styles.cell, styles.cellNumber, styles.headerText]}>Actual</Text>
-              <Text style={[styles.cell, styles.cellNumber, styles.headerText]}>Δ W</Text>
-              <Text style={[styles.cell, styles.cellNumber, styles.headerText]}>Time</Text>
+          <Section title="Section detail">
+            <View>
+              {zones.map((zone) => (
+                <ZoneRow key={zone.index} zone={zone} />
+              ))}
             </View>
-            {zones.map((zone) => (
-              <View key={zone.index} style={styles.row}>
-                <Text style={[styles.cell, styles.cellZone]}>{zone.index + 1}</Text>
-                <Text style={[styles.cell, styles.cellRange]}>
-                  {Math.round(zone.startDistanceMeters)}–{Math.round(zone.endDistanceMeters)} m
-                </Text>
-                <Text style={[styles.cell, styles.cellNumber]}>{zone.targetPowerWatts}</Text>
-                <Text style={[styles.cell, styles.cellNumber]}>
-                  {zone.actualPowerWatts === null ? "—" : Math.round(zone.actualPowerWatts)}
-                </Text>
-                <Text style={[styles.cell, styles.cellNumber, deviationStyle(zone)]}>
-                  {zone.deviationWatts === null ? "—" : `${zone.deviationWatts > 0 ? "+" : ""}${Math.round(zone.deviationWatts)}`}
-                </Text>
-                <Text style={[styles.cell, styles.cellNumber]}>
-                  {zone.timeVsReferenceMs === null ? "—" : formatTimeDelta(zone.timeVsReferenceMs)}
-                </Text>
-              </View>
-            ))}
-          </View>
-          {reference !== undefined && (
-            <Text style={styles.caption}>
-              "Time" is gained (−) or lost (+) in that zone against your best other attempt, from{" "}
-              {formatRideDate(reference.date)}.
-            </Text>
-          )}
+            {reference === undefined ? null : (
+              <AppText variant="footnote" color="textSecondary">
+                "Time" is gained (−) or lost (+) in that section against your best other attempt, from{" "}
+                {formatRideDate(reference.date)}.
+              </AppText>
+            )}
+          </Section>
         </>
       )}
-    </ScrollView>
+    </ScreenScroll>
   );
 }
 
@@ -263,60 +271,48 @@ function describeSentPlanSource(generatorType: string, modelVersion: string): st
   return "imported plan";
 }
 
-function deviationStyle(zone: PlanVsActualZone) {
-  if (zone.status === "over") return styles.over;
-  if (zone.status === "under") return styles.under;
-  return undefined;
-}
+const STATUS_PRESENTATION: Record<PlanVsActualZone["status"], { label: string; color: ColorToken }> = {
+  over: { label: "Over plan", color: "statusWarning" },
+  under: { label: "Under plan", color: "statusInfo" },
+  on: { label: "On target", color: "statusSuccess" },
+  nodata: { label: "No power data", color: "textSecondary" },
+};
 
-function Tile({ value, label }: { value: string; label: string }) {
+function ZoneRow({ zone }: { zone: PlanVsActualZone }) {
+  const palette = useColors();
+  const status = STATUS_PRESENTATION[zone.status];
+  const range = `${Math.round(zone.startDistanceMeters)}–${Math.round(zone.endDistanceMeters)} m`;
+  const actual = zone.actualPowerWatts === null ? "no power" : `${Math.round(zone.actualPowerWatts)} W`;
+  const deviation =
+    zone.deviationWatts === null ? undefined : `${zone.deviationWatts > 0 ? "+" : ""}${Math.round(zone.deviationWatts)} W`;
+  const time = zone.timeVsReferenceMs === null ? undefined : formatTimeDelta(zone.timeVsReferenceMs);
+  const details = [`Plan ${zone.targetPowerWatts} W`, `Actual ${actual}`, ...(time === undefined ? [] : [`Time ${time}`])].join(" · ");
   return (
-    <View style={styles.tile}>
-      <Text style={styles.tileValue}>{value}</Text>
-      <Text style={styles.tileLabel}>{label}</Text>
+    <View
+      accessible
+      accessibilityLabel={`Section ${zone.index + 1}, ${range}. ${status.label}${deviation === undefined ? "" : `, ${deviation}`}. ${details}`}
+      style={[styles.zoneRow, { borderBottomColor: palette.border }]}
+    >
+      <View style={styles.zoneRowTop}>
+        <AppText variant="subheadline" style={styles.zoneTitle}>
+          {zone.index + 1} · {range}
+        </AppText>
+        <AppText variant="subheadline" color={status.color} style={styles.zoneStatus}>
+          {status.label}
+          {deviation === undefined ? "" : ` ${deviation}`}
+        </AppText>
+      </View>
+      <AppText variant="footnote" color="textSecondary">
+        {details}
+      </AppText>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: colors.background },
-  content: { paddingHorizontal: spacing.space20, paddingTop: spacing.space16, paddingBottom: spacing.space32, gap: spacing.space16 },
-  emptyState: { flex: 1, backgroundColor: colors.background, padding: spacing.space20, gap: spacing.space16, justifyContent: "center" },
-  title: { fontSize: 22, fontWeight: "700", color: colors.textPrimary },
-  body: { fontSize: 14, color: colors.textSecondary, lineHeight: 20 },
-  caption: { fontSize: 12, color: colors.textTertiary, lineHeight: 17 },
-  sectionTitle: { fontSize: 16, fontWeight: "700", color: colors.textPrimary },
-  button: { backgroundColor: colors.brand, borderRadius: radius.md, paddingVertical: spacing.space12, alignItems: "center" },
-  buttonLabel: { color: colors.textOnBrand, fontSize: 15, fontWeight: "600" },
-  tiles: { flexDirection: "row", gap: spacing.space8 },
-  tile: {
-    flex: 1,
-    backgroundColor: colors.surface,
-    borderRadius: radius.md,
-    borderWidth: 1,
-    borderColor: colors.border,
-    padding: spacing.space12,
-    gap: spacing.space4,
-  },
-  tileValue: { fontSize: 18, fontWeight: "700", color: colors.textPrimary },
-  tileLabel: { fontSize: 11, color: colors.textSecondary, lineHeight: 15 },
-  card: {
-    backgroundColor: colors.surface,
-    borderRadius: radius.md,
-    borderWidth: 1,
-    borderColor: colors.border,
-    padding: spacing.space16,
-    gap: spacing.space8,
-  },
-  insight: { fontSize: 14, color: colors.textPrimary, lineHeight: 20 },
-  table: { borderWidth: 1, borderColor: colors.border, borderRadius: radius.md, overflow: "hidden" },
-  row: { flexDirection: "row", paddingVertical: spacing.space8, paddingHorizontal: spacing.space8, borderTopWidth: 1, borderTopColor: colors.border },
-  headerRow: { backgroundColor: colors.surface, borderTopWidth: 0 },
-  headerText: { fontWeight: "700", color: colors.textSecondary },
-  cell: { fontSize: 13, color: colors.textPrimary },
-  cellZone: { width: 26 },
-  cellRange: { flex: 1.6 },
-  cellNumber: { flex: 1, textAlign: "right" },
-  over: { color: colors.statusWarning, fontWeight: "600" },
-  under: { color: colors.statusInfo, fontWeight: "600" },
+  heading: { gap: spacing.space4 },
+  zoneRow: { paddingVertical: spacing.space12, gap: spacing.space2, borderBottomWidth: 1 },
+  zoneRowTop: { flexDirection: "row", flexWrap: "wrap", justifyContent: "space-between", gap: spacing.space8 },
+  zoneTitle: { fontWeight: "600" },
+  zoneStatus: { fontWeight: "600" },
 });

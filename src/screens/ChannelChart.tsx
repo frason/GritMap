@@ -1,7 +1,9 @@
-import { StyleSheet, Text, View } from "react-native";
+import { StyleSheet, View } from "react-native";
 import Svg, { Polygon, Polyline } from "react-native-svg";
-import { colors } from "../theme/colors";
+import type { ColorToken } from "../theme/colors";
+import { AppText } from "../theme/components";
 import { spacing } from "../theme/spacing";
+import { useColors } from "../theme/useColors";
 
 export interface ChannelSeriesPoint {
   distanceMeters: number;
@@ -17,7 +19,7 @@ export interface ChannelChartProps {
   unit: string;
   series: readonly ChannelSeriesPoint[];
   /** Primary line color; comparison always renders in colors.textTertiary. */
-  primaryColor?: keyof typeof colors;
+  primaryColor?: ColorToken;
   height?: number;
   primaryLabel?: string;
   comparisonLabel?: string;
@@ -44,6 +46,7 @@ export function ChannelChart({
   comparisonLabel = "Comparison",
   currentLabel = "Current",
 }: ChannelChartProps) {
+  const palette = useColors();
   if (series.length === 0) {
     return null;
   }
@@ -68,28 +71,34 @@ export function ChannelChart({
   const currentPolylines = buildPolylines(series, (point) => point.current ?? null, toX, toY);
 
   return (
-    <View style={styles.container}>
+    <View
+      style={styles.container}
+      accessible
+      accessibilityLabel={`${title} chart, from ${formatValue(minValue)} to ${formatValue(maxValue)} ${unit}. Lines: ${[hasCurrent ? currentLabel : undefined, primaryLabel, comparisonLabel].filter((label) => label !== undefined).join(", ")}.`}
+    >
       <View style={styles.header}>
-        <Text style={styles.title}>{title}</Text>
+        <AppText variant="subheadline" style={styles.title} accessibilityRole="header">
+          {title}
+        </AppText>
         <View style={styles.legend}>
           {hasCurrent && <LegendDot color="textPrimary" label={currentLabel} />}
           <LegendDot color={primaryColor} label={primaryLabel} />
           <LegendDot color="textTertiary" label={comparisonLabel} />
         </View>
       </View>
-      <Text style={styles.axisLabel}>
+      <AppText variant="caption1" color="textTertiary">
         {formatValue(maxValue)} {unit}
-      </Text>
+      </AppText>
       <Svg width="100%" height={height} viewBox={`0 0 ${VIEWBOX_WIDTH} ${height}`} preserveAspectRatio="none">
         {bandPolygons.map((points, index) => (
-          <Polygon key={index} points={points} fill={colors.brandSubtle} opacity={0.7} />
+          <Polygon key={index} points={points} fill={palette.brandSubtle} opacity={0.7} />
         ))}
         {comparisonPolylines.map((points, index) => (
           <Polyline
             key={index}
             points={points}
             fill="none"
-            stroke={colors.textTertiary}
+            stroke={palette.textTertiary}
             strokeWidth={2}
           />
         ))}
@@ -98,7 +107,7 @@ export function ChannelChart({
             key={index}
             points={points}
             fill="none"
-            stroke={colors[primaryColor]}
+            stroke={palette[primaryColor]}
             strokeWidth={2}
           />
         ))}
@@ -107,23 +116,26 @@ export function ChannelChart({
             key={index}
             points={points}
             fill="none"
-            stroke={colors.textPrimary}
+            stroke={palette.textPrimary}
             strokeWidth={3}
           />
         ))}
       </Svg>
-      <Text style={styles.axisLabel}>
+      <AppText variant="caption1" color="textTertiary">
         {formatValue(minValue)} {unit}
-      </Text>
+      </AppText>
     </View>
   );
 }
 
-function LegendDot({ color, label }: { color: keyof typeof colors; label: string }) {
+function LegendDot({ color, label }: { color: ColorToken; label: string }) {
+  const palette = useColors();
   return (
     <View style={styles.legendItem}>
-      <View style={[styles.legendDot, { backgroundColor: colors[color] }]} />
-      <Text style={styles.legendLabel}>{label}</Text>
+      <View style={[styles.legendDot, { backgroundColor: palette[color] }]} />
+      <AppText variant="caption1" color="textSecondary">
+        {label}
+      </AppText>
     </View>
   );
 }
@@ -192,16 +204,17 @@ const styles = StyleSheet.create({
   },
   header: {
     flexDirection: "row",
+    flexWrap: "wrap",
     justifyContent: "space-between",
     alignItems: "center",
+    gap: spacing.space8,
   },
   title: {
-    fontSize: 14,
     fontWeight: "600",
-    color: colors.textPrimary,
   },
   legend: {
     flexDirection: "row",
+    flexWrap: "wrap",
     gap: spacing.space12,
   },
   legendItem: {
@@ -213,13 +226,5 @@ const styles = StyleSheet.create({
     width: 8,
     height: 8,
     borderRadius: 4,
-  },
-  legendLabel: {
-    fontSize: 11,
-    color: colors.textSecondary,
-  },
-  axisLabel: {
-    fontSize: 11,
-    color: colors.textTertiary,
   },
 });

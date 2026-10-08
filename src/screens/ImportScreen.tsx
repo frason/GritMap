@@ -5,8 +5,7 @@ import { readAsStringAsync } from "expo-file-system/legacy";
 import type { BottomTabNavigationProp } from "@react-navigation/bottom-tabs";
 import { useNavigation } from "@react-navigation/native";
 import { useRef, useState } from "react";
-import { Alert, FlatList, StyleSheet, Text, TouchableOpacity, View } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
+import { View } from "react-native";
 import { useDatabase } from "../db/DatabaseProvider";
 import { importSegmentJsonText } from "../db/importSegmentJsonText";
 import { computeFileHash } from "../import/computeFileHash";
@@ -16,9 +15,8 @@ import { deleteRetainedFile, retainRideFile } from "../import/retainFitFile";
 import { readTextWithFallback } from "../import/readTextWithFallback";
 import { runMatcherForRide, runMatcherForSegment } from "../matcher/runMatcher";
 import type { RootTabParamList } from "../navigation/types";
-import { colors } from "../theme/colors";
-import { Icon } from "../theme/Icon";
-import { radius, spacing } from "../theme/spacing";
+import { AppText, Button, Notice, ScreenScroll, Section, type NoticeTone } from "../theme/components";
+import { describeImportProgress, describeImportSummary } from "./describeImportSummary";
 import { DuplicateDecisionModal } from "./DuplicateDecisionModal";
 import { ImportFileRow, type ImportRowStatus } from "./ImportFileRow";
 
@@ -34,12 +32,21 @@ interface PendingDuplicate {
   matchedRule: DuplicateRule;
 }
 
+interface SegmentImportResult {
+  tone: NoticeTone;
+  text: string;
+  /** Set when the segment is already in the library: offers a way to open it. */
+  openSegmentId?: string;
+}
+
 const generateId = () => Crypto.randomUUID();
 
 export function ImportScreen() {
   const database = useDatabase();
   const navigation = useNavigation();
   const [isImportingSegment, setIsImportingSegment] = useState(false);
+  const [segmentResult, setSegmentResult] = useState<SegmentImportResult | undefined>(undefined);
+  const [pickerError, setPickerError] = useState<string | undefined>(undefined);
   const [rows, setRows] = useState<FileRowState[]>([]);
   const [isImporting, setIsImporting] = useState(false);
   const [pendingDuplicate, setPendingDuplicate] = useState<PendingDuplicate | null>(null);
@@ -136,11 +143,18 @@ export function ImportScreen() {
    * plan can be created and sent back. Existing rides are matched against it straight away.
    */
   async function handleImportSegmentJsonPress() {
-    const picked = await DocumentPicker.getDocumentAsync({
-      multiple: false,
-      type: "*/*",
-      copyToCacheDirectory: true,
-    });
+    setSegmentResult(undefined);
+    let picked: DocumentPicker.DocumentPickerResult;
+    try {
+      picked = await DocumentPicker.getDocumentAsync({
+        multiple: false,
+        type: "*/*",
+        copyToCacheDirectory: true,
+      });
+    } catch (error) {
+      setSegmentResult({ tone: "error", text: `GritMap couldn't open the file picker. ${error instanceof Error ? error.message : ""}`.trim() });
+      return;
+    }
     if (picked.canceled) return;
     const asset = picked.assets[0];
     if (!asset) return;
@@ -158,33 +172,47 @@ export function ImportScreen() {
       ]);
       const result = await importSegmentJsonText(database, generateId, text, Date.now());
       if (result.status === "invalid") {
-        Alert.alert("Couldn't import segment", `${asset.name}: ${result.error}`);
+        setSegmentResult({ tone: "error", text: `${asset.name} couldn't be added as a segment: ${result.error}` });
         return;
       }
       if (result.status === "imported") {
         runMatcherForSegment(database, generateId, result.segmentId, Date.now());
       }
-      // Import lives in the Rides stack, SegmentDetail in the Segments stack: go through the tab navigator.
-      const openSegment = () =>
-        navigation
-          .getParent<BottomTabNavigationProp<RootTabParamList>>()
-          ?.navigate("SegmentsTab", { screen: "SegmentDetail", params: { segmentId: result.segmentId } });
       if (result.status === "already-imported") {
-        Alert.alert("Already in your library", `${asset.name} is a segment you already have.`, [
-          { text: "Open it", onPress: openSegment },
-        ]);
+        setSegmentResult({
+          tone: "info",
+          text: `${asset.name} is a segment you already have.`,
+          openSegmentId: result.segmentId,
+        });
       } else {
-        openSegment();
+        openSegment(result.segmentId);
       }
     } catch (error) {
-      Alert.alert("Couldn't import segment", error instanceof Error ? error.message : String(error));
+      setSegmentResult({
+        tone: "error",
+        text: `${asset.name} couldn't be read. ${error instanceof Error ? error.message : String(error)}`,
+      });
     } finally {
       setIsImportingSegment(false);
     }
   }
 
+  // Import lives in the Rides stack, SegmentDetail in the Segments stack: go through the tab navigator.
+  function openSegment(segmentId: string) {
+    navigation
+      .getParent<BottomTabNavigationProp<RootTabParamList>>()
+      ?.navigate("SegmentsTab", { screen: "SegmentDetail", params: { segmentId } });
+  }
+
   async function handleImportPress() {
-    const picked = await DocumentPicker.getDocumentAsync({ multiple: true, type: "*/*" });
+    setPickerError(undefined);
+    let picked: DocumentPicker.DocumentPickerResult;
+    try {
+      picked = await DocumentPicker.getDocumentAsync({ multiple: true, type: "*/*" });
+    } catch (error) {
+      setPickerError(`GritMap couldn't open the file picker. ${error instanceof Error ? error.message : ""}`.trim());
+      return;
+    }
     if (picked.canceled) return;
 
     const newRows: FileRowState[] = picked.assets.map((asset) => ({
@@ -214,58 +242,70 @@ export function ImportScreen() {
     },
     { imported: 0, replaced: 0, duplicate: 0, failed: 0 },
   );
+  const handled = totals.imported + totals.replaced + totals.duplicate + totals.failed;
+  const summary = describeImportSummary(totals);
 
   return (
-    <SafeAreaView style={styles.container} edges={["bottom"]}>
-      {rows.length === 0 ? (
-        <View style={styles.emptyState}>
-          <Icon name="file" color="textTertiary" size={40} />
-          <Text style={styles.emptyTitle}>Select FIT or GPX files to import</Text>
-          <TouchableOpacity
-            style={styles.primaryButton}
-            onPress={handleImportPress}
-            disabled={isImporting}
-          >
-            <Text style={styles.primaryButtonLabel}>
-              {isImporting ? "Importing…" : "Choose Files"}
-            </Text>
-          </TouchableOpacity>
-          <TouchableOpacity onPress={handleImportSegmentJsonPress} disabled={isImportingSegment}>
-            <Text style={styles.segmentLink}>{isImportingSegment ? "Importing segment…" : "Import Segment JSON"}</Text>
-          </TouchableOpacity>
-          <Text style={styles.segmentHint}>
-            For a segment file moved from the Karoo or shared by someone else. It is added to your Segments, not Rides.
-          </Text>
-        </View>
-      ) : (
-        <>
-          <FlatList
-            data={rows}
-            keyExtractor={(row) => row.id}
-            renderItem={({ item }) => (
-              <ImportFileRow filename={item.filename} status={item.status} />
-            )}
-          />
-          <View style={styles.footer}>
-            <Text style={styles.footerText}>
-              Imported: {totals.imported} · Replaced: {totals.replaced} · Duplicate:{" "}
-              {totals.duplicate} · Failed: {totals.failed}
-            </Text>
-            <TouchableOpacity
-              style={styles.secondaryButton}
-              onPress={handleImportPress}
-              disabled={isImporting}
-            >
-              <Text style={styles.secondaryButtonLabel}>
-                {isImporting ? "Importing…" : "Add More Files"}
-              </Text>
-            </TouchableOpacity>
-            <TouchableOpacity onPress={handleImportSegmentJsonPress} disabled={isImportingSegment}>
-              <Text style={styles.segmentLink}>{isImportingSegment ? "Importing segment…" : "Import Segment JSON"}</Text>
-            </TouchableOpacity>
+    <ScreenScroll>
+      <Section
+        title="Ride files"
+        description="Choose the FIT or GPX files from your bike computer or a ride app. GritMap adds them to Rides and checks them against your segments."
+      >
+        <Button
+          label={rows.length === 0 ? "Choose ride files" : "Add more ride files"}
+          icon="download"
+          onPress={handleImportPress}
+          loading={isImporting}
+        />
+        {pickerError === undefined ? null : <Notice tone="error" live>{pickerError}</Notice>}
+      </Section>
+
+      {rows.length === 0 ? null : (
+        <Section title="Results">
+          {isImporting ? (
+            <AppText variant="subheadline" color="textSecondary" accessibilityLiveRegion="polite">
+              {describeImportProgress(handled, rows.length)}
+            </AppText>
+          ) : (
+            <Notice tone={summary.tone === "error" ? "error" : summary.tone === "warning" ? "warning" : "success"} live>
+              {summary.text}
+            </Notice>
+          )}
+          <View>
+            {rows.map((row) => (
+              <ImportFileRow key={row.id} filename={row.filename} status={row.status} />
+            ))}
           </View>
-        </>
+        </Section>
       )}
+
+      <Section
+        title="Segment file"
+        description="For a segment file moved from your Karoo or shared by someone else (it ends in .json). It is added to your Segments, not Rides."
+      >
+        <Button
+          label="Import a segment file"
+          icon="download"
+          variant="secondary"
+          onPress={handleImportSegmentJsonPress}
+          loading={isImportingSegment}
+        />
+        {segmentResult === undefined ? null : (
+          <>
+            <Notice tone={segmentResult.tone} live>
+              {segmentResult.text}
+            </Notice>
+            {segmentResult.openSegmentId === undefined ? null : (
+              <Button
+                label="Open that segment"
+                variant="tertiary"
+                fullWidth={false}
+                onPress={() => openSegment(segmentResult.openSegmentId!)}
+              />
+            )}
+          </>
+        )}
+      </Section>
 
       {pendingDuplicate && (
         <DuplicateDecisionModal
@@ -276,75 +316,6 @@ export function ImportScreen() {
           onReplaceExisting={() => resolveDuplicate("replace")}
         />
       )}
-    </SafeAreaView>
+    </ScreenScroll>
   );
 }
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: colors.background,
-  },
-  emptyState: {
-    flex: 1,
-    alignItems: "center",
-    justifyContent: "center",
-    gap: spacing.space16,
-    paddingHorizontal: spacing.space24,
-  },
-  emptyTitle: {
-    fontSize: 15,
-    color: colors.textSecondary,
-    textAlign: "center",
-  },
-  footer: {
-    borderTopWidth: 1,
-    borderTopColor: colors.border,
-    backgroundColor: colors.surface,
-    paddingHorizontal: spacing.space20,
-    paddingTop: spacing.space16,
-    paddingBottom: spacing.space16,
-    alignItems: "center",
-    gap: spacing.space12,
-  },
-  footerText: {
-    fontSize: 13,
-    color: colors.textSecondary,
-    textAlign: "center",
-  },
-  primaryButton: {
-    backgroundColor: colors.brand,
-    borderRadius: radius.md,
-    paddingVertical: spacing.space12,
-    paddingHorizontal: spacing.space24,
-  },
-  primaryButtonLabel: {
-    color: colors.textOnBrand,
-    fontSize: 15,
-    fontWeight: "600",
-  },
-  segmentLink: {
-    color: colors.brand,
-    fontSize: 15,
-    fontWeight: "600",
-    paddingVertical: spacing.space8,
-  },
-  segmentHint: {
-    fontSize: 12,
-    color: colors.textTertiary,
-    textAlign: "center",
-  },
-  secondaryButton: {
-    backgroundColor: colors.brandSubtle,
-    borderRadius: radius.md,
-    paddingVertical: spacing.space12,
-    paddingHorizontal: spacing.space24,
-    alignSelf: "stretch",
-    alignItems: "center",
-  },
-  secondaryButtonLabel: {
-    color: colors.brand,
-    fontSize: 15,
-    fontWeight: "600",
-  },
-});

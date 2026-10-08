@@ -1,5 +1,5 @@
 import { useCallback, useState } from "react";
-import { ScrollView, StyleSheet, View } from "react-native";
+import { StyleSheet, View } from "react-native";
 import { useFocusEffect, useRoute, type RouteProp } from "@react-navigation/native";
 import { useDatabase } from "../db/DatabaseProvider";
 import { getSegmentDetail, type SegmentDetail } from "../db/getSegmentDetail";
@@ -8,9 +8,7 @@ import { getSavedKarooAddress, saveKarooAddress } from "../karoo/savedKarooAddre
 import { sendSegmentToKaroo } from "../karoo/sendSegmentToKaroo";
 import type { SegmentsStackParamList } from "../navigation/types";
 import { KAROO_ADDRESS_EXAMPLE, KAROO_RECEIVE_SCREEN, KAROO_STEPS } from "../onboarding/onboardingCopy";
-import { colors } from "../theme/colors";
-import { AppText, Button, Card, TextField } from "../theme/components";
-import { SCREEN_PADDING } from "../theme/layout";
+import { AppText, Button, Card, ErrorState, LoadingState, Notice, ScreenScroll, TextField } from "../theme/components";
 import { spacing } from "../theme/spacing";
 
 type SendToKarooRoute = RouteProp<SegmentsStackParamList, "SendToKaroo">;
@@ -23,17 +21,24 @@ type SendToKarooRoute = RouteProp<SegmentsStackParamList, "SendToKaroo">;
 export function SendToKarooScreen() {
   const database = useDatabase();
   const route = useRoute<SendToKarooRoute>();
+  const [loadState, setLoadState] = useState<"loading" | "ready" | "missing" | "error">("loading");
   const [segment, setSegment] = useState<SegmentDetail | undefined>(undefined);
   const [karooAddress, setKarooAddress] = useState("");
   const [sending, setSending] = useState(false);
   const [sendStatus, setSendStatus] = useState<{ text: string; ok: boolean } | undefined>(undefined);
 
-  useFocusEffect(
-    useCallback(() => {
-      setSegment(getSegmentDetail(database, route.params.segmentId));
+  const load = useCallback(() => {
+    try {
+      const detail = getSegmentDetail(database, route.params.segmentId);
+      setSegment(detail);
       setKarooAddress((current) => (current === "" ? (getSavedKarooAddress(database) ?? "") : current));
-    }, [database, route.params.segmentId]),
-  );
+      setLoadState(detail === undefined ? "missing" : "ready");
+    } catch {
+      setLoadState("error");
+    }
+  }, [database, route.params.segmentId]);
+
+  useFocusEffect(load);
 
   async function handleSend() {
     if (segment === undefined) return;
@@ -50,12 +55,22 @@ export function SendToKarooScreen() {
     setSendStatus({ text: describeSendResult(result, trimmed), ok: result.ok });
   }
 
-  if (segment === undefined) {
-    return <View style={styles.container} />;
+  if (loadState === "loading") {
+    return (
+      <ScreenScroll>
+        <LoadingState label="Loading segment…" />
+      </ScreenScroll>
+    );
+  }
+  if (loadState === "error") {
+    return <ErrorState message="GritMap couldn't open this segment. Go back and try again." onRetry={load} />;
+  }
+  if (loadState === "missing" || segment === undefined) {
+    return <ErrorState title="This segment is no longer available" message="It may have been removed. Go back to your segments and pick another." />;
   }
 
   return (
-    <ScrollView style={styles.container} contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
+    <ScreenScroll>
       <AppText variant="body" color="textSecondary">
         Send this segment's route to your Karoo so it can find the start when you ride. This sends the route only; open the segment's pacing plan to send a plan as well.
       </AppText>
@@ -89,24 +104,17 @@ export function SendToKarooScreen() {
         returnKeyType="send"
         onSubmitEditing={handleSend}
       />
-      <Button label="Send to Karoo" onPress={handleSend} loading={sending} />
+      <Button label="Send route to Karoo" onPress={handleSend} loading={sending} />
       {sendStatus === undefined ? null : (
-        <AppText
-          variant="subheadline"
-          color={sendStatus.ok ? "statusSuccess" : "statusDanger"}
-          accessibilityRole="alert"
-          accessibilityLiveRegion="polite"
-        >
+        <Notice tone={sendStatus.ok ? "success" : "error"} live>
           {sendStatus.text}
-        </AppText>
+        </Notice>
       )}
-    </ScrollView>
+    </ScreenScroll>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: colors.background },
-  content: { paddingHorizontal: SCREEN_PADDING, paddingTop: spacing.space16, paddingBottom: spacing.space32, gap: spacing.space16 },
   step: { flexDirection: "row", gap: spacing.space8, alignItems: "flex-start" },
   stepNumber: { fontWeight: "600", minWidth: 20 },
   stepText: { flex: 1, gap: spacing.space2 },

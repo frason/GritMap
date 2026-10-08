@@ -1,6 +1,6 @@
 import { View } from "react-native";
 import Svg, { Polyline } from "react-native-svg";
-import { colors } from "../theme/colors";
+import { useColors } from "../theme/useColors";
 import type { SegmentReferencePoint } from "../segments/resamplePolyline";
 
 export interface ElevationSparklineProps {
@@ -15,6 +15,7 @@ export interface ElevationSparklineProps {
  * breakdown). Renders nothing when the segment has fewer than two elevation samples.
  */
 export function ElevationSparkline({ referencePolyline, width = 64, height = 28 }: ElevationSparklineProps) {
+  const palette = useColors();
   const points = referencePolyline.filter((point) => point.elevationMeters !== undefined);
   if (points.length < 2) return null;
 
@@ -32,12 +33,12 @@ export function ElevationSparkline({ referencePolyline, width = 64, height = 28 
     .join(" ");
 
   return (
-    <View>
+    <View accessibilityElementsHidden importantForAccessibility="no-hide-descendants">
       <Svg width={width} height={height} viewBox={`0 0 ${width} ${height}`}>
         <Polyline
           points={polylinePoints}
           fill="none"
-          stroke={colors.brand}
+          stroke={palette.brand}
           strokeWidth={2}
           strokeLinecap="round"
           strokeLinejoin="round"

@@ -26,6 +26,8 @@ export function ScreenScroll({ children, padded = true, scrollRef }: Props) {
       contentContainerStyle={padded ? styles.padded : styles.flush}
       contentInsetAdjustmentBehavior="automatic"
       keyboardShouldPersistTaps="handled"
+      keyboardDismissMode="interactive"
+      automaticallyAdjustKeyboardInsets
     >
       {children}
     </ScrollView>

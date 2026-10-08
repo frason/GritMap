@@ -1,7 +1,10 @@
-import { ScrollView, StyleSheet, Text, View } from "react-native";
+import { ScrollView, StyleSheet, View } from "react-native";
 import Svg, { Line, Polyline, Rect, Text as SvgText } from "react-native-svg";
-import { colors } from "../theme/colors";
+import type { ColorPalette } from "../theme/colors";
+import { AppText } from "../theme/components";
 import { spacing } from "../theme/spacing";
+import { typography } from "../theme/typography";
+import { useColors } from "../theme/useColors";
 import { computeAdaptiveZoneGrades } from "../pacing/computeZoneGrades";
 import type { PacingClassification } from "../pacing/buildTargetPowerZones";
 import type { SegmentReferencePoint } from "../segments/resamplePolyline";
@@ -29,15 +32,22 @@ export interface ElevationProfileChartProps {
  * actually trigger, not the primary sizing mechanism it was before.
  */
 const ZONE_PIXEL_WIDTH = 36;
-const MIN_LABEL_BAND_WIDTH = 26;
 const MIN_CHART_WIDTH = 240;
+/** Watt labels sit in their own strip above the plot so they never collide with the elevation line. */
+const LABEL_STRIP_HEIGHT = 20;
+const LABEL_FONT_SIZE = typography.caption1.fontSize;
+/** Wider than this and the chart scrolls sideways on a phone. */
+const SCROLL_HINT_MIN_WIDTH = 340;
 
 /** Differ in lightness, not just hue (easier to tell apart than red/green at a glance). */
-const CLASSIFICATION_COLORS: Record<PacingClassification, { fill: string; accent: string }> = {
-  REST: { fill: colors.statusInfoSubtle, accent: colors.statusInfo },
-  HOLD: { fill: colors.surface, accent: colors.textSecondary },
-  PUSH: { fill: colors.statusWarningSubtle, accent: colors.statusWarning },
-};
+function classificationColors(palette: ColorPalette): Record<PacingClassification, { fill: string; accent: string }> {
+  return {
+    REST: { fill: palette.statusInfoSubtle, accent: palette.statusInfo },
+    // The page background, not the card's white, so a Hold band is still visibly a band.
+    HOLD: { fill: palette.background, accent: palette.textSecondary },
+    PUSH: { fill: palette.statusWarningSubtle, accent: palette.statusWarning },
+  };
+}
 
 /**
  * The segment's full elevation profile, broken down by the same quarter-mile zones the
@@ -50,6 +60,8 @@ const CLASSIFICATION_COLORS: Record<PacingClassification, { fill: string; accent
  * matters more here since the point is reading each quarter-mile's own number.
  */
 export function ElevationProfileChart({ referencePolyline, zones, height = 150 }: ElevationProfileChartProps) {
+  const palette = useColors();
+  const CLASSIFICATION_COLORS = classificationColors(palette);
   const points = referencePolyline.filter((point) => point.elevationMeters !== undefined);
   if (points.length < 2) return null;
 
@@ -75,7 +87,9 @@ export function ElevationProfileChart({ referencePolyline, zones, height = 150 }
     }
     return chartWidth;
   };
-  const toY = (elevationMeters: number) => height - ((elevationMeters - minElevation) / elevationRange) * height;
+  const plotTop = zones === undefined ? 0 : LABEL_STRIP_HEIGHT;
+  const plotHeight = height - plotTop;
+  const toY = (elevationMeters: number) => plotTop + plotHeight - ((elevationMeters - minElevation) / elevationRange) * plotHeight;
 
   const polylinePoints = points
     .map((point) => `${toX(point.distanceMeters)},${toY(point.elevationMeters!)}`)
@@ -83,8 +97,14 @@ export function ElevationProfileChart({ referencePolyline, zones, height = 150 }
   const boundaries = zoneWindows.map((_, index) => index * ZONE_PIXEL_WIDTH);
   boundaries.push(zoneWindows.length * ZONE_PIXEL_WIDTH);
 
+  const wattTargets = zones?.map((zone) => zone.targetPowerWatts) ?? [];
+  const summary =
+    zones === undefined
+      ? `Elevation profile, ${Math.round(minElevation)} to ${Math.round(maxElevation)} metres, ${zoneWindows.length} sections.`
+      : `Pacing plan chart over the elevation profile: ${zones.length} sections, target power from ${Math.min(...wattTargets)} to ${Math.max(...wattTargets)} watts.`;
+
   return (
-    <View style={styles.container}>
+    <View style={styles.container} accessible accessibilityLabel={summary}>
       <ScrollView horizontal showsHorizontalScrollIndicator={zoneWindows.length > 6}>
         <Svg width={chartWidth} height={height} viewBox={`0 0 ${chartWidth} ${height}`}>
           {zones !== undefined &&
@@ -105,44 +125,49 @@ export function ElevationProfileChart({ referencePolyline, zones, height = 150 }
               y1={0}
               x2={x}
               y2={height}
-              stroke={zones !== undefined ? colors.surface : colors.border}
+              stroke={zones !== undefined ? palette.surface : palette.border}
               strokeWidth={zones !== undefined ? 1.5 : 1}
             />
           ))}
           <Polyline
             points={polylinePoints}
             fill="none"
-            stroke={colors.textPrimary}
+            stroke={palette.textPrimary}
             strokeWidth={2.5}
             strokeLinecap="round"
             strokeLinejoin="round"
           />
           {zones !== undefined &&
             zones.map((zone, index) => {
-              if (ZONE_PIXEL_WIDTH < MIN_LABEL_BAND_WIDTH) return null;
               const centerX = index * ZONE_PIXEL_WIDTH + ZONE_PIXEL_WIDTH / 2;
               return (
                 <SvgText
                   key={index}
                   x={centerX}
-                  y={height - 6}
-                  fontSize={9}
+                  y={LABEL_STRIP_HEIGHT - 6}
+                  fontSize={LABEL_FONT_SIZE}
                   fontWeight="700"
                   fill={CLASSIFICATION_COLORS[zone.classification].accent}
                   textAnchor="middle"
                 >
-                  {zone.targetPowerWatts}W
+                  {zone.targetPowerWatts}
                 </SvgText>
               );
             })}
         </Svg>
       </ScrollView>
       {zones !== undefined && (
-        <View style={styles.legend}>
-          <LegendDot color={CLASSIFICATION_COLORS.REST.accent} label="Rest" />
-          <LegendDot color={CLASSIFICATION_COLORS.HOLD.accent} label="Hold" />
-          <LegendDot color={CLASSIFICATION_COLORS.PUSH.accent} label="Push" />
-        </View>
+        <>
+          <View style={styles.legend}>
+            <LegendDot color={CLASSIFICATION_COLORS.REST.accent} label="Rest: ease off" />
+            <LegendDot color={CLASSIFICATION_COLORS.HOLD.accent} label="Hold: steady" />
+            <LegendDot color={CLASSIFICATION_COLORS.PUSH.accent} label="Push: ride harder" />
+          </View>
+          <AppText variant="caption1" color="textSecondary">
+            The number above each column is that section's target power in watts.
+            {chartWidth > SCROLL_HINT_MIN_WIDTH ? " Scroll sideways to see the whole segment." : ""}
+          </AppText>
+        </>
       )}
     </View>
   );
@@ -152,7 +177,9 @@ function LegendDot({ color, label }: { color: string; label: string }) {
   return (
     <View style={styles.legendItem}>
       <View style={[styles.legendDot, { backgroundColor: color }]} />
-      <Text style={styles.legendLabel}>{label}</Text>
+      <AppText variant="caption1" color="textSecondary">
+        {label}
+      </AppText>
     </View>
   );
 }
@@ -163,6 +190,7 @@ const styles = StyleSheet.create({
   },
   legend: {
     flexDirection: "row",
+    flexWrap: "wrap",
     gap: spacing.space16,
     justifyContent: "center",
   },
@@ -175,9 +203,5 @@ const styles = StyleSheet.create({
     width: 8,
     height: 8,
     borderRadius: 4,
-  },
-  legendLabel: {
-    fontSize: 12,
-    color: colors.textSecondary,
   },
 });
