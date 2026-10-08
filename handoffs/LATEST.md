@@ -1,3 +1,21 @@
+# Coordinator: next task for Codex (2026-10-08)
+
+Read `docs/GOALS.md` first. Beta for 20+ strangers on iPhone + sideloaded Karoo APK, targeted ~2026-10-15.
+
+**Task: produce the beta Karoo build and its install guide.**
+- Tag a reproducible beta APK from a committed state (`karoo-beta-<version>`), signed so testers can
+  install it and later upgrade over it. Record the build command and SHA-256 in the handoff.
+- Verify on device that every GritMap field degrades cleanly with no H10, no power meter and no
+  segment loaded: no blank or broken states. GM H10 Cardiac stays in the build as optional and
+  experimental. GM Cardiac Drift stays the default.
+- Write `docs/BETA_KAROO_INSTALL.md` for a stranger: sideload steps, which fields to add to which
+  page, and how to find the Karoo's IP and open "Receive from Phone". The phone session is writing
+  matching onboarding copy, so keep the wording consistent and note the exact screen names in your handoff.
+- Out of scope: pairing (post-beta), Needle, visual polish beyond legibility.
+
+Done when: the tag exists, a clean install-and-upgrade test has run on the Karoo, the guide is
+committed, and the handoff includes the Goal alignment section.
+
 # Handoff: Polar H10 cardiac-stability field installed on Karoo
 
 Karoo 0.10.42/code65 adds a separate `GM H10 Cardiac` field backed by real Polar H10 RR intervals.
