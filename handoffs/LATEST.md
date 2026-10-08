@@ -16,6 +16,23 @@ Read `docs/GOALS.md` first. Beta for 20+ strangers on iPhone + sideloaded Karoo 
 Done when: the tag exists, a clean install-and-upgrade test has run on the Karoo, the guide is
 committed, and the handoff includes the Goal alignment section.
 
+# Coordinator: current phone task (2026-10-08, in progress in the GritMap MVP session)
+
+For Codex's awareness. Do not edit these phone files.
+
+**Task: first-run onboarding and the design foundations it needs.**
+- Design foundations in `src/theme/`: type scale, semantic color tokens (light and dark), shared
+  components (Button, Card, ListRow, TextField, EmptyState, ErrorState), following iOS HIG.
+- First-run onboarding on an empty database: what GritMap does → FTP and weight → getting a segment
+  (import a FIT or browse Open Segments) → connecting to the Karoo using the existing IP route, with
+  step-by-step copy telling a stranger where to find the Karoo's address and what to open on the Karoo.
+- Empty states for Rides, Segments, and Segment Detail with no efforts. No hardcoded assumptions
+  about Jason's data.
+
+**Shared with Codex's task:** the Karoo connection steps in onboarding and `docs/BETA_KAROO_INSTALL.md`
+must use the same screen names and wording. Whichever side lands first, the other matches it, and
+each notes the exact Karoo screen names in its handoff.
+
 # Handoff: Polar H10 cardiac-stability field installed on Karoo
 
 Karoo 0.10.42/code65 adds a separate `GM H10 Cardiac` field backed by real Polar H10 RR intervals.
