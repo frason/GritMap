@@ -1,3 +1,5 @@
+import java.util.Properties
+
 plugins {
     id("com.android.application")
     id("org.jetbrains.kotlin.android")
@@ -5,6 +7,12 @@ plugins {
     id("org.jetbrains.kotlin.plugin.serialization")
     id("com.google.devtools.ksp")
     id("androidx.room")
+}
+
+val betaSigningPropertiesPath = providers.gradleProperty("gritmapBetaSigningProperties").orNull
+    ?: System.getenv("GRITMAP_BETA_SIGNING_PROPERTIES")
+val betaSigningProperties = betaSigningPropertiesPath?.let { path ->
+    Properties().apply { file(path).inputStream().use(::load) }
 }
 
 android {
@@ -16,8 +24,8 @@ android {
         applicationId = "com.gritmap.karoo"
         minSdk = 31
         targetSdk = 31
-        versionCode = 65
-        versionName = "0.10.42"
+        versionCode = providers.gradleProperty("gritmapVersionCode").orNull?.toInt() ?: 65
+        versionName = providers.gradleProperty("gritmapVersionName").orNull ?: "0.10.42"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables.useSupportLibrary = true
@@ -31,10 +39,26 @@ android {
         }
     }
 
+    signingConfigs {
+        betaSigningProperties?.let { properties ->
+            create("beta") {
+                storeFile = file(requireNotNull(properties.getProperty("storeFile")))
+                storePassword = requireNotNull(properties.getProperty("storePassword"))
+                keyAlias = requireNotNull(properties.getProperty("keyAlias"))
+                keyPassword = requireNotNull(properties.getProperty("keyPassword"))
+            }
+        }
+    }
+
     buildTypes {
         release {
             isMinifyEnabled = true
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
+        }
+        create("beta") {
+            initWith(getByName("release"))
+            signingConfig = signingConfigs.findByName("beta")
+            matchingFallbacks += listOf("release")
         }
     }
 
@@ -69,6 +93,18 @@ android {
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17
     }
+}
+
+tasks.register("validateBetaSigning") {
+    doLast {
+        require(betaSigningProperties != null && android.signingConfigs.findByName("beta") != null) {
+            "Beta signing is required. Pass -PgritmapBetaSigningProperties=/absolute/path/to/beta-signing.properties"
+        }
+    }
+}
+
+tasks.matching { it.name == "preBetaBuild" }.configureEach {
+    dependsOn("validateBetaSigning")
 }
 
 kotlin {

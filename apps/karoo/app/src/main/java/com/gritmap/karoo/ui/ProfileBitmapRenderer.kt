@@ -163,7 +163,25 @@ class ProfileBitmapRenderer(
         val bitmap = Bitmap.createBitmap(safeWidth, safeHeight, Bitmap.Config.ARGB_8888)
         val canvas = Canvas(bitmap)
         canvas.drawColor(palette.background)
-        if (state.totalDistanceMeters <= 0.0 || state.routeProfile.size < 2) return bitmap
+        if (state.totalDistanceMeters <= 0.0 || state.routeProfile.size < 2) {
+            drawCenteredText(
+                canvas,
+                "WAITING FOR SEGMENT",
+                safeWidth / 2f,
+                safeHeight * 0.45f,
+                safeWidth * 0.065f,
+                palette.primaryText,
+            )
+            drawCenteredText(
+                canvas,
+                "Start a recorded ride",
+                safeWidth / 2f,
+                safeHeight * 0.55f,
+                safeWidth * 0.042f,
+                palette.secondaryText,
+            )
+            return bitmap
+        }
 
         val pacer = virtualPacerGap(state)
         val mapTop = 3f

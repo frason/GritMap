@@ -60,4 +60,10 @@
         description="@string/karoo_cardiac_drift_description"
         graphical="true"
         icon="@drawable/karoo_ic_extension" />
+    <DataType
+        typeId="h10-cardiac-stability"
+        displayName="@string/karoo_h10_cardiac_name"
+        description="@string/karoo_h10_cardiac_description"
+        graphical="true"
+        icon="@drawable/karoo_ic_extension" />
 </ExtensionInfo>
