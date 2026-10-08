@@ -33,6 +33,18 @@ and accessibility, design loading/empty/error states for every screen, and keep 
 the 10-minute window. Onboarding tells riders to follow "the Karoo install guide you were sent", so
 `docs/BETA_KAROO_INSTALL.md` is on the beta's critical path.
 
+# Handoff: beta-loop screens moved onto the design system; Home safe-area fix (committed locally, not pushed)
+
+Phone-only; Karoo untouched. Segment Detail (goal and pacing plan, elevation chart), coach-plan import, Send to Karoo,
+Import (ride and segment files, with progress and result states), Plan vs actual, Progress over time (was Historical
+Range) and Ride detail now use only `src/theme` tokens/components, with loading/empty/error states, 44 pt targets, Dynamic
+Type and VoiceOver labels. Home no longer draws under the status bar and its Change button is reachable (`3b3e590`, its own
+commit). Before/after simulator screenshots on demo data: `docs/screenshots/redesign/`. typecheck, 616/616 tests and
+web:smoke clean. Copy and behavior changes (alerts to on-screen results, duplicate prompt, "zones" to "sections", Send to
+Karoo button says "Send route to Karoo") are listed in the archive. **Not yet done:** a person's VoiceOver pass; Attempt
+Review/Comparison, Define Segment, Publish, Open Segments still use the old style. Needs Jason's OK to push
+`be21320`, `3b3e590`, `078e131`. Details: `handoffs/archive/2026-10-08-1550-claude-beta-loop-design-migration.md`.
+
 # Handoff: signed Karoo beta 0.10.42 is tagged, installed and documented
 
 Karoo `0.10.42-beta`/code65 is built from the exact annotated tag `karoo-beta-0.10.42`, signed with
