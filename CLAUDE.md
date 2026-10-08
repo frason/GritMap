@@ -1,5 +1,8 @@
 # Claude repository instructions
 
+Before planning feature work, read `docs/GOALS.md` (vision, beta scope, priorities, non-goals,
+and phone vs Karoo responsibilities). If a request conflicts with it, say so before building.
+
 When the user says **"check the latest"**, **"read the latest handoff"**, or equivalent,
 read `handoffs/LATEST.md` before planning or editing.
 
