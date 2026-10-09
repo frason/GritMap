@@ -2,15 +2,16 @@ import { useMemo, useRef, useState } from "react";
 import {
   PanResponder,
   StyleSheet,
-  Text,
   View,
   type GestureResponderEvent,
   type LayoutChangeEvent,
   type PanResponderGestureState,
 } from "react-native";
 import { clampRangeEnd, clampRangeStart, SEGMENT_RANGE_STEP_METERS } from "../segments/clampSegmentRange.ts";
-import { colors } from "../theme/colors";
+import { AppText } from "../theme/components";
+import { MIN_TOUCH_TARGET } from "../theme/layout";
 import { radius, spacing } from "../theme/spacing";
+import { useColors } from "../theme/useColors";
 import { formatDistanceMiles, formatElevationFeet } from "./formatRideStats";
 
 export interface DistanceRangeScrubberProps {
@@ -21,14 +22,16 @@ export interface DistanceRangeScrubberProps {
   elevationAtDistance?: (distanceMeters: number) => number | undefined;
 }
 
-const THUMB_SIZE = 28;
+/** The visible handle; its touch area is a full 44 pt square around it. */
+const THUMB_VISUAL_SIZE = 28;
+const TRACK_HEIGHT = 6;
 
 /**
- * Distance-driven (not index-driven) two-thumb range selector, built on React Native's
+ * Distance-driven (not index-driven) two-handle range selector, built on React Native's
  * built-in PanResponder -- no gesture-handler/reanimated added, per
- * docs/PLAN_segment_definition_increment.md's "scrubber-driven selection" decision. Drag is
- * the primary interaction; each thumb also exposes explicit +/- controls so the same
- * interaction is available without a drag gesture.
+ * docs/PLAN_segment_definition_increment.md's "scrubber-driven selection" decision. Dragging is
+ * the main interaction. Each handle is a 44 pt touch target and a VoiceOver "adjustable" element:
+ * swipe up or down to move it by one step, and it announces where it is.
  */
 export function DistanceRangeScrubber({
   totalDistanceMeters,
@@ -37,6 +40,7 @@ export function DistanceRangeScrubber({
   onChange,
   elevationAtDistance,
 }: DistanceRangeScrubberProps) {
+  const palette = useColors();
   const [trackWidth, setTrackWidth] = useState(0);
 
   function handleLayout(event: LayoutChangeEvent) {
@@ -77,6 +81,9 @@ export function DistanceRangeScrubber({
     (x) => moveEnd(xToDistance(x)),
   );
 
+  // A screen-reader step of 10 m would take hundreds of swipes along a long ride; about 1% of the ride is usable.
+  const stepMeters = Math.max(SEGMENT_RANGE_STEP_METERS, Math.round(totalDistanceMeters / 100));
+
   const selectedLeft = distanceToX(startDistanceMeters);
   const selectedWidth = Math.max(0, distanceToX(endDistanceMeters) - selectedLeft);
 
@@ -89,34 +96,43 @@ export function DistanceRangeScrubber({
           elevationMeters={elevationAtDistance?.(startDistanceMeters)}
         />
         <ThumbReadout
-          label="End"
+          label="Finish"
           distanceMeters={endDistanceMeters}
           elevationMeters={elevationAtDistance?.(endDistanceMeters)}
         />
       </View>
 
-      <View style={styles.track} onLayout={handleLayout}>
-        <View style={styles.trackLine} />
-        <View style={[styles.selectedRange, { left: selectedLeft, width: selectedWidth }]} />
-        <Thumb
-          x={selectedLeft}
-          label="Start"
-          panHandlers={startPanResponder}
-          onIncrement={() => moveStart(startDistanceMeters + SEGMENT_RANGE_STEP_METERS)}
-          onDecrement={() => moveStart(startDistanceMeters - SEGMENT_RANGE_STEP_METERS)}
-          valueText={formatDistanceMiles(startDistanceMeters)}
-        />
-        <Thumb
-          x={distanceToX(endDistanceMeters)}
-          label="End"
-          panHandlers={endPanResponder}
-          onIncrement={() => moveEnd(endDistanceMeters + SEGMENT_RANGE_STEP_METERS)}
-          onDecrement={() => moveEnd(endDistanceMeters - SEGMENT_RANGE_STEP_METERS)}
-          valueText={formatDistanceMiles(endDistanceMeters)}
-        />
+      <View style={styles.trackArea}>
+        <View style={styles.track} onLayout={handleLayout}>
+          <View style={[styles.trackLine, { backgroundColor: palette.borderStrong }]} />
+          <View style={[styles.selectedRange, { left: selectedLeft, width: selectedWidth, backgroundColor: palette.brandFill }]} />
+          <Thumb
+            x={selectedLeft}
+            label="Segment start"
+            panHandlers={startPanResponder}
+            onIncrement={() => moveStart(startDistanceMeters + stepMeters)}
+            onDecrement={() => moveStart(startDistanceMeters - stepMeters)}
+            valueText={describePosition(startDistanceMeters, elevationAtDistance?.(startDistanceMeters))}
+          />
+          <Thumb
+            x={distanceToX(endDistanceMeters)}
+            label="Segment finish"
+            panHandlers={endPanResponder}
+            onIncrement={() => moveEnd(endDistanceMeters + stepMeters)}
+            onDecrement={() => moveEnd(endDistanceMeters - stepMeters)}
+            valueText={describePosition(endDistanceMeters, elevationAtDistance?.(endDistanceMeters))}
+          />
+        </View>
       </View>
     </View>
   );
+}
+
+/** "3.2 miles into the ride, 1,204 feet up", for VoiceOver. */
+function describePosition(distanceMeters: number, elevationMeters: number | undefined): string {
+  const miles = formatDistanceMiles(distanceMeters).replace(" mi", " miles");
+  const elevation = elevationMeters === undefined ? "" : `, ${formatElevationFeet(elevationMeters).replace(" ft", " feet")} elevation`;
+  return `${miles} into the ride${elevation}`;
 }
 
 function ThumbReadout({
@@ -129,12 +145,14 @@ function ThumbReadout({
   elevationMeters?: number;
 }) {
   return (
-    <View>
-      <Text style={styles.readoutLabel}>{label}</Text>
-      <Text style={styles.readoutValue}>
+    <View importantForAccessibility="no-hide-descendants" accessibilityElementsHidden>
+      <AppText variant="footnote" color="textSecondary">
+        {label}
+      </AppText>
+      <AppText variant="subheadline" style={styles.readoutValue}>
         {formatDistanceMiles(distanceMeters)}
         {elevationMeters !== undefined ? ` · ${formatElevationFeet(elevationMeters)}` : ""}
-      </Text>
+      </AppText>
     </View>
   );
 }
@@ -154,23 +172,27 @@ function Thumb({
   onDecrement: () => void;
   valueText: string;
 }) {
+  const palette = useColors();
   return (
     <View
       {...panHandlers}
-      style={[styles.thumb, { left: x - THUMB_SIZE / 2 }]}
+      style={[styles.thumbTouch, { left: x - MIN_TOUCH_TARGET / 2 }]}
       accessible
       accessibilityRole="adjustable"
-      accessibilityLabel={`${label} of segment range`}
+      accessibilityLabel={label}
+      accessibilityHint="Swipe up or down to move it along the ride, or drag it"
       accessibilityValue={{ text: valueText }}
       accessibilityActions={[
-        { name: "increment", label: "Move further" },
+        { name: "increment", label: "Move further along" },
         { name: "decrement", label: "Move back" },
       ]}
       onAccessibilityAction={(event) => {
         if (event.nativeEvent.actionName === "increment") onIncrement();
         if (event.nativeEvent.actionName === "decrement") onDecrement();
       }}
-    />
+    >
+      <View style={[styles.thumb, { backgroundColor: palette.brandFill, borderColor: palette.surface }]} />
+    </View>
   );
 }
 
@@ -210,46 +232,48 @@ function useDragPanResponder(
 
 const styles = StyleSheet.create({
   container: {
-    gap: spacing.space12,
+    gap: spacing.space8,
   },
   readout: {
     flexDirection: "row",
+    flexWrap: "wrap",
     justifyContent: "space-between",
-  },
-  readoutLabel: {
-    fontSize: 12,
-    color: colors.textTertiary,
+    gap: spacing.space8,
   },
   readoutValue: {
-    fontSize: 14,
     fontWeight: "600",
-    color: colors.textPrimary,
+  },
+  // Room on both sides so a handle at either end of the track keeps its full 44 pt touch area on screen.
+  trackArea: {
+    paddingHorizontal: MIN_TOUCH_TARGET / 2,
   },
   track: {
-    height: THUMB_SIZE,
+    height: MIN_TOUCH_TARGET,
     justifyContent: "center",
   },
   trackLine: {
     position: "absolute",
     left: 0,
     right: 0,
-    height: 4,
+    height: TRACK_HEIGHT,
     borderRadius: radius.pill,
-    backgroundColor: colors.border,
   },
   selectedRange: {
     position: "absolute",
-    height: 4,
+    height: TRACK_HEIGHT,
     borderRadius: radius.pill,
-    backgroundColor: colors.brand,
+  },
+  thumbTouch: {
+    position: "absolute",
+    width: MIN_TOUCH_TARGET,
+    height: MIN_TOUCH_TARGET,
+    alignItems: "center",
+    justifyContent: "center",
   },
   thumb: {
-    position: "absolute",
-    width: THUMB_SIZE,
-    height: THUMB_SIZE,
-    borderRadius: THUMB_SIZE / 2,
-    backgroundColor: colors.brand,
+    width: THUMB_VISUAL_SIZE,
+    height: THUMB_VISUAL_SIZE,
+    borderRadius: THUMB_VISUAL_SIZE / 2,
     borderWidth: 3,
-    borderColor: colors.surface,
   },
 });

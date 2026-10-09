@@ -3,7 +3,6 @@ import { Icon } from "../Icon";
 import type { IconName } from "../icons";
 import { MIN_TOUCH_TARGET, PRIMARY_BUTTON_HEIGHT } from "../layout";
 import { radius, spacing } from "../spacing";
-import { typography } from "../typography";
 import { useColors } from "../useColors";
 import { AppText } from "./AppText";
 import { buttonAccessibility, resolveButtonColors, type ButtonVariant } from "./buttonStyle";
@@ -67,7 +66,7 @@ export function Button({
         ) : icon === undefined ? null : (
           <Icon name={icon} size={20} color={variant === "primary" && !disabled ? "textOnBrand" : variant === "destructive" && !disabled ? "statusDanger" : disabled ? "disabledText" : "brand"} />
         )}
-        <AppText variant="headline" style={{ color: colors.text, fontSize: typography.headline.fontSize }} align="center">
+        <AppText variant="headline" style={{ color: colors.text }} align="center">
           {label}
         </AppText>
       </View>

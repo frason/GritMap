@@ -1,5 +1,5 @@
-import { useEffect, useMemo, useState } from "react";
-import { Alert, KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from "react-native";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { StyleSheet, View } from "react-native";
 import { useNavigation, useRoute, type RouteProp } from "@react-navigation/native";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import type { BottomTabNavigationProp } from "@react-navigation/bottom-tabs";
@@ -15,8 +15,22 @@ import { clampRangeEnd, clampRangeStart } from "../segments/clampSegmentRange";
 import { nearestTrackPointByLatLng } from "../segments/nearestTrackPoint";
 import { computeVisibleDistanceRange } from "../segments/computeVisibleDistanceRange";
 import type { RidesStackParamList, RootTabParamList } from "../navigation/types";
-import { colors } from "../theme/colors";
+import {
+  AppText,
+  Button,
+  Card,
+  EmptyState,
+  ErrorState,
+  LoadingState,
+  Notice,
+  ScreenScroll,
+  SegmentedControl,
+  Section,
+  TextField,
+} from "../theme/components";
 import { radius, spacing } from "../theme/spacing";
+import { useColors } from "../theme/useColors";
+import { formatDistanceMiles } from "./formatRideStats";
 import { RouteMapView } from "./RouteMapView";
 import { DistanceRangeScrubber } from "./DistanceRangeScrubber";
 import { RideElevationChart, type RideElevationChartRange } from "./RideElevationChart";
@@ -37,7 +51,11 @@ export function DefineSegmentScreen() {
   const route = useRoute<DefineSegmentRoute>();
   const navigation = useNavigation<DefineSegmentNavigation>();
 
+  const palette = useColors();
+  const [loadState, setLoadState] = useState<"loading" | "ready" | "error">("loading");
   const [track, setTrack] = useState<RideTrackPoint[]>([]);
+  const [nameError, setNameError] = useState<string | undefined>(undefined);
+  const [saveError, setSaveError] = useState<string | undefined>(undefined);
   const [name, setName] = useState("");
   const [startDistanceMeters, setStartDistanceMeters] = useState(0);
   const [endDistanceMeters, setEndDistanceMeters] = useState<number | undefined>(undefined);
@@ -50,9 +68,16 @@ export function DefineSegmentScreen() {
   // user pans/zooms the map at least once.
   const [visibleRange, setVisibleRange] = useState<RideElevationChartRange | undefined>(undefined);
 
-  useEffect(() => {
-    setTrack(getRideTrack(database, route.params.rideId));
+  const loadTrack = useCallback(() => {
+    try {
+      setTrack(getRideTrack(database, route.params.rideId));
+      setLoadState("ready");
+    } catch {
+      setLoadState("error");
+    }
   }, [database, route.params.rideId]);
+
+  useEffect(loadTrack, [loadTrack]);
 
   const distanceIndexed = useMemo(() => computeCumulativeTrackDistance(track), [track]);
   const totalDistanceMeters = distanceIndexed.at(-1)?.distanceMeters ?? 0;
@@ -96,12 +121,13 @@ export function DefineSegmentScreen() {
   }
 
   async function handleSave() {
+    setSaveError(undefined);
     if (name.trim().length === 0) {
-      Alert.alert("Name required", "Give this segment a name before saving.");
+      setNameError("Give this segment a name before saving.");
       return;
     }
     if (startPoint === undefined || endPoint === undefined || startPoint.pointIndex >= endPoint.pointIndex) {
-      Alert.alert("Invalid range", "The selected range is too short to save as a segment.");
+      setSaveError("The stretch you picked is too short to be a segment. Move the Start and Finish further apart.");
       return;
     }
 
@@ -141,40 +167,64 @@ export function DefineSegmentScreen() {
         .getParent<BottomTabNavigationProp<RootTabParamList>>()
         ?.navigate("SegmentsTab", { screen: "SegmentDetail", params: { segmentId } });
     } catch (error) {
-      Alert.alert("Couldn't save segment", error instanceof Error ? error.message : String(error));
+      setSaveError(`GritMap couldn't save this segment. ${error instanceof Error ? error.message : String(error)}`);
     } finally {
       setSaving(false);
     }
   }
 
-  return (
-    <KeyboardAvoidingView
-      style={styles.container}
-      behavior={Platform.OS === "ios" ? "padding" : undefined}
-    >
-      <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
-        {totalDistanceMeters > 0 && (
-          <View style={styles.tabRow}>
-            <HandleTab
-              label="Start"
-              active={activeHandle === "start"}
-              onPress={() => setActiveHandle("start")}
-            />
-            <HandleTab
-              label="Finish"
-              active={activeHandle === "end"}
-              onPress={() => setActiveHandle("end")}
-            />
-          </View>
-        )}
-        {totalDistanceMeters > 0 && (
-          <Text style={styles.mapHint}>
-            Tap the map to move the {activeHandle === "start" ? "start" : "finish"} point --
-            only {activeHandle === "start" ? "start" : "finish"} can be changed on this tab.
-          </Text>
-        )}
+  if (loadState === "loading") {
+    return (
+      <ScreenScroll>
+        <LoadingState label="Loading your ride…" />
+      </ScreenScroll>
+    );
+  }
+  if (loadState === "error") {
+    return <ErrorState message="GritMap couldn't read this ride. Go back and try again." onRetry={loadTrack} />;
+  }
+  if (totalDistanceMeters <= 0) {
+    return (
+      <EmptyState
+        icon="mapPin"
+        title="This ride can't make a segment"
+        body="A segment needs a GPS track, and this ride doesn't have one. Pick a ride that was recorded with GPS."
+      />
+    );
+  }
 
-        <View style={styles.mapContainer}>
+  const selectedLengthMeters = resolvedEndDistanceMeters - startDistanceMeters;
+  const handleLabel = activeHandle === "start" ? "Start" : "Finish";
+
+  return (
+    <ScreenScroll>
+      <Card>
+        <AppText variant="headline">Pick the part of this ride to track</AppText>
+        <AppText variant="subheadline" color="textSecondary">
+          A segment is a stretch of road you want to ride again, like one climb. Choose where it starts and where it finishes.
+          GritMap then looks for it in all your rides and keeps your times.
+        </AppText>
+      </Card>
+
+      <Section title="1. Choose the Start or the Finish">
+        <SegmentedControl
+          accessibilityLabel="Which end of the segment to move"
+          options={[
+            { value: "start", label: "Start", accessibilityLabel: "Move the start" },
+            { value: "end", label: "Finish", accessibilityLabel: "Move the finish" },
+          ]}
+          value={activeHandle}
+          onChange={setActiveHandle}
+        />
+      </Section>
+
+      <Section
+        title="2. Tap the map"
+        description={`Tap the route on the map to put the ${handleLabel.toLowerCase()} there. You can pinch to zoom in first.`}
+      >
+        <View
+          style={[styles.mapContainer, { backgroundColor: palette.surface, borderColor: palette.border }]}
+        >
           <RouteMapView
             points={track}
             highlightRange={highlightRange}
@@ -192,134 +242,57 @@ export function DefineSegmentScreen() {
             onViewportChange={handleViewportChange}
           />
         </View>
-
-        {totalDistanceMeters > 0 && (
-          <RideElevationChart
-            points={distanceIndexed}
-            selectedRange={{ startDistanceMeters, endDistanceMeters: resolvedEndDistanceMeters }}
-            visibleRange={visibleRange}
-          />
-        )}
-
-        {totalDistanceMeters > 0 && (
-          <DistanceRangeScrubber
-            totalDistanceMeters={totalDistanceMeters}
-            startDistanceMeters={startDistanceMeters}
-            endDistanceMeters={resolvedEndDistanceMeters}
-            onChange={handleRangeChange}
-            elevationAtDistance={(distanceMeters) =>
-              nearestByDistance(distanceIndexed, distanceMeters)?.elevationMeters
-            }
-          />
-        )}
-
-        <TextInput
-          style={styles.nameInput}
-          placeholder="Segment name"
-          placeholderTextColor={colors.textTertiary}
-          value={name}
-          onChangeText={setName}
+        <RideElevationChart
+          points={distanceIndexed}
+          selectedRange={{ startDistanceMeters, endDistanceMeters: resolvedEndDistanceMeters }}
+          visibleRange={visibleRange}
         />
+      </Section>
 
-        <TouchableOpacity
-          style={[styles.saveButton, saving && styles.saveButtonDisabled]}
-          onPress={handleSave}
-          disabled={saving}
-        >
-          <Text style={styles.saveButtonLabel}>{saving ? "Saving…" : "Save Segment"}</Text>
-        </TouchableOpacity>
-      </ScrollView>
-    </KeyboardAvoidingView>
-  );
-}
+      <Section title="Or drag the handles" description="Fine-tune the start and finish. The highlighted part of the chart is your segment.">
+        <DistanceRangeScrubber
+          totalDistanceMeters={totalDistanceMeters}
+          startDistanceMeters={startDistanceMeters}
+          endDistanceMeters={resolvedEndDistanceMeters}
+          onChange={handleRangeChange}
+          elevationAtDistance={(distanceMeters) => nearestByDistance(distanceIndexed, distanceMeters)?.elevationMeters}
+        />
+        <AppText variant="subheadline" accessibilityLiveRegion="polite">
+          Segment length: {formatDistanceMiles(selectedLengthMeters)}
+        </AppText>
+      </Section>
 
-function HandleTab({
-  label,
-  active,
-  onPress,
-}: {
-  label: "Start" | "Finish";
-  active: boolean;
-  onPress: () => void;
-}) {
-  return (
-    <TouchableOpacity
-      style={[styles.tab, active && styles.tabActive]}
-      onPress={onPress}
-      accessibilityRole="tab"
-      accessibilityLabel={`Edit ${label}`}
-      accessibilityState={{ selected: active }}
-    >
-      <Text style={[styles.tabLabel, active && styles.tabLabelActive]}>{label}</Text>
-    </TouchableOpacity>
+      <Section title="3. Name it and save">
+        <TextField
+          label="Segment name"
+          value={name}
+          onChangeText={(value) => {
+            setName(value);
+            setNameError(undefined);
+          }}
+          placeholder="For example, Northgate climb"
+          hint="Pick something you will recognise in your list."
+          autoCapitalize="words"
+          autoCorrect
+          returnKeyType="done"
+          {...(nameError === undefined ? {} : { error: nameError })}
+        />
+        {saveError === undefined ? null : (
+          <Notice tone="error" live>
+            {saveError}
+          </Notice>
+        )}
+        <Button label="Save segment" onPress={handleSave} loading={saving} />
+      </Section>
+    </ScreenScroll>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: colors.background,
-  },
-  content: {
-    padding: spacing.space20,
-    gap: spacing.space20,
-  },
   mapContainer: {
     height: 260,
-    borderRadius: radius.md,
-    overflow: "hidden",
-    backgroundColor: colors.surface,
-  },
-  tabRow: {
-    flexDirection: "row",
-    backgroundColor: colors.surface,
-    borderRadius: radius.md,
-    padding: spacing.space4,
-    gap: spacing.space4,
-  },
-  tab: {
-    flex: 1,
-    borderRadius: radius.md - 2,
-    paddingVertical: spacing.space8 + 2,
-    alignItems: "center",
-  },
-  tabActive: {
-    backgroundColor: colors.brand,
-  },
-  tabLabel: {
-    fontSize: 14,
-    fontWeight: "600",
-    color: colors.textSecondary,
-  },
-  tabLabelActive: {
-    color: colors.textOnBrand,
-  },
-  mapHint: {
-    fontSize: 12,
-    color: colors.textTertiary,
-  },
-  nameInput: {
-    backgroundColor: colors.surface,
-    borderRadius: radius.md,
+    borderRadius: radius.lg,
     borderWidth: 1,
-    borderColor: colors.border,
-    paddingHorizontal: spacing.space16,
-    paddingVertical: spacing.space12,
-    fontSize: 15,
-    color: colors.textPrimary,
-  },
-  saveButton: {
-    backgroundColor: colors.brand,
-    borderRadius: radius.md,
-    paddingVertical: spacing.space12,
-    alignItems: "center",
-  },
-  saveButtonDisabled: {
-    opacity: 0.6,
-  },
-  saveButtonLabel: {
-    color: colors.textOnBrand,
-    fontSize: 15,
-    fontWeight: "600",
+    overflow: "hidden",
   },
 });

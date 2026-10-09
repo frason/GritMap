@@ -11,6 +11,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { StyleSheet, TouchableOpacity, View } from "react-native";
 import type { RideTrackPoint } from "../db/getRideTrack";
 import { colors } from "../theme/colors";
+import { MIN_TOUCH_TARGET } from "../theme/layout";
 
 export interface RouteMapViewProps {
   points: RideTrackPoint[];
@@ -301,8 +302,10 @@ function Pin({
         },
       ]}
       accessibilityRole="button"
-      accessibilityLabel={`${label} of segment range${active ? ", selected" : ""}`}
-      accessibilityHint="Tap elsewhere on the map to move it here"
+      // The visible pin is 28-34 pt; the touch area is padded out to 44 pt.
+      hitSlop={Math.ceil((MIN_TOUCH_TARGET - size) / 2)}
+      accessibilityLabel={`${label === "End" ? "Finish" : label} of the segment${active ? ", selected" : ""}`}
+      accessibilityHint="Select it, then tap the map to move it"
     />
   );
 }

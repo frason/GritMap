@@ -92,4 +92,29 @@ describe("computeHistoricalBand", () => {
       computeHistoricalBand([attempt("a", [200])], "a", "power", { stepMeters: 0 }),
     );
   });
+
+  it("handles real-size efforts quickly (three 2,500-point efforts over 10 km, three channels)", () => {
+    const longAttempt = (id: string, offset: number): SegmentAttempt => ({
+      id,
+      segmentId: "segment-1",
+      rideId: `ride-${id}`,
+      startTimestampMs: 0,
+      endTimestampMs: 2_500_000,
+      points: Array.from({ length: 2_500 }, (_, index) => ({
+        distanceMeters: index * 4.2,
+        timestampMs: index * 1_000,
+        power: 250 + offset + (index % 7),
+        heartRate: 150 + offset,
+        elevationMeters: 100 + index * 0.1,
+      })),
+    });
+    const attempts = [longAttempt("a", 0), longAttempt("b", 5), longAttempt("c", -5)];
+    const startedAt = Date.now();
+    for (const channel of ["power", "heartRate", "elevationMeters"] as const) {
+      const band = computeHistoricalBand(attempts, "a", channel);
+      assert.ok(band.length > 1_000);
+    }
+    // Was ~7.5 s on a phone before the per-array observation cache; generous bound for slow CI.
+    assert.ok(Date.now() - startedAt < 2_000, `took ${Date.now() - startedAt} ms`);
+  });
 });

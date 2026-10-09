@@ -36,20 +36,44 @@ export function preparePoints<T extends ResamplePoint>(points: readonly T[]): T[
   return prepared;
 }
 
+/**
+ * Interpolation is called once per sample step (hundreds to thousands of times per attempt) on the
+ * same prepared array, and each call used to rebuild its observation list from every ride point:
+ * about 7.5 s for the three-channel historical band on three 2,500-point efforts. The list depends
+ * only on the (never mutated) prepared array and the channel, so it is built once per array.
+ * Keyed by array identity in a WeakMap: a new or changed array is a new key, and nothing is retained
+ * once the array is garbage-collected.
+ */
+const observationCache = new WeakMap<readonly ResamplePoint[], Map<string, Observation[]>>();
+
+function observationsFor(points: readonly ResamplePoint[], channel: NumericChannel | "timestamp"): Observation[] {
+  let byChannel = observationCache.get(points);
+  if (byChannel === undefined) {
+    byChannel = new Map();
+    observationCache.set(points, byChannel);
+  }
+  let observations = byChannel.get(channel);
+  if (observations === undefined) {
+    observations =
+      channel === "timestamp"
+        ? points.map((point) => ({ distanceMeters: point.distanceMeters, timestampMs: point.timestampMs, value: point.timestampMs }))
+        : points.flatMap((point) => {
+            const value = point[channel];
+            return value === undefined || !Number.isFinite(value)
+              ? []
+              : [{ distanceMeters: point.distanceMeters, timestampMs: point.timestampMs, value }];
+          });
+    byChannel.set(channel, observations);
+  }
+  return observations;
+}
+
 export function interpolateTimestamp(
   points: readonly ResamplePoint[],
   distanceMeters: number,
   maxGapMs: number,
 ): number | null {
-  return interpolateObservations(
-    points.map((point) => ({
-      distanceMeters: point.distanceMeters,
-      timestampMs: point.timestampMs,
-      value: point.timestampMs,
-    })),
-    distanceMeters,
-    maxGapMs,
-  );
+  return interpolateObservations(observationsFor(points, "timestamp"), distanceMeters, maxGapMs);
 }
 
 export function interpolateChannel(
@@ -58,14 +82,7 @@ export function interpolateChannel(
   channel: NumericChannel,
   maxGapMs: number,
 ): number | null {
-  const observations = points.flatMap((point) => {
-    const value = point[channel];
-    return value === undefined || !Number.isFinite(value)
-      ? []
-      : [{ distanceMeters: point.distanceMeters, timestampMs: point.timestampMs, value }];
-  });
-
-  return interpolateObservations(observations, distanceMeters, maxGapMs);
+  return interpolateObservations(observationsFor(points, channel), distanceMeters, maxGapMs);
 }
 
 interface Observation {

@@ -1,6 +1,8 @@
 import { StyleSheet, View } from "react-native";
 import Svg, { Polyline, Rect } from "react-native-svg";
-import { colors } from "../theme/colors";
+import { radius } from "../theme/spacing";
+import { formatElevationFeet } from "./formatRideStats";
+import { useColors } from "../theme/useColors";
 import { resamplePolyline, type ResamplePoint } from "../segments/resamplePolyline";
 
 export interface RideElevationChartRange {
@@ -31,6 +33,7 @@ const CHART_RESAMPLE_INTERVAL_METERS = 15;
  * `cumulativeTrackDistance.ts`'s own doc comment, not assumed.
  */
 export function RideElevationChart({ points, selectedRange, visibleRange, height = 140 }: RideElevationChartProps) {
+  const palette = useColors();
   const resampled = resamplePolyline(points, CHART_RESAMPLE_INTERVAL_METERS).filter(
     (point) => point.elevationMeters !== undefined,
   );
@@ -61,7 +64,11 @@ export function RideElevationChart({ points, selectedRange, visibleRange, height
   const showSelection = selectedRange.endDistanceMeters > domainStart && selectedRange.startDistanceMeters < domainEnd;
 
   return (
-    <View style={styles.container}>
+    <View
+      style={[styles.container, { backgroundColor: palette.surface, borderColor: palette.border }]}
+      accessible
+      accessibilityLabel={`Elevation of the whole ride, from ${formatElevationFeet(minElevation).replace(" ft", "")} to ${formatElevationFeet(maxElevation).replace(" ft", "")} feet. The shaded part is the stretch you have selected.`}
+    >
       <Svg width="100%" height={height} viewBox={`0 0 ${VIEWBOX_WIDTH} ${height}`} preserveAspectRatio="none">
         {showSelection && (
           <Rect
@@ -69,13 +76,13 @@ export function RideElevationChart({ points, selectedRange, visibleRange, height
             y={0}
             width={Math.max(0, selectionEndX - selectionStartX)}
             height={height}
-            fill={colors.brandSubtle}
+            fill={palette.brandSubtle}
           />
         )}
         <Polyline
           points={polylinePoints}
           fill="none"
-          stroke={colors.textPrimary}
+          stroke={palette.textPrimary}
           strokeWidth={2}
           strokeLinecap="round"
           strokeLinejoin="round"
@@ -87,6 +94,8 @@ export function RideElevationChart({ points, selectedRange, visibleRange, height
 
 const styles = StyleSheet.create({
   container: {
-    backgroundColor: colors.surface,
+    borderRadius: radius.md,
+    borderWidth: 1,
+    overflow: "hidden",
   },
 });

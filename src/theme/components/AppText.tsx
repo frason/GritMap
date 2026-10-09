@@ -2,6 +2,7 @@ import { Text, type TextProps } from "react-native";
 import type { ColorToken } from "../colors";
 import { typography, type TypographyVariant } from "../typography";
 import { useColors } from "../useColors";
+import { useFontScale } from "../useFontScale";
 
 type Props = TextProps & {
   variant?: TypographyVariant;
@@ -15,9 +16,11 @@ type Props = TextProps & {
  */
 export function AppText({ variant = "body", color = "textPrimary", align, style, ...rest }: Props) {
   const palette = useColors();
+  const fontScale = useFontScale();
   const { fontSize, lineHeight, fontWeight, maxFontSizeMultiplier } = typography[variant];
   return (
     <Text
+      key={fontScale}
       maxFontSizeMultiplier={maxFontSizeMultiplier}
       {...rest}
       style={[{ fontSize, lineHeight, fontWeight, color: palette[color] }, align === undefined ? null : { textAlign: align }, style]}
