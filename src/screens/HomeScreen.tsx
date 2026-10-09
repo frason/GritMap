@@ -60,12 +60,12 @@ export function HomeScreen() {
           actions={[
             {
               label: "Browse Open Segments",
-              onPress: () => navigation.navigate("SegmentsTab", { screen: "RegistryBrowse" }),
+              onPress: () => navigation.navigate("SegmentsTab", { screen: "RegistryBrowse", initial: false }),
               icon: "search",
             },
             {
               label: "Import a ride",
-              onPress: () => navigation.navigate("RidesTab", { screen: "Import" }),
+              onPress: () => navigation.navigate("RidesTab", { screen: "Import", initial: false }),
               variant: "secondary",
               icon: "download",
             },
@@ -108,18 +108,20 @@ export function HomeScreen() {
 
   function handleCompareCta() {
     if (bestAttempt === undefined) {
-      navigation.navigate("SegmentsTab", { screen: "SegmentDetail", params: { segmentId: goal!.segmentId } });
+      navigation.navigate("SegmentsTab", { screen: "SegmentDetail", initial: false, params: { segmentId: goal!.segmentId } });
       return;
     }
     if (secondBestAttempt === undefined) {
       navigation.navigate("SegmentsTab", {
         screen: "AttemptReview",
+        initial: false,
         params: { attemptId: bestAttempt.attemptId },
       });
       return;
     }
     navigation.navigate("SegmentsTab", {
       screen: "AttemptComparison",
+      initial: false,
       params: { primaryAttemptId: bestAttempt.attemptId, comparisonAttemptId: secondBestAttempt.attemptId },
     });
   }
@@ -189,7 +191,7 @@ export function HomeScreen() {
                   key={ride.rideId}
                   title={ride.startTimestampMs === undefined ? ride.originalFilename : formatRideDate(ride.startTimestampMs)}
                   subtitle={`${formatDistanceMiles(ride.totalDistanceMeters)} · ${formatDurationHoursMinutes(ride.durationMs)}`}
-                  onPress={() => navigation.navigate("RidesTab", { screen: "RideDetail", params: { rideId: ride.rideId } })}
+                  onPress={() => navigation.navigate("RidesTab", { screen: "RideDetail", initial: false, params: { rideId: ride.rideId } })}
                 />
               ))}
             </View>

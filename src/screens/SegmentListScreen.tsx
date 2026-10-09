@@ -30,7 +30,7 @@ export function SegmentListScreen() {
 
   function openImport() {
     // Import lives in the Rides stack; reach it through the tab navigator.
-    navigation.getParent<BottomTabNavigationProp<RootTabParamList>>()?.navigate("RidesTab", { screen: "Import" });
+    navigation.getParent<BottomTabNavigationProp<RootTabParamList>>()?.navigate("RidesTab", { screen: "Import", initial: false });
   }
 
   function handleDelete(segment: SegmentSummary) {

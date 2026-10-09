@@ -97,7 +97,7 @@ export function HistoricalBandScreen() {
             label: "Import a ride",
             icon: "download",
             onPress: () =>
-              navigation.getParent<BottomTabNavigationProp<RootTabParamList>>()?.navigate("RidesTab", { screen: "Import" }),
+              navigation.getParent<BottomTabNavigationProp<RootTabParamList>>()?.navigate("RidesTab", { screen: "Import", initial: false }),
           },
         ]}
       />

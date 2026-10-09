@@ -55,7 +55,7 @@ export function RideDetailScreen() {
   function openAttemptReview(attemptId: string) {
     navigation
       .getParent<BottomTabNavigationProp<RootTabParamList>>()
-      ?.navigate("SegmentsTab", { screen: "AttemptReview", params: { attemptId } });
+      ?.navigate("SegmentsTab", { screen: "AttemptReview", initial: false, params: { attemptId } });
   }
 
   if (state === "loading") {

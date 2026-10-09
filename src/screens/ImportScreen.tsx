@@ -201,7 +201,7 @@ export function ImportScreen() {
   function openSegment(segmentId: string) {
     navigation
       .getParent<BottomTabNavigationProp<RootTabParamList>>()
-      ?.navigate("SegmentsTab", { screen: "SegmentDetail", params: { segmentId } });
+      ?.navigate("SegmentsTab", { screen: "SegmentDetail", initial: false, params: { segmentId } });
   }
 
   async function handleImportPress() {

@@ -165,7 +165,7 @@ export function DefineSegmentScreen() {
       navigation.popToTop();
       navigation
         .getParent<BottomTabNavigationProp<RootTabParamList>>()
-        ?.navigate("SegmentsTab", { screen: "SegmentDetail", params: { segmentId } });
+        ?.navigate("SegmentsTab", { screen: "SegmentDetail", initial: false, params: { segmentId } });
     } catch (error) {
       setSaveError(`GritMap couldn't save this segment. ${error instanceof Error ? error.message : String(error)}`);
     } finally {
