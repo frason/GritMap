@@ -41,6 +41,10 @@ rider-facing "section" strings to match on the Karoo are in
 **Task:** write `docs/PRIVACY.md`, the privacy policy for the TestFlight Privacy Policy URL (an external
 testing gate), with every claim checked against the code, plus the App Store Connect "App Privacy" answers.
 
+# Handoff: expo-font declared; icons verified in a Release build (committed locally, not pushed)
+
+`expo-font ~57.0.4` is now a declared dependency (peer of `@expo/vector-icons`) with `ios/Podfile.lock` updated; `expo install` also added `expo-font` to app.json's `plugins` (no EAS fields). Unsigned Release simulator build on a fresh install shows the tab-bar and list icons; `expo-doctor` is down to the two expected warnings (non-CNG sync, patch-version mismatches, not bumped). typecheck, 633/633 tests, web:smoke clean. The app icon is still the Expo placeholder. Details: `handoffs/archive/2026-10-09-0830-claude-expo-font.md`.
+
 # Handoff: "Remove saved token" and the unused demo map deleted (committed locally, not pushed)
 
 Share to Open Segments' maintainer section now has a confirmable **Remove saved token** (clears the Keychain item, returns to the no-token state; unit-tested); the unused `MapScreen.tsx` (the only user of `demotiles.maplibre.org`) is deleted, so the app contacts only GitHub, OpenFreeMap and the local Karoo. `docs/PRIVACY.md` updated in the same commit. typecheck, 633/633 tests, web:smoke clean; screenshots in `docs/screenshots/token-removal/`. Details: `handoffs/archive/2026-10-09-0210-claude-token-removal-dead-map.md`.
