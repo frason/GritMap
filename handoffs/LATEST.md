@@ -19,17 +19,17 @@ the device reads `0.10.42-beta`/65. (The 0.10.42 handoff's "175 tests" is supers
 Done when: the checklist is committed, the post-ride comparison is in a handoff with the Goal
 alignment section, and any beta-blocking H10 issue is listed first.
 
-# Coordinator: current phone task (2026-10-08 20:50, sent to the GritMap MVP session)
+# Coordinator: current phone task (2026-10-08 21:00, sent to the GritMap MVP session)
 
 For Codex's awareness. Do not edit these phone files.
 
-Done and QA-passed since the last update: Open Segments browse and share on the design system, with
-GitHub-token publishing now maintainer-only, and the `docs/OPEN_SEGMENTS_SHARING.md` proposal
-(`8ea294c`, `d033cc2`; 620/620 tests). Unpushed, awaiting Jason. Still pending from Jason: the real
-ride fixtures in `fixtures/`, and zones vs sections.
+Done and QA-passed since the last update: Attempt Review and Compare Efforts on the design system,
+plus a fix for cross-tab navigation that left no Back button (`c6808dd`, `cbec882`, `9772b44`;
+628/628 tests). Unpushed, awaiting Jason. Still pending from Jason: the real ride fixtures in
+`fixtures/`, and zones vs sections.
 
-**Task:** move Attempt Comparison and Attempt Review onto the design system, with plain-language
-diagnostics, live text size and VoiceOver chart summaries. No behavior change.
+**Task:** find and fix the intermittent blank map on first open (seen once on Review Effort), at the
+root cause in the shared map view, and check every map on a cold first open.
 
 # Handoff: Attempt Review and Attempt Comparison on the design system; cross-tab Back-button fix (committed locally, not pushed)
 
