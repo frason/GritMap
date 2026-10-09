@@ -29,6 +29,16 @@ beta-loop screen migration (`078e131`); 616/616 tests. Unpushed, awaiting Jason.
 **Task:** redesign Define Segment (with handle accessibility); bring the progress-over-time load under 2 s
 or give it a loading state; reflow live when the text size changes. The zones/sections wording is on hold.
 
+# Handoff: Define Segment redesigned; progress-over-time load 7.5 s to ~0.05 s; text size reflows live (committed locally, not pushed)
+
+Phone-only; Karoo untouched. Define Segment and its handles are on the design system (plain steps, 44 pt handles with VoiceOver
+labels/values, inline errors, loading/no-GPS/error states). Progress over time: computing the bands took **7,486 ms** on the simulator
+before and **45-83 ms** after (the interpolation rebuilt its observation list on every step; now cached per array; Compare Attempts
+benefits too). Changing text size while the app is open now reflows design-system text without a relaunch (`useFontScale` keyed
+`AppText`); screens still using raw `Text` don't yet. typecheck, 617/617 tests, web:smoke clean. Before/after screenshots:
+`docs/screenshots/define-segment/`. "zones"/"sections" wording untouched per the hold. Still needs: Jason's OK to push 5 local commits; a person's
+VoiceOver pass. Details: `handoffs/archive/2026-10-08-1930-claude-define-segment-perf-textsize.md`.
+
 # Handoff: beta-loop screens moved onto the design system; Home safe-area fix (committed locally, not pushed)
 
 Phone-only; Karoo untouched. Segment Detail (goal and pacing plan, elevation chart), coach-plan import, Send to Karoo,
