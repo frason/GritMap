@@ -46,7 +46,7 @@ beta announcement.
 | **GM Pacing Profile** | Where am I relative to the planned pacer, and what effort comes next? | ![GM Pacing Profile](assets/Pacing_profile.png) | 
 | **GM Pacing Coach** | What is the current section target, and how did nearby sections go? | ![GM Pacing Coach](assets/Pacing_coach.png) |
 | **GM Segment Performance** | What is my projected finish and where am I gaining or losing time? | ![GM Segment Performance](assets/Segment_performance.png) |
-| **GM Power Balance** | Am I spending modeled reserve faster or slower than planned? | ![GM Power Balance](assets/power_balance.png) |
+| **GM Power Balance** | Am I spending modeled reserve faster or slower than planned? | ![GM Power Balance](assets/Power_balance.png) |
 | **GM Cardiac / H10 Cardiac** | Is power-to-heart-rate efficiency changing, and is clean H10 RR context available? | ![GM Cardiac fields](assets/Cardiac_drift.png) |
 | **Additional data fieldsc** | Target power to match plan, Difference between target power and current power and estimated completion time | ![Misc. data fields](assets/Additional_data_fields.png)
 These are advisory training displays, not medical measurements or guarantees of performance.
