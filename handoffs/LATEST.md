@@ -31,6 +31,14 @@ real ride FIT/GPX fixtures in the public repo (`fixtures/`). Nobody should touch
 path as maintainer-only for the beta, and write `docs/OPEN_SEGMENTS_SHARING.md` comparing token-free
 sharing options (proposal only). The zones/sections wording is still on hold.
 
+# Handoff: Open Segments browse and share on the design system; token-free sharing proposal (committed locally, not pushed)
+
+Phone-only; Karoo untouched. Open Segments cards now show distance and climbing, with offline/busy/empty/error states, pull to refresh and "already added". Share to Open Segments tells strangers
+sharing isn't open yet (beta: maintainer only), warns that shared segments are public and show where you ride, and hides the GitHub-token path behind "I'm the GritMap maintainer". New
+`docs/OPEN_SEGMENTS_SHARING.md` compares token-free options and **recommends a Cloudflare Worker that opens a reviewed pull request (after the beta)**; nothing built. typecheck, 620/620 tests, web:smoke clean;
+before/after screenshots in `docs/screenshots/open-segments/`. Needs Jason: the four decisions at the end of the proposal, and OK to push 9 local commits. Details:
+`handoffs/archive/2026-10-08-2105-claude-open-segments-design-sharing-proposal.md`.
+
 # Handoff: phone app is ready for a TestFlight build, short of Jason's Apple credentials (committed locally, not pushed)
 
 Phone-only; Karoo untouched. Added `eas.json` (development / preview / production; remote autoincrementing build numbers because `ios/` is a committed native
