@@ -30,6 +30,15 @@ Done and QA-passed since the last update: Define Segment redesign, progress-over
 review of `app.json`, privacy manifest and usage strings, a production-mode build check, and
 `docs/BETA_TESTFLIGHT.md` listing the steps only Jason can do. The zones/sections wording is still on hold.
 
+# Handoff: phone app is ready for a TestFlight build, short of Jason's Apple credentials (committed locally, not pushed)
+
+Phone-only; Karoo untouched. Added `eas.json` (development / preview / production; remote autoincrementing build numbers because `ios/` is a committed native
+project), `.easignore`, export-compliance flag, buildNumber, **iPhone-only for the beta** (iPad layouts unchecked), a synthetic review sample ride, and
+`docs/BETA_TESTFLIGHT.md` with the exact steps only Jason can do (enrollment, `eas login`/`init`, App Store Connect app, first build/submit, external group, Beta App
+Review notes about the Karoo, privacy policy URL). Verified: typecheck, 617/617 tests, web:smoke, `expo export --platform ios`, and an unsigned Release simulator build
+that launches into first-run onboarding with no dev UI. Nothing needing Jason's credentials was run. **Needs Jason's attention:** the PUBLIC repo contains 6 real ride FITs
+in `fixtures/fit/` (personal GPS); and OK to push 7 local commits. Details: `handoffs/archive/2026-10-08-2010-claude-testflight-readiness.md`.
+
 # Handoff: Define Segment redesigned; progress-over-time load 7.5 s to ~0.05 s; text size reflows live (committed locally, not pushed)
 
 Phone-only; Karoo untouched. Define Segment and its handles are on the design system (plain steps, 44 pt handles with VoiceOver
