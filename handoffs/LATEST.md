@@ -28,17 +28,18 @@ handoff, so match them.
 Done when: the checklist is committed, the post-ride comparison is in a handoff with the Goal
 alignment section, and any beta-blocking H10 issue is listed first.
 
-# Coordinator: current phone task (2026-10-08 21:00, sent to the GritMap MVP session)
+# Coordinator: current phone task (2026-10-09 00:50, sent to the GritMap MVP session)
 
 For Codex's awareness. Do not edit these phone files.
 
-Done and QA-passed since the last update: Attempt Review and Compare Efforts on the design system,
-plus a fix for cross-tab navigation that left no Back button (`c6808dd`, `cbec882`, `9772b44`;
-628/628 tests). Unpushed, awaiting Jason. Still pending from Jason: the real ride fixtures in
-`fixtures/`, and zones vs sections.
+Done and QA-passed since the last update: the map first-open guard (`9283e38`), real ride fixtures
+untracked and their tests skipping when absent (`5bf44a4`), "sections" wording (`c60efc4`), and the
+handoff (`1fb003d`). A fresh clone gives 606 pass, 24 skipped, 0 fail. **Codex:** the exact
+rider-facing "section" strings to match on the Karoo are in
+`handoffs/archive/2026-10-09-0050-claude-map-first-open-fixtures-sections.md`. Wire/JSON keys stay `zones`.
 
-**Task:** find and fix the intermittent blank map on first open (seen once on Review Effort), at the
-root cause in the shared map view, and check every map on a cold first open.
+**Task:** write `docs/PRIVACY.md`, the privacy policy for the TestFlight Privacy Policy URL (an external
+testing gate), with every claim checked against the code, plus the App Store Connect "App Privacy" answers.
 
 # Handoff: map first-open guard, real ride fixtures untracked, "sections" wording (committed locally, not pushed)
 
