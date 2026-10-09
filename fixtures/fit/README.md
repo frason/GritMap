@@ -1,4 +1,12 @@
-# Real Karoo FIT fixtures
+# Real Karoo FIT fixtures (local-only)
+
+**These ride files are not in the repository.** They are one rider's real GPS recordings, so they are git-ignored
+(`fixtures/fit/*.fit`, `fixtures/gpx/*.gpx`) and absent from a fresh clone. The tests that read them
+(`parseFitFile`, `parseGpxFile`, `batchImport`, `fitIdentity`, `importRideFile`, `matcher/realSegments`) are reported as **skipped**
+with a message when the files are missing, and run when the maintainer has them locally. Never commit a real ride here.
+The history of this repository still contains the earlier commits that added them.
+
+The notes below describe the maintainer's local set.
 
 ## Files
 

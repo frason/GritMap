@@ -7,6 +7,10 @@ import { describe, it } from "node:test";
 import { applyMigrations } from "../db/migrations.ts";
 import type { SyncDatabase } from "../db/types.ts";
 import { importRideFile } from "./importRideFile.ts";
+import { skipUnlessPresent } from "../testSupport/realFixtures.ts";
+
+/** Real rides are local-only (git-ignored); tests that need them skip when absent. */
+const REAL_SKIP = skipUnlessPresent(["fixtures/fit/Karoo-Morning_Ride-2026-08-02-0837.fit", "fixtures/fit/Karoo-Morning_Ride-2026-08-09-0844.fit"]);
 
 /** Mirrors toSyncDatabase.ts's shape, same pattern as importRideFile.test.ts. */
 function toTestSyncDatabase(database: DatabaseSync): SyncDatabase {
@@ -34,7 +38,7 @@ function toTestSyncDatabase(database: DatabaseSync): SyncDatabase {
  * exactly (real production logic, not a reimplementation), against real FIT fixtures.
  */
 describe("batch import at MVP acceptance scale", () => {
-  it("imports 100+ files (mixed real copies, exact duplicates, and one corrupt file) without crashing", () => {
+  it("imports 100+ files (mixed real copies, exact duplicates, and one corrupt file) without crashing", { skip: REAL_SKIP }, () => {
     using rawDatabase = new DatabaseSync(":memory:");
     const database = toTestSyncDatabase(rawDatabase);
     applyMigrations(database);

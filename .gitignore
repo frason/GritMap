@@ -28,3 +28,7 @@ android/.gradle/
 
 # OS
 .DS_Store
+
+# Real ride recordings are one rider's private GPS data: local-only, never committed (see fixtures/fit/README.md)
+fixtures/fit/*.fit
+fixtures/gpx/*.gpx

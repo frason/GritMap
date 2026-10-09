@@ -7,6 +7,10 @@ import { createHash } from "node:crypto";
 import { applyMigrations } from "../db/migrations.ts";
 import type { SyncDatabase } from "../db/types.ts";
 import { importRideFile, type ImportRideFileInput } from "./importRideFile.ts";
+import { skipUnlessPresent } from "../testSupport/realFixtures.ts";
+
+/** Real rides are local-only (git-ignored); tests that need them skip when absent. */
+const REAL_SKIP = skipUnlessPresent(["fixtures/fit/Karoo-Morning_Ride-2026-08-02-0837.fit", "fixtures/fit/Karoo-Morning_Ride-2026-08-09-0844.fit", "fixtures/gpx/Tilden_Inspiration_1_5_Bears_turnaround_repeat.gpx"]);
 
 const FIXTURE_A = "fixtures/fit/Karoo-Morning_Ride-2026-08-02-0837.fit";
 const FIXTURE_B = "fixtures/fit/Karoo-Morning_Ride-2026-08-09-0844.fit";
@@ -59,8 +63,22 @@ function inputFor(path: string, overrides: Partial<ImportRideFileInput> = {}): I
   };
 }
 
+describe("importRideFile (synthetic ride, always runs)", () => {
+  it("imports the synthetic sample GPX end to end and recognises a re-import as a duplicate", () => {
+    const database = migratedDatabase();
+    const path = "docs/beta-review-sample-ride.gpx";
+    const first = importRideFile(database, sequentialIdFactory("id"), inputFor(path, { filename: "sample.gpx" }));
+    assert.equal(first.status, "imported");
+    const rides = database.prepare("SELECT count(*) AS n FROM rides").get() as { n: number };
+    assert.equal(rides.n, 1);
+    const again = importRideFile(database, sequentialIdFactory("id2"), inputFor(path, { filename: "sample-again.gpx" }));
+    assert.equal(again.status, "duplicate");
+    assert.equal((database.prepare("SELECT count(*) AS n FROM rides").get() as { n: number }).n, 1);
+  });
+});
+
 describe("importRideFile", () => {
-  it("imports a fresh real Karoo fixture end to end", () => {
+  it("imports a fresh real Karoo fixture end to end", { skip: REAL_SKIP }, () => {
     const database = migratedDatabase();
     const result = importRideFile(database, sequentialIdFactory("id"), inputFor(FIXTURE_A));
 
@@ -74,7 +92,7 @@ describe("importRideFile", () => {
     assert.ok(ride.total_distance_meters > 0);
   });
 
-  it("detects a re-import of the same bytes as a content-hash duplicate, without writing", () => {
+  it("detects a re-import of the same bytes as a content-hash duplicate, without writing", { skip: REAL_SKIP }, () => {
     const database = migratedDatabase();
     const generateId = sequentialIdFactory("id");
     importRideFile(database, generateId, inputFor(FIXTURE_A));
@@ -89,7 +107,7 @@ describe("importRideFile", () => {
     assert.equal(rideCount, 1); // the duplicate re-import wrote nothing
   });
 
-  it("'keep' resolution leaves the existing ride untouched and writes nothing new", () => {
+  it("'keep' resolution leaves the existing ride untouched and writes nothing new", { skip: REAL_SKIP }, () => {
     const database = migratedDatabase();
     const generateId = sequentialIdFactory("id");
     const first = importRideFile(database, generateId, inputFor(FIXTURE_A));
@@ -104,7 +122,7 @@ describe("importRideFile", () => {
     );
   });
 
-  it("'replace' resolution updates the existing ride and returns the superseded file URI", () => {
+  it("'replace' resolution updates the existing ride and returns the superseded file URI", { skip: REAL_SKIP }, () => {
     const database = migratedDatabase();
     const generateId = sequentialIdFactory("id");
     const first = importRideFile(
@@ -152,7 +170,7 @@ describe("importRideFile", () => {
     );
   });
 
-  it("a failed file in a batch does not block or roll back files already imported", () => {
+  it("a failed file in a batch does not block or roll back files already imported", { skip: REAL_SKIP }, () => {
     const database = migratedDatabase();
     const generateId = sequentialIdFactory("id");
     const badBytes = new Uint8Array([9, 9, 9]);
@@ -180,7 +198,7 @@ describe("importRideFile", () => {
     );
   });
 
-  it("distinguishes two different real rides as separate, non-duplicate imports", () => {
+  it("distinguishes two different real rides as separate, non-duplicate imports", { skip: REAL_SKIP }, () => {
     const database = migratedDatabase();
     const generateId = sequentialIdFactory("id");
     const first = importRideFile(database, generateId, inputFor(FIXTURE_A));
@@ -194,7 +212,7 @@ describe("importRideFile", () => {
     );
   });
 
-  it("imports a real GPX file end to end, routed by content not filename", () => {
+  it("imports a real GPX file end to end, routed by content not filename", { skip: REAL_SKIP }, () => {
     const database = migratedDatabase();
     // Filename deliberately says ".fit" -- looksLikeGpx must sniff the real GPX content, not
     // trust the picked filename/extension, since a picker can hand back any name.
@@ -228,7 +246,7 @@ describe("importRideFile", () => {
     assert.equal(pointCount, 5_207);
   });
 
-  it("detects a re-import of the same GPX bytes as a content-hash duplicate", () => {
+  it("detects a re-import of the same GPX bytes as a content-hash duplicate", { skip: REAL_SKIP }, () => {
     const database = migratedDatabase();
     const generateId = sequentialIdFactory("id");
     importRideFile(database, generateId, inputFor(GPX_FIXTURE));
@@ -239,7 +257,7 @@ describe("importRideFile", () => {
     assert.equal(result.matchedRule, "content-hash");
   });
 
-  it("does not confuse a GPX import with an unrelated FIT ride", () => {
+  it("does not confuse a GPX import with an unrelated FIT ride", { skip: REAL_SKIP }, () => {
     const database = migratedDatabase();
     const generateId = sequentialIdFactory("id");
     const fitResult = importRideFile(database, generateId, inputFor(FIXTURE_A));

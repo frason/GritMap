@@ -3,6 +3,10 @@ import { readFile } from "node:fs/promises";
 import { describe, it } from "node:test";
 
 import { parseFitFile } from "./parseFitFile.ts";
+import { skipUnlessPresent } from "../testSupport/realFixtures.ts";
+
+/** Real rides are local-only (git-ignored); tests that need them skip when absent. */
+const REAL_SKIP = skipUnlessPresent(["fixtures/fit/Karoo-Morning_Ride-2026-08-02-0837.fit", "fixtures/fit/Karoo-Morning_Ride-2026-08-09-0844.fit"]);
 
 const FIXTURES = [
   "fixtures/fit/Karoo-Morning_Ride-2026-08-02-0837.fit",
@@ -11,7 +15,7 @@ const FIXTURES = [
 
 describe("parseFitFile", () => {
   for (const fixture of FIXTURES) {
-    it(`parses real Karoo data from ${fixture}`, async () => {
+    it(`parses real Karoo data from ${fixture}`, { skip: REAL_SKIP }, async () => {
       const bytes = await readFile(fixture);
       const ride = parseFitFile(new Uint8Array(bytes.buffer, bytes.byteOffset, bytes.byteLength));
 
@@ -31,7 +35,7 @@ describe("parseFitFile", () => {
     });
   }
 
-  it("accepts an ArrayBuffer without Node-specific file handling in the parser", async () => {
+  it("accepts an ArrayBuffer without Node-specific file handling in the parser", { skip: REAL_SKIP }, async () => {
     const bytes = await readFile(FIXTURES[0]);
     const arrayBuffer = bytes.buffer.slice(
       bytes.byteOffset,

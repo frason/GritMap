@@ -4,9 +4,13 @@ import { describe, it } from "node:test";
 
 import { parseFitFile } from "../fit/parseFitFile.ts";
 import { extractRideIdentity } from "./fitIdentity.ts";
+import { skipUnlessPresent } from "../testSupport/realFixtures.ts";
+
+/** Real rides are local-only (git-ignored); tests that need them skip when absent. */
+const REAL_SKIP = skipUnlessPresent(["fixtures/fit/Karoo-Morning_Ride-2026-08-02-0837.fit", "fixtures/fit/Karoo-Morning_Ride-2026-08-09-0844.fit"]);
 
 describe("extractRideIdentity", () => {
-  it("extracts exact identity from a real Karoo fixture (2026-08-02)", () => {
+  it("extracts exact identity from a real Karoo fixture (2026-08-02)", { skip: REAL_SKIP }, () => {
     const bytes = readFileSync("fixtures/fit/Karoo-Morning_Ride-2026-08-02-0837.fit");
     const ride = parseFitFile(bytes);
 
@@ -17,7 +21,7 @@ describe("extractRideIdentity", () => {
     });
   });
 
-  it("extracts exact identity from a real Karoo fixture (2026-08-09)", () => {
+  it("extracts exact identity from a real Karoo fixture (2026-08-09)", { skip: REAL_SKIP }, () => {
     const bytes = readFileSync("fixtures/fit/Karoo-Morning_Ride-2026-08-09-0844.fit");
     const ride = parseFitFile(bytes);
 
@@ -28,7 +32,7 @@ describe("extractRideIdentity", () => {
     });
   });
 
-  it("never includes activityId -- no stable field exists in real Karoo output", () => {
+  it("never includes activityId -- no stable field exists in real Karoo output", { skip: REAL_SKIP }, () => {
     const bytes = readFileSync("fixtures/fit/Karoo-Morning_Ride-2026-08-02-0837.fit");
     const identity = extractRideIdentity(parseFitFile(bytes));
     assert.ok(!("activityId" in identity));

@@ -3,11 +3,35 @@ import { readFile } from "node:fs/promises";
 import { describe, it } from "node:test";
 
 import { looksLikeGpx, parseGpxFile } from "./parseGpxFile.ts";
+import { skipUnlessPresent } from "../testSupport/realFixtures.ts";
+
+/** Real rides are local-only (git-ignored); tests that need them skip when absent. */
+const REAL_SKIP = skipUnlessPresent(["fixtures/fit/Karoo-Morning_Ride-2026-08-02-0837.fit", "fixtures/gpx/Tilden_Inspiration_1_5_Bears_turnaround_repeat.gpx"]);
 
 const REAL_FIXTURE = "fixtures/gpx/Tilden_Inspiration_1_5_Bears_turnaround_repeat.gpx";
 
+describe("parseGpxFile (synthetic ride, always runs)", () => {
+  // docs/beta-review-sample-ride.gpx is generated from a public registry segment with invented timing
+  // (scripts/make-review-sample-gpx.ts), so it is safe to keep in the repository.
+  it("parses the synthetic sample ride: ordered times, distances from zero, elevation, no heart rate", async () => {
+    const bytes = await readFile("docs/beta-review-sample-ride.gpx");
+    const ride = parseGpxFile(new Uint8Array(bytes.buffer, bytes.byteOffset, bytes.byteLength));
+
+    assert.ok(ride.points.length > 3_000);
+    assert.equal(ride.points[0]?.distanceMeters, 0);
+    assert.ok(ride.points.every((point) => Number.isFinite(point.timestampMs) && point.lat !== undefined && point.elevationMeters !== undefined));
+    assert.ok(ride.points.every((point) => point.heartRate === undefined && point.power === undefined));
+    for (let i = 1; i < ride.points.length; i += 1) {
+      assert.ok(ride.points[i]!.timestampMs > ride.points[i - 1]!.timestampMs);
+      assert.ok(ride.points[i]!.distanceMeters! >= ride.points[i - 1]!.distanceMeters!);
+    }
+    const kilometres = (ride.points.at(-1)?.distanceMeters ?? 0) / 1_000;
+    assert.ok(kilometres > 10 && kilometres < 12, `expected about 10.8 km, got ${kilometres}`);
+  });
+});
+
 describe("parseGpxFile", () => {
-  it("parses a real Strava-exported GPX file", async () => {
+  it("parses a real Strava-exported GPX file", { skip: REAL_SKIP }, async () => {
     const bytes = await readFile(REAL_FIXTURE);
     const ride = parseGpxFile(new Uint8Array(bytes.buffer, bytes.byteOffset, bytes.byteLength));
 
@@ -86,12 +110,12 @@ describe("parseGpxFile", () => {
 });
 
 describe("looksLikeGpx", () => {
-  it("returns true for a real GPX file", async () => {
+  it("returns true for a real GPX file", { skip: REAL_SKIP }, async () => {
     const bytes = await readFile(REAL_FIXTURE);
     assert.equal(looksLikeGpx(new Uint8Array(bytes.buffer, bytes.byteOffset, bytes.byteLength)), true);
   });
 
-  it("returns false for a real (binary) FIT file", async () => {
+  it("returns false for a real (binary) FIT file", { skip: REAL_SKIP }, async () => {
     const bytes = await readFile("fixtures/fit/Karoo-Morning_Ride-2026-08-02-0837.fit");
     assert.equal(looksLikeGpx(new Uint8Array(bytes.buffer, bytes.byteOffset, bytes.byteLength)), false);
   });

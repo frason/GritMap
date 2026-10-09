@@ -4,6 +4,10 @@ import { describe, it } from "node:test";
 
 import { parseFitFile } from "../fit/parseFitFile.ts";
 import { matchSegment, toMatcherRidePoints, type SegmentDefinition } from "ride-segments";
+import { skipUnlessPresent } from "../testSupport/realFixtures.ts";
+
+/** Real rides are local-only (git-ignored); tests that need them skip when absent. */
+const REAL_SKIP = skipUnlessPresent(["fixtures/fit/Karoo-Morning_Ride-2026-07-18-0908.fit", "fixtures/fit/Karoo-Morning_Ride-2026-08-02-0837.fit", "fixtures/fit/Karoo-Morning_Ride-2026-08-09-0844.fit", "fixtures/fit/Karoo-Morning_Ride-2026-08-22-0828.fit", "fixtures/fit/Karoo-Morning_Ride-2026-08-29-0648.fit", "fixtures/fit/Karoo-Morning_Ride-2026-09-13-0647.fit"]);
 
 /**
  * Validates the matcher against the client's own currently-defined real-world segments and
@@ -39,7 +43,7 @@ async function matchFixture(fitPath: string, segment: SegmentDefinition) {
 }
 
 describe("matchSegment against real client segments and rides", () => {
-  it("accepts the client's first real Diablo climb (predates the pacing-plan build)", async () => {
+  it("accepts the client's first real Diablo climb (predates the pacing-plan build)", { skip: REAL_SKIP }, async () => {
     const segment = await loadSegment("apps/karoo/samples/Diablo.Northgate-to-Junction.segment.json");
     const result = await matchFixture("fixtures/fit/Karoo-Morning_Ride-2026-07-18-0908.fit", segment);
 
@@ -49,7 +53,7 @@ describe("matchSegment against real client segments and rides", () => {
     assert.ok(result[0].confidenceScore > 0.95);
   });
 
-  it("accepts the client's Karoo-paced Diablo completion and rejects the same-ride reverse descent", async () => {
+  it("accepts the client's Karoo-paced Diablo completion and rejects the same-ride reverse descent", { skip: REAL_SKIP }, async () => {
     // The Karoo's own diagnostics recorded a completed 45:48.947 climb followed ~20 minutes
     // later by a reverse traversal back down through the segment (see the archived handoff) --
     // the Karoo's live matcher could only reject that early as "no-valid-candidate", but this
@@ -70,7 +74,7 @@ describe("matchSegment against real client segments and rides", () => {
     assert.ok(descent.startPointIndex > climb.endPointIndex, "descent must follow the climb, not overlap it");
   });
 
-  it("accepts the client's real Relize completion, 33s under the 6:54 target", async () => {
+  it("accepts the client's real Relize completion, 33s under the 6:54 target", { skip: REAL_SKIP }, async () => {
     const segment = await loadSegment("apps/karoo/samples/Relize.segment.json");
     const result = await matchFixture("fixtures/fit/Karoo-Morning_Ride-2026-08-22-0828.fit", segment);
 
@@ -80,7 +84,7 @@ describe("matchSegment against real client segments and rides", () => {
     assert.ok(result[0].confidenceScore > 0.95);
   });
 
-  it("does not falsely accept a ride that only brushes the Coco Jumbo corridor", async () => {
+  it("does not falsely accept a ride that only brushes the Coco Jumbo corridor", { skip: REAL_SKIP }, async () => {
     // This ride crosses near the Coco Jumbo corridor without actually riding it -- low
     // coverage and backward progress. A real false-accept risk if corridor/coverage
     // thresholds were ever loosened; pinned here as a negative-control regression guard.
@@ -91,7 +95,7 @@ describe("matchSegment against real client segments and rides", () => {
     assert.ok(result.every((candidate) => candidate.decision === "reject"));
   });
 
-  it("does not match unrelated real climbs against segments they don't cover", async () => {
+  it("does not match unrelated real climbs against segments they don't cover", { skip: REAL_SKIP }, async () => {
     // Cross-checks every real (segment, ride) pair that is known NOT to correspond, so a
     // change that widens matching can't silently start producing false positives here.
     const segments = await Promise.all([
