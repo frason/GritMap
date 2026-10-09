@@ -41,6 +41,11 @@ rider-facing "section" strings to match on the Karoo are in
 **Task:** write `docs/PRIVACY.md`, the privacy policy for the TestFlight Privacy Policy URL (an external
 testing gate), with every claim checked against the code, plus the App Store Connect "App Privacy" answers.
 
+# Handoff: privacy policy (docs/PRIVACY.md) and App Privacy answers (committed locally, not pushed)
+
+Docs only. `docs/PRIVACY.md` is a plain-language, host-agnostic policy checked claim by claim against the phone code and (read-only) the Karoo extension; `docs/BETA_TESTFLIGHT.md` step 9 has the App Store Connect answers (**Data Not Collected, no tracking**). Jason must fill two TODOs
+(last-updated date, contact email) and publish it at a public URL. Gaps noted: no in-app way to delete the maintainer GitHub token; the Karoo receiver is unauthenticated (use a trusted network). Evidence table in `handoffs/archive/2026-10-09-0125-claude-privacy-policy.md`.
+
 # Handoff: map first-open guard, real ride fixtures untracked, "sections" wording (committed locally, not pushed)
 
 Phone-only. (1) Blank map on first open: **not reproduced at normal load** (0 of about 46 cold opens before; seen only with the Mac at load 50-90); defensive fix in the shared `RouteMapView` (create the native map after the first non-zero layout, refit when the style loads, rebuild a stalled map); after: 15/15 fresh-install first opens fine; screenshots in `docs/screenshots/map-first-open/`.
