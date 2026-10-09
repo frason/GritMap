@@ -40,6 +40,11 @@ plus a fix for cross-tab navigation that left no Back button (`c6808dd`, `cbec88
 **Task:** find and fix the intermittent blank map on first open (seen once on Review Effort), at the
 root cause in the shared map view, and check every map on a cold first open.
 
+# Handoff: map first-open guard, real ride fixtures untracked, "sections" wording (committed locally, not pushed)
+
+Phone-only. (1) Blank map on first open: **not reproduced at normal load** (0 of about 46 cold opens before; seen only with the Mac at load 50-90); defensive fix in the shared `RouteMapView` (create the native map after the first non-zero layout, refit when the style loads, rebuild a stalled map); after: 15/15 fresh-install first opens fine; screenshots in `docs/screenshots/map-first-open/`.
+(2) The 6 real FITs and the GPX are untracked and git-ignored (still on disk); their 6 tests skip when absent (630/630 present; 606 + 24 skipped absent); history not rewritten. (3) "Sections" for plan stretches, "zones" only for training zones; exact strings for Codex in the archive entry; JSON key `zones` unchanged. Note: `9283e38`'s message omits the fixture removal (they were staged). Needs Jason's OK to push. Details: `handoffs/archive/2026-10-09-0050-claude-map-first-open-fixtures-sections.md`.
+
 # Handoff: Attempt Review and Attempt Comparison on the design system; cross-tab Back-button fix (committed locally, not pushed)
 
 Phone-only; Karoo and fixtures untouched. Compare Efforts names both efforts with a picker to swap either, says who was ahead and explains the time-gap chart ("Ahead or behind"); Review Effort renames the match diagnostics (Route followed,
