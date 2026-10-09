@@ -4,8 +4,13 @@ Read `docs/GOALS.md` first. The previous task (signed beta APK, install guide, e
 (`1eb405f`, `01aeaf6`, tag `karoo-beta-0.10.42`). Coordinator QA: 176/176 JVM tests, lint and debug build pass;
 the device reads `0.10.42-beta`/65. (The 0.10.42 handoff's "175 tests" is superseded; QA counts match.)
 
-**HOLD on wording:** the phone renamed pacing "zones" to "sections"; the Karoo fields and
-`docs/BETA_KAROO_INSTALL.md` still say "zones". Jason is choosing one term. Do not rename anything yet.
+**Wording decision (Jason, 2026-10-08 21:15): "sections".** The stretches of a pacing plan are called
+**sections** on both phone and Karoo. "Zones" stays only for power and HR training zones (Z2, threshold),
+because the same word for two things confused riders. Codex: rename the rider-facing pacing-plan text in the
+Karoo fields (for example "3/8 ZONES", "pacing zones", "Zones" on Pacing Coach, Segment Performance and Profile)
+and in `docs/BETA_KAROO_INSTALL.md` to section/sections. Ship it in the next H10 build, and keep internal
+identifiers unless renaming is cheap. Update the renderer tests. The phone is listing its exact strings in its next
+handoff, so match them.
 
 **Task: physical validation of GM H10 Cardiac (the GOALS.md H10 track milestone), plus support for stranger bug reports.**
 - Prepare a one-page rider checklist for Jason's next ride: add the field, ride an active segment with
