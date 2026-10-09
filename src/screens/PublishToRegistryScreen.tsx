@@ -1,63 +1,76 @@
 import { useCallback, useState } from "react";
-import { ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from "react-native";
+import { View } from "react-native";
 import { useFocusEffect, useRoute, type RouteProp } from "@react-navigation/native";
 import { useDatabase } from "../db/DatabaseProvider";
 import { getSegmentDetail, type SegmentDetail } from "../db/getSegmentDetail";
+import { describePublishError } from "../registry/describeRegistryError";
 import { defaultRegistryConfig } from "../registry/registryConfig";
 import { publishRegistrySegment } from "../registry/registryClient";
 import { getRegistryToken, setRegistryToken } from "../registry/registryCredentials";
 import type { SegmentsStackParamList } from "../navigation/types";
-import { colors } from "../theme/colors";
-import { radius, spacing } from "../theme/spacing";
+import { AppText, Button, Card, ErrorState, LoadingState, Notice, ScreenScroll, Section, TextField } from "../theme/components";
 
 type PublishToRegistryRoute = RouteProp<SegmentsStackParamList, "PublishToRegistry">;
 
 /**
- * Publishes this segment's route and matching parameters to the public registry (a
- * directory in this app's own GitHub repo -- see docs/SEGMENT_REGISTRY.md). Separated from
- * the main segment screen since it's an occasional administrative action, not something
- * looked at on every visit.
+ * Shares this segment's name and route in Open Segments, a public folder in this app's own GitHub
+ * repository (docs/SEGMENT_REGISTRY.md). For the beta, writing there needs a GitHub token that only
+ * the maintainer has, so the token path sits behind "I'm the GritMap maintainer" and everyone else is
+ * told plainly that sharing is not open yet (docs/OPEN_SEGMENTS_SHARING.md proposes how to open it).
  */
 export function PublishToRegistryScreen() {
   const database = useDatabase();
   const route = useRoute<PublishToRegistryRoute>();
+  const [loadState, setLoadState] = useState<"loading" | "ready" | "missing" | "error">("loading");
   const [segment, setSegment] = useState<SegmentDetail | undefined>(undefined);
   const [hasStoredToken, setHasStoredToken] = useState(false);
-  const [tokenFieldVisible, setTokenFieldVisible] = useState(false);
+  const [maintainerOpen, setMaintainerOpen] = useState(false);
+  const [changingToken, setChangingToken] = useState(false);
   const [tokenInput, setTokenInput] = useState("");
   const [publishing, setPublishing] = useState(false);
-  const [publishStatus, setPublishStatus] = useState<string | undefined>(undefined);
+  const [result, setResult] = useState<{ ok: boolean; text: string } | undefined>(undefined);
 
-  useFocusEffect(
-    useCallback(() => {
-      setSegment(getSegmentDetail(database, route.params.segmentId));
-      let cancelled = false;
-      getRegistryToken().then((token) => {
-        if (!cancelled) setHasStoredToken(token !== undefined);
-      });
-      return () => {
-        cancelled = true;
-      };
-    }, [database, route.params.segmentId]),
-  );
+  const load = useCallback(() => {
+    let cancelled = false;
+    try {
+      const detail = getSegmentDetail(database, route.params.segmentId);
+      setSegment(detail);
+      setLoadState(detail === undefined ? "missing" : "ready");
+    } catch {
+      setLoadState("error");
+    }
+    getRegistryToken()
+      .then((token) => {
+        if (cancelled) return;
+        setHasStoredToken(token !== undefined);
+        // Someone who has already stored a token is the maintainer: show the share controls straight away.
+        if (token !== undefined) setMaintainerOpen(true);
+      })
+      .catch(() => undefined);
+    return () => {
+      cancelled = true;
+    };
+  }, [database, route.params.segmentId]);
+
+  useFocusEffect(load);
 
   async function handlePublish() {
     if (segment === undefined) return;
-    const token = tokenInput.trim().length > 0 ? tokenInput.trim() : await getRegistryToken();
+    const typed = tokenInput.trim();
+    const token = typed.length > 0 ? typed : await getRegistryToken();
     if (token === undefined) {
-      setTokenFieldVisible(true);
-      setPublishStatus("Paste a GitHub personal access token (repo scope) to publish");
+      setResult({ ok: false, text: "Paste the GitHub token first." });
       return;
     }
-    if (tokenInput.trim().length > 0) {
+    if (typed.length > 0) {
       await setRegistryToken(token);
       setTokenInput("");
-      setTokenFieldVisible(false);
+      setChangingToken(false);
       setHasStoredToken(true);
     }
     setPublishing(true);
-    setPublishStatus("Publishing…");
-    const result = await publishRegistrySegment(defaultRegistryConfig(), token, {
+    setResult(undefined);
+    const published = await publishRegistrySegment(defaultRegistryConfig(), token, {
       id: segment.segmentId,
       name: segment.name,
       schemaVersion: segment.schemaVersion,
@@ -67,131 +80,107 @@ export function PublishToRegistryScreen() {
       referencePolyline: segment.referencePolyline,
     });
     setPublishing(false);
-    setPublishStatus(
-      result.ok
-        ? result.alreadyPublished
-          ? "Already published to the registry"
-          : "Published — anyone can now discover and import this segment"
-        : `Publish failed${result.statusCode ? ` (HTTP ${result.statusCode})` : ""}${
-            result.message ? `: ${result.message}` : ""
-          }`,
+    setResult(
+      published.ok
+        ? {
+            ok: true,
+            text: published.alreadyPublished
+              ? "This segment is already in Open Segments."
+              : "Shared. Anyone can now find this segment in Open Segments and add it.",
+          }
+        : { ok: false, text: describePublishError(published.statusCode === undefined ? {} : { statusCode: published.statusCode }) },
     );
   }
 
-  if (segment === undefined) {
-    return <View style={styles.container} />;
+  if (loadState === "loading") {
+    return (
+      <ScreenScroll>
+        <LoadingState label="Loading segment…" />
+      </ScreenScroll>
+    );
+  }
+  if (loadState === "error") {
+    return <ErrorState message="GritMap couldn't open this segment. Go back and try again." onRetry={load} />;
+  }
+  if (loadState === "missing" || segment === undefined) {
+    return <ErrorState title="This segment is no longer available" message="It may have been removed. Go back to your segments and pick another." />;
   }
 
+  const showTokenField = !hasStoredToken || changingToken;
+
   return (
-    <ScrollView style={styles.container} contentContainerStyle={styles.content}>
-      <Text style={styles.title}>Publish to Registry</Text>
-      <Text style={styles.body}>
-        Publishes this segment's route and matching parameters (direction, corridor width,
-        required coverage) to a public, shared registry so anyone running GritMap can
-        discover and import it. Only the geometry is shared -- never your rides, attempts,
-        goals, or any other personal data.
-      </Text>
-      <Text style={styles.body}>
-        Segments are identified by a fingerprint computed from their geometry, so publishing
-        the same segment twice is a no-op rather than a duplicate. Publishing writes directly
-        to the registry's underlying GitHub repository using a personal access token you
-        provide below (stored securely on this device, never sent anywhere but GitHub's own
-        API) -- it needs the token's "repo" scope (or, for a fine-grained token, Contents:
-        Read and write access to that repository).
-      </Text>
-      {hasStoredToken && !tokenFieldVisible && (
-        <TouchableOpacity onPress={() => setTokenFieldVisible(true)}>
-          <Text style={styles.changeTokenLink}>Use a different token</Text>
-        </TouchableOpacity>
-      )}
-      {(tokenFieldVisible || !hasStoredToken) && (
-        <>
-          <TextInput
-            style={styles.addressInput}
-            placeholder="GitHub personal access token (repo scope)"
-            placeholderTextColor={colors.textTertiary}
-            value={tokenInput}
-            onChangeText={setTokenInput}
-            autoCapitalize="none"
-            autoCorrect={false}
-            secureTextEntry
-          />
-          {hasStoredToken && (
-            <TouchableOpacity
+    <ScreenScroll>
+      <View>
+        <AppText variant="title2" accessibilityRole="header">
+          Share to Open Segments
+        </AppText>
+        <AppText variant="subheadline" color="textSecondary">
+          {segment.name}
+        </AppText>
+      </View>
+
+      <Notice tone="info">
+        Sharing your own segments isn't open to everyone yet. During the beta, only the GritMap maintainer can add segments
+        to Open Segments. You can already add other riders' segments from Open Segments.
+      </Notice>
+
+      <Section title="What would be shared">
+        <Card>
+          <AppText variant="subheadline">• The segment's name and its route on the map, including how steep it is.</AppText>
+          <AppText variant="subheadline">• Never your rides, your times, your goals, your plans or anything from your profile.</AppText>
+          <AppText variant="subheadline" color="textSecondary">
+            Sharing the same segment twice does nothing extra.
+          </AppText>
+        </Card>
+        <Notice tone="warning">
+          Open Segments is public and a shared segment can't be removed from the app. A segment cut from your own ride shows where
+          you ride, so don't share one that starts or ends at your home.
+        </Notice>
+      </Section>
+
+      {maintainerOpen ? (
+        <Section
+          title="Maintainer: share with a GitHub token"
+          description="For the person who runs GritMap's Open Segments. It writes this segment straight into the public GitHub repository."
+        >
+          {showTokenField ? (
+            <TextField
+              label="GitHub token"
+              value={tokenInput}
+              onChangeText={setTokenInput}
+              placeholder="Paste the token"
+              hint="A GitHub token that is allowed to write to the Open Segments repository. It is kept in this iPhone's Keychain and sent only to GitHub."
+              secureTextEntry
+            />
+          ) : (
+            <AppText variant="subheadline" color="textSecondary">
+              A token is saved on this iPhone.
+            </AppText>
+          )}
+          {hasStoredToken && !changingToken ? (
+            <Button label="Use a different token" variant="tertiary" fullWidth={false} onPress={() => setChangingToken(true)} />
+          ) : null}
+          {hasStoredToken && changingToken ? (
+            <Button
+              label="Cancel"
+              variant="tertiary"
+              fullWidth={false}
               onPress={() => {
-                setTokenFieldVisible(false);
+                setChangingToken(false);
                 setTokenInput("");
               }}
-            >
-              <Text style={styles.changeTokenLink}>Cancel</Text>
-            </TouchableOpacity>
+            />
+          ) : null}
+          <Button label="Share this segment" onPress={handlePublish} loading={publishing} />
+          {result === undefined ? null : (
+            <Notice tone={result.ok ? "success" : "error"} live>
+              {result.text}
+            </Notice>
           )}
-        </>
+        </Section>
+      ) : (
+        <Button label="I'm the GritMap maintainer" variant="tertiary" fullWidth={false} onPress={() => setMaintainerOpen(true)} accessibilityHint="Shows the controls for sharing with a GitHub token" />
       )}
-      <TouchableOpacity
-        style={[styles.sendButton, publishing && styles.sendButtonDisabled]}
-        onPress={handlePublish}
-        disabled={publishing}
-      >
-        <Text style={styles.sendButtonLabel}>{publishing ? "Publishing…" : "Publish to registry"}</Text>
-      </TouchableOpacity>
-      {publishStatus !== undefined && <Text style={styles.sendStatusText}>{publishStatus}</Text>}
-    </ScrollView>
+    </ScreenScroll>
   );
 }
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: colors.background,
-  },
-  content: {
-    paddingHorizontal: spacing.space20,
-    paddingTop: spacing.space16,
-    paddingBottom: spacing.space32,
-    gap: spacing.space16,
-  },
-  title: {
-    fontSize: 22,
-    fontWeight: "700",
-    color: colors.textPrimary,
-  },
-  body: {
-    fontSize: 14,
-    color: colors.textSecondary,
-    lineHeight: 20,
-  },
-  addressInput: {
-    backgroundColor: colors.surface,
-    borderRadius: radius.md,
-    borderWidth: 1,
-    borderColor: colors.border,
-    paddingHorizontal: spacing.space16,
-    paddingVertical: spacing.space12,
-    fontSize: 15,
-    color: colors.textPrimary,
-  },
-  sendButton: {
-    backgroundColor: colors.brand,
-    borderRadius: radius.md,
-    paddingVertical: spacing.space12,
-    alignItems: "center",
-  },
-  sendButtonDisabled: {
-    opacity: 0.6,
-  },
-  sendButtonLabel: {
-    color: colors.textOnBrand,
-    fontSize: 15,
-    fontWeight: "600",
-  },
-  sendStatusText: {
-    fontSize: 13,
-    color: colors.textSecondary,
-  },
-  changeTokenLink: {
-    fontSize: 13,
-    color: colors.brand,
-    fontWeight: "600",
-  },
-});

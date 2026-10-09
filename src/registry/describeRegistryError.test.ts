@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 
-import { describeRegistryError } from "./describeRegistryError.ts";
+import { describePublishError, describeRegistryError, registryErrorKind } from "./describeRegistryError.ts";
 
 describe("describeRegistryError", () => {
   it("explains a network failure as a connection problem", () => {
@@ -19,5 +19,20 @@ describe("describeRegistryError", () => {
     for (const input of [{ statusCode: 403, message: "rate limit exceeded" }, { statusCode: 500 }, { message: "Network request failed" }, { statusCode: 404 }]) {
       assert.doesNotMatch(describeRegistryError(input), /\d{3}|rate limit|Network request|registry/i);
     }
+  });
+
+  it("sorts failures into offline, busy, server and other", () => {
+    assert.equal(registryErrorKind({}), "offline");
+    assert.equal(registryErrorKind({ statusCode: 429 }), "busy");
+    assert.equal(registryErrorKind({ statusCode: 502 }), "server");
+    assert.equal(registryErrorKind({ statusCode: 404 }), "other");
+  });
+
+  it("explains a failed share in rider words without codes, jargon or the server's own message", () => {
+    for (const input of [{}, { statusCode: 401 }, { statusCode: 403 }, { statusCode: 404 }, { statusCode: 429 }, { statusCode: 500 }, { statusCode: 422 }]) {
+      assert.doesNotMatch(describePublishError(input), /\d{3}|HTTP|repo scope|registry/i);
+    }
+    assert.match(describePublishError({ statusCode: 401 }), /did not accept that token/);
+    assert.match(describePublishError({}), /internet connection/);
   });
 });

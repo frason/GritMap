@@ -27,6 +27,8 @@ type Props = {
   maxLength?: number;
   /** A tall box for pasting or writing several lines (a plan, notes). */
   multiline?: boolean;
+  /** Hides what is typed (a token or password). */
+  secureTextEntry?: boolean;
   testID?: string;
 };
 
@@ -46,6 +48,7 @@ export function TextField({
   autoCorrect = false,
   maxLength,
   multiline = false,
+  secureTextEntry = false,
   testID,
 }: Props) {
   const palette = useColors();
@@ -71,6 +74,7 @@ export function TextField({
           autoCorrect={autoCorrect}
           maxLength={maxLength}
           multiline={multiline}
+          secureTextEntry={secureTextEntry}
           textAlignVertical={multiline ? "top" : "center"}
           onFocus={() => setFocused(true)}
           onBlur={() => setFocused(false)}

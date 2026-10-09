@@ -13,6 +13,22 @@ describe("summarizeRegistrySegment", () => {
     assert.equal(typeof summary.name, "string");
     assert.ok(summary.name.length > 0);
     assert.ok(summary.distanceMeters! > 100);
+    assert.ok(summary.elevationGainMeters! > 100);
+  });
+
+  it("adds the climbing when the points carry elevation, and leaves it out when they do not", () => {
+    const withElevation = summarizeRegistrySegment({
+      name: "Hill",
+      referencePolyline: [
+        { lat: 1, lng: 1, distanceMeters: 0, elevationMeters: 100 },
+        { lat: 1, lng: 1, distanceMeters: 500, elevationMeters: 150 },
+        { lat: 1, lng: 1, distanceMeters: 1000, elevationMeters: 140 },
+        { lat: 1, lng: 1, distanceMeters: 1500, elevationMeters: 190 },
+      ],
+    })!;
+    assert.equal(withElevation.distanceMeters, 1500);
+    assert.equal(withElevation.elevationGainMeters, 100);
+    assert.equal(summarizeRegistrySegment({ name: "Flat", referencePolyline: [{ distanceMeters: 0 }, { distanceMeters: 300 }] })!.elevationGainMeters, undefined);
   });
 
   it("trims the name and takes the last point's distance", () => {
