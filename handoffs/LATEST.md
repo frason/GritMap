@@ -19,17 +19,17 @@ the device reads `0.10.42-beta`/65. (The 0.10.42 handoff's "175 tests" is supers
 Done when: the checklist is committed, the post-ride comparison is in a handoff with the Goal
 alignment section, and any beta-blocking H10 issue is listed first.
 
-# Coordinator: current phone task (2026-10-08 20:45, sent to the GritMap MVP session)
+# Coordinator: current phone task (2026-10-08 20:50, sent to the GritMap MVP session)
 
 For Codex's awareness. Do not edit these phone files.
 
-Done and QA-passed since the last update: TestFlight readiness (`8e66df4`, `4106a8e`; iPhone-only,
-`eas.json`, `docs/BETA_TESTFLIGHT.md`). Unpushed, awaiting Jason. Pending a decision from Jason:
-real ride FIT/GPX fixtures in the public repo (`fixtures/`). Nobody should touch them until he decides.
+Done and QA-passed since the last update: Open Segments browse and share on the design system, with
+GitHub-token publishing now maintainer-only, and the `docs/OPEN_SEGMENTS_SHARING.md` proposal
+(`8ea294c`, `d033cc2`; 620/620 tests). Unpushed, awaiting Jason. Still pending from Jason: the real
+ride fixtures in `fixtures/`, and zones vs sections.
 
-**Task:** move Open Segments browse and share onto the design system, mark the GitHub-token publish
-path as maintainer-only for the beta, and write `docs/OPEN_SEGMENTS_SHARING.md` comparing token-free
-sharing options (proposal only). The zones/sections wording is still on hold.
+**Task:** move Attempt Comparison and Attempt Review onto the design system, with plain-language
+diagnostics, live text size and VoiceOver chart summaries. No behavior change.
 
 # Handoff: Open Segments browse and share on the design system; token-free sharing proposal (committed locally, not pushed)
 
