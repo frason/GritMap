@@ -33,15 +33,16 @@ android/.gradle/
 # OS
 .DS_Store
 
-# Not needed to build the phone app
-apps/
-fixtures/
-docs/
-handoffs/
-lead-inbox/
-state/
-schedule.json
-registry/
-scripts/
-dist/
-android/
+# Not needed to build the phone app. Leading "/" anchors each pattern to the
+# project root: a bare "registry/" also matched src/registry/ and broke the bundle.
+/apps/
+/fixtures/
+/docs/
+/handoffs/
+/lead-inbox/
+/state/
+/schedule.json
+/registry/
+/scripts/
+/dist/
+/android/
