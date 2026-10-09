@@ -97,19 +97,27 @@ from Open Segments first. Do not attach any personal ride. If Apple asks about t
 is optional hardware, the phone app is useful without it (planning, import, analysis), and the Karoo send uses plain HTTP on the
 local network only.
 
-### 9. Privacy policy URL (required)
-Apple requires a **Privacy Policy URL** for external TestFlight testing (Test Information) and for the App Store. It must be a
-public web page you control (GitHub Pages or any site). Content to cover, which is what the app does today:
-- All rides, segments, goals, plans and profile (FTP, weight, heart rate) are stored on the phone only; there are no accounts,
-  analytics, advertising or tracking.
-- Network use: Open Segments reads public segment files from GitHub; map tiles come from OpenFreeMap (their servers see the
-  phone's IP address and the map area requested); sending to a Karoo goes directly over the local network.
-- Publishing a segment is optional and uses a GitHub token the rider enters themselves, stored in the iPhone Keychain, sent only to GitHub.
-- How to delete data (delete the app) and a contact email.
+### 9. Privacy policy URL (required) and the App Privacy answers
+Apple requires a **Privacy Policy URL** for external TestFlight testing (Test Information) and for the App Store. **The policy is written: `docs/PRIVACY.md`.**
+It is host-agnostic Markdown with no repository links. To publish it, put the same text on any public web page you control (a page on the Vercel site, GitHub
+Pages, or the rendered file on GitHub) and paste that URL into Test Information and the App Store Connect app's "Privacy Policy URL". Before publishing, replace the two
+`[TODO: Jason ...]` markers: the **last-updated date** and a **contact email or form** (also used for takedown requests for shared segments). Re-read it once: it states what the app does
+today, so update it if the app changes (a new service, analytics, or opening Open Segments sharing to everyone).
 
-App Privacy questionnaire (App Store Connect -> App Privacy): answer **Data Not Collected** and **no tracking**, which matches the
-privacy manifest. Decide whether you want to disclose the OpenFreeMap tile requests; Apple's definition covers data *you*
-collect, and the app only requests public map tiles.
+**App Store Connect -> App Privacy answers** (these match `docs/PRIVACY.md` and `ios/GritMap/PrivacyInfo.xcprivacy`):
+
+| Question | Answer | Why |
+|---|---|---|
+| Do you or your third-party partners collect data from this app? | **No** (so "Data Not Collected") | Rides, segments, plans and profile (FTP, weight, heart rate) are stored only on the phone; nothing is sent to the developer. Apple's "collect" means sending data off the device where you or a partner can keep it longer than needed to answer the request. The only requests are public reads of GitHub files and OpenFreeMap map tiles, which carry no identifier or personal data from the app; the servers see the IP address transiently, as any website does. |
+| Is any data used to track users? | **No** | No advertising SDK, no analytics, no data brokers, no tracking domains. |
+| Third-party SDKs that collect data? | **None** | The app has no analytics, crash-reporting or advertising dependency (checked in `package.json` and the source). |
+| Account / sign-in | None | There are no accounts. |
+| Privacy policy URL | the published URL of `docs/PRIVACY.md` | Required. |
+| Does the app use encryption beyond OS-provided? | **No** | `ITSAppUsesNonExemptEncryption = false` is already set. |
+
+Decisions for Jason: (1) if you would rather over-disclose, you could declare "Other Data" for the transient IP address seen by GitHub and OpenFreeMap, but Apple's definition does not
+require it and the policy already explains it in plain words. (2) When sharing opens to everyone (`docs/OPEN_SEGMENTS_SHARING.md`), the answers change: a shared segment is
+user content you receive and keep, so this table and the policy must be revisited first.
 
 ### 10. After the first build
 Tell Claude the build is live; the next steps are: add the TestFlight public link and the Karoo install guide to the
