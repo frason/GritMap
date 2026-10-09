@@ -31,6 +31,13 @@ ride fixtures in `fixtures/`, and zones vs sections.
 **Task:** move Attempt Comparison and Attempt Review onto the design system, with plain-language
 diagnostics, live text size and VoiceOver chart summaries. No behavior change.
 
+# Handoff: Attempt Review and Attempt Comparison on the design system; cross-tab Back-button fix (committed locally, not pushed)
+
+Phone-only; Karoo and fixtures untouched. Compare Efforts names both efforts with a picker to swap either, says who was ahead and explains the time-gap chart ("Ahead or behind"); Review Effort renames the match diagnostics (Route followed,
+Furthest off the route, Backtracking, GPS dropouts), explains why GritMap isn't sure, and Confirm/Remove state their consequences (remove confirms in-screen). Charts have spoken summaries; all text is `AppText`.
+**Bug fixed (`c6808dd`):** opening a segment/effort/comparison from Home, Import, Ride detail or after saving a segment left it with no Back button; navigation now keeps the tab's list underneath. typecheck, 628/628 tests, web:smoke clean;
+before/after screenshots in `docs/screenshots/attempts/`. "zones" wording untouched. Needs Jason's OK to push 12 local commits. Details: `handoffs/archive/2026-10-08-2155-claude-attempt-screens-and-back-button.md`.
+
 # Handoff: Open Segments browse and share on the design system; token-free sharing proposal (committed locally, not pushed)
 
 Phone-only; Karoo untouched. Open Segments cards now show distance and climbing, with offline/busy/empty/error states, pull to refresh and "already added". Share to Open Segments tells strangers
