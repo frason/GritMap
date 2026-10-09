@@ -19,15 +19,16 @@ the device reads `0.10.42-beta`/65. (The 0.10.42 handoff's "175 tests" is supers
 Done when: the checklist is committed, the post-ride comparison is in a handoff with the Goal
 alignment section, and any beta-blocking H10 issue is listed first.
 
-# Coordinator: current phone task (2026-10-08 16:20, sent to the GritMap MVP session)
+# Coordinator: current phone task (2026-10-08 19:10, sent to the GritMap MVP session)
 
 For Codex's awareness. Do not edit these phone files.
 
-The previous phone tasks are done and pass coordinator QA: onboarding (`be21320`), Home fix (`3b3e590`),
-beta-loop screen migration (`078e131`); 616/616 tests. Unpushed, awaiting Jason.
+Done and QA-passed since the last update: Define Segment redesign, progress-over-time load
+(7.5 s → ~0.05 s), live text-size reflow (`ba8419e`, `d4aa1af`; 617/617 tests). Unpushed, awaiting Jason.
 
-**Task:** redesign Define Segment (with handle accessibility); bring the progress-over-time load under 2 s
-or give it a loading state; reflow live when the text size changes. The zones/sections wording is on hold.
+**Task:** TestFlight readiness without Jason's credentials: `eas.json` profiles, an App Store Connect
+review of `app.json`, privacy manifest and usage strings, a production-mode build check, and
+`docs/BETA_TESTFLIGHT.md` listing the steps only Jason can do. The zones/sections wording is still on hold.
 
 # Handoff: Define Segment redesigned; progress-over-time load 7.5 s to ~0.05 s; text size reflows live (committed locally, not pushed)
 
