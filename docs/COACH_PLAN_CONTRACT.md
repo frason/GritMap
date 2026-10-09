@@ -28,6 +28,12 @@ Provenance is stored for review and shown in the UI; it never changes runtime be
 generated plan is not stored: it is recomputed from FTP + goal. An active imported plan overrides
 it for that segment until the rider switches back.
 
+## Wording: "sections" for riders, `zones` on the wire
+
+Riders and coaches see the stretches of a pacing plan called **sections** (screens, charts, the share request, validation messages). The
+JSON field stays `zones` and the wire names (`CoachPlanZone`, `baselinePacingPlan.zones`) are unchanged: it is a contract key, not wording,
+and renaming it would break the Karoo parser. "Zones" in rider-facing text now means only power and heart-rate **training zones** (Z1 to Z7).
+
 ## The document: `gritmap-coach-plan`, schemaVersion 1
 
 ```json

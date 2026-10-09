@@ -178,11 +178,11 @@ function parseZones(
   warnings: string[],
 ): DraftZone[] | undefined {
   if (!Array.isArray(value) || value.length === 0) {
-    fail("zones must be a non-empty array");
+    fail('"zones" (the plan\'s sections) must be a non-empty list');
     return undefined;
   }
   if (value.length > MAX_ZONES) {
-    fail(`zones has ${value.length} entries; the maximum is ${MAX_ZONES}`);
+    fail(`The plan has ${value.length} sections; the maximum is ${MAX_ZONES}`);
     return undefined;
   }
 
@@ -192,7 +192,7 @@ function parseZones(
   const unknownKeyWarned = new Set<string>();
 
   value.forEach((entry, index) => {
-    const label = `zone ${index + 1}`;
+    const label = `section ${index + 1}`;
     if (!isRecord(entry)) {
       fail(`${label} must be an object`);
       structurallyValid = false;
@@ -201,7 +201,7 @@ function parseZones(
     for (const key of Object.keys(entry)) {
       if (!ZONE_KEYS.has(key) && !unknownKeyWarned.has(key)) {
         unknownKeyWarned.add(key);
-        warnings.push(`Ignored unknown zone field "${key}"`);
+        warnings.push(`Ignored unknown section field "${key}"`);
       }
     }
 
@@ -278,7 +278,7 @@ function parseZones(
   // Geometry: zones must tile the segment. Tiny rounding mismatches are snapped; real gaps are errors.
   const first = drafts[0]!;
   if (Math.abs(first.startDistanceMeters) > END_SNAP_METERS) {
-    fail(`zone 1 must start at 0 m (starts at ${formatMeters(first.startDistanceMeters)})`);
+    fail(`section 1 must start at 0 m (starts at ${formatMeters(first.startDistanceMeters)})`);
   } else {
     first.startDistanceMeters = 0;
   }
@@ -288,7 +288,7 @@ function parseZones(
     const gap = zone.startDistanceMeters - previous.endDistanceMeters;
     if (Math.abs(gap) > JOIN_SNAP_METERS) {
       fail(
-        `zone ${i + 1} starts at ${formatMeters(zone.startDistanceMeters)} but zone ${i} ends at ${formatMeters(previous.endDistanceMeters)} (${gap > 0 ? "gap" : "overlap"})`,
+        `section ${i + 1} starts at ${formatMeters(zone.startDistanceMeters)} but section ${i} ends at ${formatMeters(previous.endDistanceMeters)} (${gap > 0 ? "gap" : "overlap"})`,
       );
     } else {
       zone.startDistanceMeters = previous.endDistanceMeters;
@@ -297,21 +297,21 @@ function parseZones(
   const last = drafts[drafts.length - 1]!;
   if (Math.abs(last.endDistanceMeters - context.segmentLengthMeters) > END_SNAP_METERS) {
     fail(
-      `zones cover ${formatMeters(last.endDistanceMeters)} but the segment is ${formatMeters(context.segmentLengthMeters)}`,
+      `the sections cover ${formatMeters(last.endDistanceMeters)} but the segment is ${formatMeters(context.segmentLengthMeters)}`,
     );
   } else {
     last.endDistanceMeters = context.segmentLengthMeters;
   }
   drafts.forEach((zone, index) => {
     if (zone.endDistanceMeters <= zone.startDistanceMeters) {
-      fail(`zone ${index + 1} must end after it starts`);
+      fail(`section ${index + 1} must end after it starts`);
     }
   });
   for (let i = 1; i < drafts.length; i += 1) {
     const step = Math.abs(drafts[i]!.targetPowerWatts - drafts[i - 1]!.targetPowerWatts);
     if (step > MAX_TARGET_STEP_WATTS) {
       fail(
-        `zones ${i} and ${i + 1} differ by ${step} W; the Karoo accepts at most ${MAX_TARGET_STEP_WATTS} W between neighbours`,
+        `sections ${i} and ${i + 1} differ by ${step} W; the Karoo accepts at most ${MAX_TARGET_STEP_WATTS} W between neighbours`,
       );
     }
   }

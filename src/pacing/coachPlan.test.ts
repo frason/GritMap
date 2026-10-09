@@ -151,7 +151,7 @@ describe("parseCoachPlan: accepted documents", () => {
         zones: [{ startDistanceMeters: 0, endDistanceMeters: 1_000, targetPowerWatts: 250, why: "x" }],
       }),
     );
-    assert.deepEqual(warnings.sort(), ['Ignored unknown plan field "commentary"', 'Ignored unknown zone field "why"']);
+    assert.deepEqual(warnings.sort(), ['Ignored unknown plan field "commentary"', 'Ignored unknown section field "why"']);
   });
 
   it("shortens an over-long instruction for the Karoo display and says so", () => {
@@ -181,7 +181,7 @@ describe("parseCoachPlan: rejected documents", () => {
     assert.equal(errors.length, 3);
   });
 
-  it("rejects a gap and an overlap between zones, naming the zones", () => {
+  it("rejects a gap and an overlap between sections, naming the sections", () => {
     const gap = rejected(
       document({
         zones: [
@@ -190,7 +190,7 @@ describe("parseCoachPlan: rejected documents", () => {
         ],
       }),
     );
-    assert.match(gap[0]!, /zone 2 starts at 450 m but zone 1 ends at 400 m \(gap\)/);
+    assert.match(gap[0]!, /section 2 starts at 450 m but section 1 ends at 400 m \(gap\)/);
     const overlap = rejected(
       document({
         zones: [
@@ -202,14 +202,14 @@ describe("parseCoachPlan: rejected documents", () => {
     assert.match(overlap[0]!, /overlap/);
   });
 
-  it("rejects zones that do not start at 0 or do not reach the segment end", () => {
+  it("rejects sections that do not start at 0 or do not reach the segment end", () => {
     assert.match(
       rejected(document({ zones: [{ startDistanceMeters: 50, endDistanceMeters: 1_000, targetPowerWatts: 250 }] }))[0]!,
       /must start at 0 m/,
     );
     assert.match(
       rejected(document({ zones: [{ startDistanceMeters: 0, endDistanceMeters: 900, targetPowerWatts: 250 }] }))[0]!,
-      /zones cover 900 m but the segment is 1000 m/,
+      /the sections cover 900 m but the segment is 1000 m/,
     );
   });
 
@@ -224,7 +224,7 @@ describe("parseCoachPlan: rejected documents", () => {
     accepted(document({ zones: [{ startDistanceMeters: 0, endDistanceMeters: 1_000, targetPowerWatts: 420 }] }));
   });
 
-  it("rejects a step over 100 W between neighbouring zones, accepts exactly 100 W", () => {
+  it("rejects a step over 100 W between neighbouring sections, accepts exactly 100 W", () => {
     const tooBig = rejected(
       document({
         zones: [
@@ -233,7 +233,7 @@ describe("parseCoachPlan: rejected documents", () => {
         ],
       }),
     );
-    assert.match(tooBig[0]!, /zones 1 and 2 differ by 101 W/);
+    assert.match(tooBig[0]!, /sections 1 and 2 differ by 101 W/);
     accepted(
       document({
         zones: [
@@ -244,7 +244,7 @@ describe("parseCoachPlan: rejected documents", () => {
     );
   });
 
-  it("requires exactly one of targetPowerWatts / targetPercentFtp per zone", () => {
+  it("requires exactly one of targetPowerWatts / targetPercentFtp per section", () => {
     const both = rejected(
       document({
         zones: [{ startDistanceMeters: 0, endDistanceMeters: 1_000, targetPowerWatts: 250, targetPercentFtp: 90 }],
@@ -255,16 +255,16 @@ describe("parseCoachPlan: rejected documents", () => {
     assert.match(neither[0]!, /exactly one of/);
   });
 
-  it("rejects empty, oversized, and malformed zone arrays", () => {
-    assert.match(rejected(document({ zones: [] }))[0]!, /non-empty array/);
-    assert.match(rejected(document({ zones: "no" }))[0]!, /non-empty array/);
+  it("rejects empty, oversized, and malformed section lists", () => {
+    assert.match(rejected(document({ zones: [] }))[0]!, /non-empty list/);
+    assert.match(rejected(document({ zones: "no" }))[0]!, /non-empty list/);
     const many = Array.from({ length: 201 }, (_, i) => ({
       startDistanceMeters: i,
       endDistanceMeters: i + 1,
       targetPowerWatts: 250,
     }));
     assert.match(rejected(document({ zones: many }))[0]!, /maximum is 200/);
-    assert.match(rejected(document({ zones: [7] }))[0]!, /zone 1 must be an object/);
+    assert.match(rejected(document({ zones: [7] }))[0]!, /section 1 must be an object/);
   });
 
   it("rejects an unknown classification and non-numeric distances", () => {
