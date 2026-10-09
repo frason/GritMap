@@ -1,0 +1,47 @@
+# EAS Build uploads the project using THIS file instead of .gitignore, so it repeats the .gitignore
+# rules and also leaves out everything the phone app does not need to build (smaller upload, and the
+# Karoo project, real ride files and agent workspace stay off Expo's servers).
+
+# Env / secrets
+.env
+.env.dispatcher-path
+
+# Agent-team local logs (regenerated per tick; not needed in version control)
+logs/
+
+# Claude Code local settings
+.claude/settings.local.json
+
+# Node / Expo / React Native
+node_modules/
+.expo/
+.expo-shared/
+dist/
+web-build/
+*.jks
+*.p8
+*.p12
+*.key
+*.mobileprovision
+ios/Pods/
+ios/build/
+android/build/
+android/app/build/
+android/.gradle/
+*.hprof
+
+# OS
+.DS_Store
+
+# Not needed to build the phone app
+apps/
+fixtures/
+docs/
+handoffs/
+lead-inbox/
+state/
+schedule.json
+registry/
+scripts/
+dist/
+android/
