@@ -25,6 +25,8 @@ export interface ChannelChartProps {
   comparisonLabel?: string;
   /** Label for the optional third `current` line; only shown when some point has a value. */
   currentLabel?: string;
+  /** Values for a screen reader (averages, the finish gap), added to the chart's spoken description. */
+  summary?: string;
 }
 
 const VIEWBOX_WIDTH = 300;
@@ -45,6 +47,7 @@ export function ChannelChart({
   primaryLabel = "This attempt",
   comparisonLabel = "Comparison",
   currentLabel = "Current",
+  summary,
 }: ChannelChartProps) {
   const palette = useColors();
   if (series.length === 0) {
@@ -74,7 +77,7 @@ export function ChannelChart({
     <View
       style={styles.container}
       accessible
-      accessibilityLabel={`${title} chart, from ${formatValue(minValue)} to ${formatValue(maxValue)} ${unit}. Lines: ${[hasCurrent ? currentLabel : undefined, primaryLabel, comparisonLabel].filter((label) => label !== undefined).join(", ")}.`}
+      accessibilityLabel={`${title} chart, from ${formatValue(minValue)} to ${formatValue(maxValue)} ${unit}. Lines: ${[hasCurrent ? currentLabel : undefined, primaryLabel, comparisonLabel].filter((label) => label !== undefined).join(", ")}.${summary === undefined ? "" : ` ${summary}`}`}
     >
       <View style={styles.header}>
         <AppText variant="subheadline" style={styles.title} accessibilityRole="header">

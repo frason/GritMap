@@ -37,11 +37,11 @@ export function SegmentsStackNavigator() {
         })}
       />
       <Stack.Screen name="SegmentDetail" component={SegmentDetailScreen} options={{ title: "" }} />
-      <Stack.Screen name="AttemptReview" component={AttemptReviewScreen} options={{ title: "Review Attempt" }} />
+      <Stack.Screen name="AttemptReview" component={AttemptReviewScreen} options={{ title: "Review Effort" }} />
       <Stack.Screen
         name="AttemptComparison"
         component={AttemptComparisonScreen}
-        options={{ title: "Compare Attempts" }}
+        options={{ title: "Compare Efforts" }}
       />
       <Stack.Screen name="RegistryBrowse" component={RegistryBrowseScreen} options={{ title: "Open Segments" }} />
       <Stack.Screen name="ZonesSettings" component={ZonesSettingsScreen} options={{ title: "Your Profile" }} />

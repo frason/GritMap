@@ -496,7 +496,7 @@ export function SegmentDetailScreen() {
                   label="Import a ride"
                   icon="download"
                   variant="secondary"
-                  onPress={() => navigation.getParent<BottomTabNavigationProp<RootTabParamList>>()?.navigate("RidesTab", { screen: "Import" })}
+                  onPress={() => navigation.getParent<BottomTabNavigationProp<RootTabParamList>>()?.navigate("RidesTab", { screen: "Import", initial: false })}
                 />
               </Card>
             ) : (
@@ -573,7 +573,7 @@ export function SegmentDetailScreen() {
                 <>
                   {attempts.length >= 2 && (
                     <Button
-                      label={compareMode ? "Cancel comparing" : "Compare two attempts"}
+                      label={compareMode ? "Cancel comparing" : "Compare two efforts"}
                       variant="secondary"
                       onPress={toggleCompareMode}
                     />
@@ -593,7 +593,7 @@ export function SegmentDetailScreen() {
                   )}
                   {compareMode && (
                     <AppText variant="subheadline" color="textSecondary" accessibilityLiveRegion="polite">
-                      Select two attempts ({selectedAttemptIds.length}/2)
+                      Select two efforts ({selectedAttemptIds.length}/2)
                     </AppText>
                   )}
                   <View>

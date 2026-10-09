@@ -1,292 +1,190 @@
 import { useCallback, useState } from "react";
-import { Alert, ScrollView, StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import { StyleSheet, View } from "react-native";
 import { useFocusEffect, useNavigation, useRoute, type RouteProp } from "@react-navigation/native";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { useDatabase } from "../db/DatabaseProvider";
 import { getAttemptDetail, type AttemptDetail } from "../db/getAttemptDetail";
 import { getRideTrack, type RideTrackPoint } from "../db/getRideTrack";
+import { getSegmentDetail } from "../db/getSegmentDetail";
 import { confirmAttempt, rejectAttempt } from "../db/reviewAttempt";
 import type { SegmentsStackParamList } from "../navigation/types";
-import { colors, type ColorToken } from "../theme/colors";
-import { Icon } from "../theme/Icon";
+import { AppText, Button, Card, ErrorState, ListRow, LoadingState, Notice, ScreenScroll, Section } from "../theme/components";
 import { radius, spacing } from "../theme/spacing";
-import { formatDurationHoursMinutes } from "./formatRideStats";
+import { useColors } from "../theme/useColors";
+import { describeAttemptStatus, describeMatchDetails, describeMatchReason } from "./describeAttemptMatch";
+import { formatDurationMinutesSeconds, formatRideDate } from "./formatRideStats";
 import { RouteMapView } from "./RouteMapView";
 
 type AttemptReviewRoute = RouteProp<SegmentsStackParamList, "AttemptReview">;
 type Navigation = NativeStackNavigationProp<SegmentsStackParamList>;
 
+/**
+ * One effort on a segment: when it happened, how GritMap matched the ride to the segment (in plain
+ * words), and, for an effort GritMap isn't sure about, the decision to count it or remove it.
+ */
 export function AttemptReviewScreen() {
   const database = useDatabase();
   const route = useRoute<AttemptReviewRoute>();
   const navigation = useNavigation<Navigation>();
+  const palette = useColors();
+  const [state, setState] = useState<"loading" | "ready" | "missing" | "error">("loading");
   const [attempt, setAttempt] = useState<AttemptDetail | undefined>(undefined);
+  const [segmentName, setSegmentName] = useState<string | undefined>(undefined);
   const [track, setTrack] = useState<RideTrackPoint[]>([]);
+  const [confirmingRemove, setConfirmingRemove] = useState(false);
 
-  useFocusEffect(
-    useCallback(() => {
+  const load = useCallback(() => {
+    try {
       const detail = getAttemptDetail(database, route.params.attemptId);
       setAttempt(detail);
-      setTrack(detail === undefined ? [] : getRideTrack(database, detail.rideId));
-    }, [database, route.params.attemptId]),
-  );
+      if (detail === undefined) {
+        setState("missing");
+        return;
+      }
+      setSegmentName(getSegmentDetail(database, detail.segmentId)?.name);
+      setTrack(getRideTrack(database, detail.rideId));
+      setState("ready");
+    } catch {
+      setState("error");
+    }
+  }, [database, route.params.attemptId]);
 
-  if (attempt === undefined) {
+  useFocusEffect(load);
+
+  if (state === "loading") {
     return (
-      <View style={styles.emptyState}>
-        <Text style={styles.emptyText}>
-          This attempt is no longer available — it may have already been reviewed.
-        </Text>
-      </View>
+      <ScreenScroll>
+        <LoadingState label="Loading effort…" />
+      </ScreenScroll>
+    );
+  }
+  if (state === "error") {
+    return <ErrorState message="GritMap couldn't open this effort. Go back and try again." onRetry={load} />;
+  }
+  if (state === "missing" || attempt === undefined) {
+    return (
+      <ErrorState
+        title="This effort is no longer available"
+        message="It may already have been reviewed or removed. Go back to the segment to see your efforts."
+      />
     );
   }
 
+  const current = attempt;
+
   function handleConfirm() {
-    confirmAttempt(database, attempt!.attemptId);
+    confirmAttempt(database, current.attemptId);
     navigation.goBack();
   }
 
-  function handleReject() {
-    Alert.alert("Reject attempt?", "This removes it from the segment's attempts.", [
-      { text: "Cancel", style: "cancel" },
-      {
-        text: "Reject",
-        style: "destructive",
-        onPress: () => {
-          rejectAttempt(database, attempt!.attemptId);
-          navigation.goBack();
-        },
-      },
-    ]);
+  function handleRemove() {
+    rejectAttempt(database, current.attemptId);
+    navigation.goBack();
   }
 
+  const status = describeAttemptStatus(current.decision, current.manuallyApproved);
+  const durationMs = current.endTimestampMs - current.startTimestampMs;
+  const details = describeMatchDetails({
+    confidenceScore: current.confidenceScore,
+    coveragePct: current.coveragePct,
+    maxDeviationMeters: current.maxDeviationMeters,
+    ...(current.medianDeviationMeters === undefined ? {} : { medianDeviationMeters: current.medianDeviationMeters }),
+    maxBackwardMeters: current.maxBackwardMeters,
+    gpsGapCount: current.gpsGapCount,
+    maxGapMs: current.maxGapMs,
+  });
+
   return (
-    <ScrollView style={styles.container} contentContainerStyle={styles.content}>
-      <Text style={styles.title}>{attempt.rideOriginalFilename}</Text>
-      <DecisionBadge decision={attempt.decision} manuallyApproved={attempt.manuallyApproved} />
-
-      <View style={styles.mapContainer}>
-        <RouteMapView
-          points={track}
-          highlightRange={{
-            startPointIndex: attempt.startPointIndex,
-            endPointIndex: attempt.endPointIndex,
-          }}
-        />
+    <ScreenScroll>
+      <View style={styles.heading}>
+        <AppText variant="title2" accessibilityRole="header">
+          {segmentName ?? "Segment effort"}
+        </AppText>
+        <AppText variant="subheadline" color="textSecondary">
+          {formatRideDate(current.startTimestampMs)} · {formatDurationMinutesSeconds(durationMs)}
+        </AppText>
+        <AppText variant="footnote" color="textSecondary">
+          From {current.rideOriginalFilename}
+        </AppText>
       </View>
 
-      <View style={styles.diagnostics}>
-        <DiagnosticRow label="Confidence" value={formatPct(attempt.confidenceScore)} />
-        <DiagnosticRow label="Coverage" value={formatPct(attempt.coveragePct)} />
-        <DiagnosticRow label="Duration" value={formatDurationHoursMinutes(attempt.endTimestampMs - attempt.startTimestampMs)} />
-        <DiagnosticRow label="Max deviation" value={formatMeters(attempt.maxDeviationMeters)} />
-        <DiagnosticRow
-          label="Median deviation"
-          value={attempt.medianDeviationMeters === undefined ? "—" : formatMeters(attempt.medianDeviationMeters)}
-        />
-        <DiagnosticRow label="Backward movement" value={formatMeters(attempt.maxBackwardMeters)} />
-        <DiagnosticRow label="GPS gaps" value={String(attempt.gpsGapCount)} />
-        <DiagnosticRow label="Longest gap" value={formatDurationHoursMinutes(attempt.maxGapMs)} />
-        <DiagnosticRow label="Matcher version" value={`v${attempt.matcherVersion}`} />
-      </View>
+      <Notice tone={status.tone}>{`${status.label}. ${status.explanation}`}</Notice>
 
-      {attempt.reasons.length > 0 && (
-        <View style={styles.reasons}>
-          <Text style={styles.reasonsTitle}>Reasons for uncertainty</Text>
-          {attempt.reasons.map((reason) => (
-            <Text key={reason} style={styles.reasonText}>
-              • {humanizeReason(reason)}
-            </Text>
+      <View
+        style={[styles.map, { backgroundColor: palette.surface, borderColor: palette.border }]}
+      >
+        <RouteMapView points={track} highlightRange={{ startPointIndex: current.startPointIndex, endPointIndex: current.endPointIndex }} />
+      </View>
+      <AppText variant="footnote" color="textSecondary">
+        The thick line on the map is this effort.
+      </AppText>
+
+      {current.reasons.length > 0 ? (
+        <Section title="Why GritMap isn't sure">
+          <Card>
+            {current.reasons.map((reason) => (
+              <AppText key={reason} variant="subheadline">
+                • {describeMatchReason(reason)}
+              </AppText>
+            ))}
+          </Card>
+        </Section>
+      ) : null}
+
+      <Section title="How well it matched" description="The numbers GritMap used to decide this ride covered the segment.">
+        <View>
+          {details.map((detail) => (
+            <ListRow key={detail.label} title={detail.label} subtitle={detail.meaning} value={detail.value} />
           ))}
         </View>
-      )}
+        <AppText variant="caption1" color="textSecondary">
+          Checked by match analysis version {current.matcherVersion}.
+        </AppText>
+      </Section>
 
-      <TouchableOpacity
-        style={styles.planLink}
-        onPress={() => navigation.navigate("PlanVsActual", { attemptId: attempt.attemptId })}
-      >
-        <Icon name="flag" color="brand" size={18} />
-        <Text style={styles.planLinkLabel}>Compare with your pacing plan</Text>
-      </TouchableOpacity>
+      <Button
+        label="Compare with your pacing plan"
+        variant="secondary"
+        icon="flag"
+        onPress={() => navigation.navigate("PlanVsActual", { attemptId: current.attemptId })}
+      />
 
-      <View style={styles.actions}>
-        <TouchableOpacity style={styles.rejectButton} onPress={handleReject}>
-          <Icon name="xCircle" color="statusDanger" size={18} />
-          <Text style={styles.rejectLabel}>Reject</Text>
-        </TouchableOpacity>
-        <TouchableOpacity style={styles.confirmButton} onPress={handleConfirm}>
-          <Icon name="checkCircle" color="textOnBrand" size={18} />
-          <Text style={styles.confirmLabel}>Confirm</Text>
-        </TouchableOpacity>
-      </View>
-    </ScrollView>
+      <Section title="Count this effort?">
+        {confirmingRemove ? (
+          <Card>
+            <AppText variant="headline">Remove this effort?</AppText>
+            <AppText variant="subheadline" color="textSecondary">
+              It will no longer count toward your times or charts. If you later check your rides again, GritMap may find it again.
+            </AppText>
+            <Button label="Yes, remove it" variant="destructive" icon="trash" onPress={handleRemove} />
+            <Button label="Keep it for now" variant="secondary" onPress={() => setConfirmingRemove(false)} />
+          </Card>
+        ) : (
+          <>
+            {current.manuallyApproved ? null : (
+              <Card>
+                <AppText variant="subheadline" color="textSecondary">
+                  {current.decision === "borderline"
+                    ? "Confirm if this ride really did the whole segment. It will count toward your times and charts, and GritMap will keep it even when it checks your rides again."
+                    : "GritMap already counts this effort. Confirming it locks it in, so checking your rides again never changes it."}
+                </AppText>
+                <Button label="Confirm this effort" icon="checkCircle" onPress={handleConfirm} />
+              </Card>
+            )}
+            <Card>
+              <AppText variant="subheadline" color="textSecondary">
+                Remove it if this ride didn't really do the segment. It stops counting toward your times.
+              </AppText>
+              <Button label="Remove this effort" variant="destructive" icon="trash" onPress={() => setConfirmingRemove(true)} />
+            </Card>
+          </>
+        )}
+      </Section>
+    </ScreenScroll>
   );
-}
-
-function DecisionBadge({
-  decision,
-  manuallyApproved,
-}: {
-  decision: "accept" | "borderline";
-  manuallyApproved: boolean;
-}) {
-  const label = manuallyApproved ? "Manually approved" : decision === "accept" ? "Accepted" : "Borderline";
-  const isPositive = manuallyApproved || decision === "accept";
-  const tone: ColorToken = isPositive ? "statusSuccess" : "statusWarning";
-  const subtleTone: ColorToken = isPositive ? "statusSuccessSubtle" : "statusWarningSubtle";
-  return (
-    <View style={[styles.badge, { backgroundColor: colors[subtleTone] }]}>
-      <Text style={[styles.badgeText, { color: colors[tone] }]}>{label}</Text>
-    </View>
-  );
-}
-
-function DiagnosticRow({ label, value }: { label: string; value: string }) {
-  return (
-    <View style={styles.diagnosticRow}>
-      <Text style={styles.diagnosticLabel}>{label}</Text>
-      <Text style={styles.diagnosticValue}>{value}</Text>
-    </View>
-  );
-}
-
-function formatPct(fraction: number): string {
-  return `${Math.round(fraction * 100)}%`;
-}
-
-function formatMeters(meters: number): string {
-  return `${Math.round(meters)}m`;
-}
-
-function humanizeReason(reason: string): string {
-  return reason.charAt(0).toUpperCase() + reason.slice(1).replace(/-/g, " ");
 }
 
 const styles = StyleSheet.create({
-  planLink: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: spacing.space8,
-    paddingVertical: spacing.space12,
-    borderRadius: radius.md,
-    borderWidth: 1,
-    borderColor: colors.brand,
-  },
-  planLinkLabel: { color: colors.brand, fontSize: 15, fontWeight: "600" },
-  container: {
-    flex: 1,
-    backgroundColor: colors.background,
-  },
-  content: {
-    paddingHorizontal: spacing.space20,
-    paddingTop: spacing.space16,
-    paddingBottom: spacing.space32,
-    gap: spacing.space16,
-  },
-  emptyState: {
-    flex: 1,
-    alignItems: "center",
-    justifyContent: "center",
-    padding: spacing.space24,
-    backgroundColor: colors.background,
-  },
-  emptyText: {
-    fontSize: 15,
-    color: colors.textSecondary,
-    textAlign: "center",
-  },
-  title: {
-    fontSize: 22,
-    fontWeight: "600",
-    color: colors.textPrimary,
-  },
-  badge: {
-    alignSelf: "flex-start",
-    borderRadius: radius.md,
-    paddingVertical: spacing.space4,
-    paddingHorizontal: spacing.space12,
-  },
-  badgeText: {
-    fontSize: 13,
-    fontWeight: "600",
-  },
-  mapContainer: {
-    height: 220,
-    borderRadius: radius.md,
-    overflow: "hidden",
-    backgroundColor: colors.surface,
-  },
-  diagnostics: {
-    backgroundColor: colors.surface,
-    borderRadius: radius.md,
-    paddingHorizontal: spacing.space16,
-  },
-  diagnosticRow: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    paddingVertical: spacing.space12,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border,
-  },
-  diagnosticLabel: {
-    fontSize: 14,
-    color: colors.textSecondary,
-  },
-  diagnosticValue: {
-    fontSize: 14,
-    fontWeight: "600",
-    color: colors.textPrimary,
-  },
-  reasons: {
-    backgroundColor: colors.statusWarningSubtle,
-    borderRadius: radius.md,
-    padding: spacing.space16,
-    gap: spacing.space4,
-  },
-  reasonsTitle: {
-    fontSize: 13,
-    fontWeight: "600",
-    color: colors.statusWarning,
-    marginBottom: spacing.space4,
-  },
-  reasonText: {
-    fontSize: 13,
-    color: colors.statusWarning,
-  },
-  actions: {
-    flexDirection: "row",
-    gap: spacing.space12,
-  },
-  rejectButton: {
-    flex: 1,
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: spacing.space8,
-    borderRadius: radius.md,
-    borderWidth: 1,
-    borderColor: colors.statusDanger,
-    paddingVertical: spacing.space12,
-  },
-  rejectLabel: {
-    color: colors.statusDanger,
-    fontSize: 15,
-    fontWeight: "600",
-  },
-  confirmButton: {
-    flex: 1,
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: spacing.space8,
-    backgroundColor: colors.brand,
-    borderRadius: radius.md,
-    paddingVertical: spacing.space12,
-  },
-  confirmLabel: {
-    color: colors.textOnBrand,
-    fontSize: 15,
-    fontWeight: "600",
-  },
+  heading: { gap: spacing.space4 },
+  map: { height: 220, borderRadius: radius.lg, borderWidth: 1, overflow: "hidden" },
 });
