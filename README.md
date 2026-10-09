@@ -43,7 +43,7 @@ beta announcement.
 
 | Field | What it answers | Preview |
 |---|---|---|
-| **GM Pacing Profile** | Where am I relative to the planned pacer, and what effort comes next? | ![Placeholder for GM Pacing Profile](docs/screenshots/karoo-fields/pacing-profile-placeholder.svg) |
+| **GM Pacing Profile** | Where am I relative to the planned pacer, and what effort comes next? | ![GM Pacing Profile](docs/screenshots/karoo-fields/pacing-profile-placeholder.svg) | 
 | **GM Pacing Coach** | What is the current section target, and how did nearby sections go? | ![Placeholder for GM Pacing Coach](docs/screenshots/karoo-fields/pacing-coach-placeholder.svg) |
 | **GM Segment Performance** | What is my projected finish and where am I gaining or losing time? | ![Placeholder for GM Segment Performance](docs/screenshots/karoo-fields/segment-performance-placeholder.svg) |
 | **GM Power Balance** | Am I spending modeled reserve faster or slower than planned? | ![Placeholder for GM Power Balance](docs/screenshots/karoo-fields/power-balance-placeholder.svg) |
