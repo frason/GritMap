@@ -6,7 +6,7 @@ import { getSegmentDetail, type SegmentDetail } from "../db/getSegmentDetail";
 import { describePublishError } from "../registry/describeRegistryError";
 import { defaultRegistryConfig } from "../registry/registryConfig";
 import { publishRegistrySegment } from "../registry/registryClient";
-import { getRegistryToken, setRegistryToken } from "../registry/registryCredentials";
+import { clearRegistryToken, getRegistryToken, setRegistryToken } from "../registry/registryCredentials";
 import type { SegmentsStackParamList } from "../navigation/types";
 import { AppText, Button, Card, ErrorState, LoadingState, Notice, ScreenScroll, Section, TextField } from "../theme/components";
 
@@ -26,6 +26,7 @@ export function PublishToRegistryScreen() {
   const [hasStoredToken, setHasStoredToken] = useState(false);
   const [maintainerOpen, setMaintainerOpen] = useState(false);
   const [changingToken, setChangingToken] = useState(false);
+  const [confirmingRemoval, setConfirmingRemoval] = useState(false);
   const [tokenInput, setTokenInput] = useState("");
   const [publishing, setPublishing] = useState(false);
   const [result, setResult] = useState<{ ok: boolean; text: string } | undefined>(undefined);
@@ -53,6 +54,20 @@ export function PublishToRegistryScreen() {
   }, [database, route.params.segmentId]);
 
   useFocusEffect(load);
+
+  async function handleRemoveToken() {
+    try {
+      await clearRegistryToken();
+      setHasStoredToken(false);
+      setChangingToken(false);
+      setTokenInput("");
+      setConfirmingRemoval(false);
+      setResult({ ok: true, text: "The saved token has been removed from this iPhone." });
+    } catch {
+      setConfirmingRemoval(false);
+      setResult({ ok: false, text: "GritMap couldn't remove the saved token. Try again." });
+    }
+  }
 
   async function handlePublish() {
     if (segment === undefined) return;
@@ -157,8 +172,21 @@ export function PublishToRegistryScreen() {
               A token is saved on this iPhone.
             </AppText>
           )}
-          {hasStoredToken && !changingToken ? (
-            <Button label="Use a different token" variant="tertiary" fullWidth={false} onPress={() => setChangingToken(true)} />
+          {hasStoredToken && !changingToken && !confirmingRemoval ? (
+            <>
+              <Button label="Use a different token" variant="tertiary" fullWidth={false} onPress={() => setChangingToken(true)} />
+              <Button label="Remove saved token" variant="tertiary" fullWidth={false} icon="trash" onPress={() => setConfirmingRemoval(true)} accessibilityHint="Deletes the token from this iPhone" />
+            </>
+          ) : null}
+          {confirmingRemoval ? (
+            <Card>
+              <AppText variant="headline">Remove the saved token?</AppText>
+              <AppText variant="subheadline" color="textSecondary">
+                It is deleted from this iPhone's Keychain. You will need to paste a token again to share a segment. This does not affect anything already shared.
+              </AppText>
+              <Button label="Yes, remove it" variant="destructive" icon="trash" onPress={handleRemoveToken} />
+              <Button label="Keep it" variant="secondary" onPress={() => setConfirmingRemoval(false)} />
+            </Card>
           ) : null}
           {hasStoredToken && changingToken ? (
             <Button

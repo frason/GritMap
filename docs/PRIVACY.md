@@ -19,7 +19,7 @@ All of this stays on your iPhone (and, for what you send to it, your Karoo). Non
   even if you type pounds.
 - **Settings.** For example, the address of your Karoo (so you do not have to type it again) and whether you have finished the first-time walkthrough.
 - **A GitHub token, only if you are a GritMap maintainer.** Ordinary riders never have one (see "Sharing a segment" below).
-  If you enter one it is kept in your iPhone's Keychain.
+  If you enter one it is kept in your iPhone's Keychain, and you can remove it in the app at any time.
 
 GritMap does not ask for, and does not use, your location, camera, microphone, photos, contacts, health data or notifications on the iPhone.
 It only reads the files you choose in the file picker.
@@ -94,8 +94,8 @@ privacy policy. If you send us feedback or a screenshot from TestFlight, we see 
 
 ## Deleting your data
 
-Delete the GritMap app from your iPhone and the data it stores goes with it. (iOS can keep Keychain items after an app is deleted; this only matters to the
-maintainer's GitHub token, which ordinary riders do not have.) To clear the Karoo, remove the GritMap extension or its data from the Karoo.
+Delete the GritMap app from your iPhone and the data it stores goes with it. The one exception is the GitHub token that only a GritMap maintainer has: iOS can keep
+Keychain items after an app is deleted, so a maintainer should first use "Remove saved token" (Share to Open Segments, under the maintainer controls). To clear the Karoo, remove the GritMap extension or its data from the Karoo.
 Anything you shared to Open Segments is public and cannot be removed by deleting the app. If you want a shared segment taken down, contact us (below).
 Backups you made of your iPhone are separate, and you can delete them in iCloud or on your computer.
 

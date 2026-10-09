@@ -35,7 +35,7 @@ export interface EditableSegmentRange {
 
 /**
  * Real OpenStreetMap-based vector tiles (roads, terrain shading, place labels) -- not
- * MapLibre's own bare `demotiles.maplibre.org` demo style (land/country outlines only),
+ * MapLibre's own bare demo style (land/country outlines only),
  * which is all this rendered before issue #57. OpenFreeMap (openfreemap.org) is free, needs
  * no API key, has no rate limit, and serves standard MapLibre style-JSON directly, matching
  * docs/Grip-Map-app-spec.md's "Map & Elevation Data Stack" free/open-source requirement
