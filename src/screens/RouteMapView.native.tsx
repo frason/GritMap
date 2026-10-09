@@ -54,6 +54,10 @@ const GPS_GAP_THRESHOLD_MS = 30_000;
 
 const HANDLE_SIZE = 28;
 
+/** How long a native map may take to load its style before it is rebuilt, and how many times that is tried. */
+const STYLE_LOAD_WATCHDOG_MS = 10_000;
+const MAX_MAP_REBUILDS = 2;
+
 /**
  * Zoom level a tap-to-place eases the camera to -- close enough to place a pin precisely
  * against a 30m corridor without the user needing to manually pinch-zoom first.
@@ -68,6 +72,32 @@ export function RouteMapView({ points, highlightRange, editableRange, onViewport
   // positions (see EditableHandles' doc comment).
   const [regionChangeTick, setRegionChangeTick] = useState(0);
   const lastLiveReprojectAtRef = useRef(0);
+
+  // First-open robustness (blank map on a slow device or a screen that is still sliding in):
+  // the native map is created only once its container has a real size, so the camera never fits
+  // the route to a 0 x 0 view; the camera is refitted once the style has loaded; and a map whose
+  // style never loads (or reports a failure) is rebuilt, a couple of times, rather than staying blank.
+  const [size, setSize] = useState<{ width: number; height: number } | undefined>(undefined);
+  const [mapKey, setMapKey] = useState(0);
+  const [styleLoaded, setStyleLoaded] = useState(false);
+  const styleLoadedRef = useRef(false);
+  const retriesRef = useRef(0);
+
+  const rebuildMap = useCallback(() => {
+    if (retriesRef.current >= MAX_MAP_REBUILDS) return;
+    retriesRef.current += 1;
+    styleLoadedRef.current = false;
+    setStyleLoaded(false);
+    setMapKey((key) => key + 1);
+  }, []);
+
+  useEffect(() => {
+    if (size === undefined) return;
+    const timer = setTimeout(() => {
+      if (!styleLoadedRef.current) rebuildMap();
+    }, STYLE_LOAD_WATCHDOG_MS);
+    return () => clearTimeout(timer);
+  }, [size === undefined, mapKey, rebuildMap]);
 
   // Eases the camera to whichever pin just became active -- covers both the Start/End
   // toggle buttons and tapping a pin directly to select it (both just change
@@ -97,14 +127,11 @@ export function RouteMapView({ points, highlightRange, editableRange, onViewport
     editableRange?.endLatLng.lng,
   ]);
 
-  if (points.length === 0) {
-    return <Map ref={mapRef} style={styles.map} mapStyle={MAP_STYLE_URL} />;
-  }
-
-  const bounds = computeBounds(points);
-  const trackGeoJson = toMultiLineString(points);
+  const bounds = points.length === 0 ? undefined : computeBounds(points);
+  const boundsKey = bounds === undefined ? "" : bounds.join(",");
+  const trackGeoJson = points.length === 0 ? undefined : toMultiLineString(points);
   const highlightGeoJson =
-    highlightRange !== undefined
+    highlightRange !== undefined && points.length > 0
       ? toMultiLineString(
           points.filter(
             (point) =>
@@ -114,12 +141,35 @@ export function RouteMapView({ points, highlightRange, editableRange, onViewport
         )
       : undefined;
 
+  // Refit once the style is up and whenever the route or the view size changes, so the first
+  // visible frame is never a camera left over from a view that had no size yet.
+  useEffect(() => {
+    if (!styleLoaded || size === undefined || bounds === undefined) return;
+    cameraRef.current?.fitBounds(bounds, { duration: 0 });
+  }, [styleLoaded, boundsKey, size?.width, size?.height]);
+
   return (
-    <View style={styles.map}>
+    <View
+      style={styles.map}
+      onLayout={(event) => {
+        const { width, height } = event.nativeEvent.layout;
+        setSize((current) => (width > 0 && height > 0 && (current?.width !== width || current?.height !== height) ? { width, height } : current));
+      }}
+    >
+      {size === undefined ? null : (
       <Map
+        key={mapKey}
         ref={mapRef}
         style={styles.map}
         mapStyle={MAP_STYLE_URL}
+        onDidFinishLoadingStyle={() => {
+          styleLoadedRef.current = true;
+          setStyleLoaded(true);
+        }}
+        onDidFailLoadingMap={() => {
+          // A transient network failure while the style loads leaves a blank map for good; build it again.
+          setTimeout(rebuildMap, 1_500);
+        }}
         // Locked while editing a segment: keeping the map north-up and flat makes it much
         // easier to judge where a tap will land relative to the route.
         touchRotate={editableRange === undefined}
@@ -155,7 +205,8 @@ export function RouteMapView({ points, highlightRange, editableRange, onViewport
               }
         }
       >
-        <Camera ref={cameraRef} initialViewState={{ bounds }} />
+        <Camera ref={cameraRef} {...(bounds === undefined ? {} : { initialViewState: { bounds } })} />
+        {trackGeoJson === undefined ? null : (
         <GeoJSONSource id="route-track" data={trackGeoJson}>
           {/* A white casing beneath the line keeps it legible over the basemap's own varied
               colors (roads, water, parks) -- unnecessary on the old flat demo-tile background,
@@ -171,6 +222,7 @@ export function RouteMapView({ points, highlightRange, editableRange, onViewport
             paint={{ "line-color": colors.textPrimary, "line-width": 3 }}
           />
         </GeoJSONSource>
+        )}
         {highlightGeoJson !== undefined && (
           <GeoJSONSource id="route-highlight" data={highlightGeoJson}>
             <Layer
@@ -186,7 +238,8 @@ export function RouteMapView({ points, highlightRange, editableRange, onViewport
           </GeoJSONSource>
         )}
       </Map>
-      {editableRange !== undefined && (
+      )}
+      {editableRange !== undefined && size !== undefined && (
         <EditableHandles mapRef={mapRef} range={editableRange} regionChangeTick={regionChangeTick} />
       )}
     </View>
