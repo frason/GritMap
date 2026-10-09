@@ -37,6 +37,12 @@
     "plugins": [
       "@maplibre/maplibre-react-native",
       "expo-secure-store"
-    ]
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "a5048218-eb23-49da-811a-981b4c3d115c"
+      }
+    },
+    "owner": "gritmap"
   }
 }
