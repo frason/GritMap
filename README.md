@@ -43,11 +43,11 @@ beta announcement.
 
 | Field | What it answers | Preview |
 |---|---|---|
-| **GM Pacing Profile** | Where am I relative to the planned pacer, and what effort comes next? | ![GM Pacing Profile](docs/screenshots/karoo-fields/pacing-profile-placeholder.svg) | 
-| **GM Pacing Coach** | What is the current section target, and how did nearby sections go? | ![Placeholder for GM Pacing Coach](docs/screenshots/karoo-fields/pacing-coach-placeholder.svg) |
-| **GM Segment Performance** | What is my projected finish and where am I gaining or losing time? | ![Placeholder for GM Segment Performance](docs/screenshots/karoo-fields/segment-performance-placeholder.svg) |
-| **GM Power Balance** | Am I spending modeled reserve faster or slower than planned? | ![Placeholder for GM Power Balance](docs/screenshots/karoo-fields/power-balance-placeholder.svg) |
-| **GM Cardiac / H10 Cardiac** | Is power-to-heart-rate efficiency changing, and is clean H10 RR context available? | ![Placeholder for GM Cardiac fields](docs/screenshots/karoo-fields/cardiac-placeholder.svg) |
+| **GM Pacing Profile** | Where am I relative to the planned pacer, and what effort comes next? | ![GM Pacing Profile](assets/Pacing-profile.png) | 
+| **GM Pacing Coach** | What is the current section target, and how did nearby sections go? | ![GM Pacing Coach](assets/Pacing-coach.png) |
+| **GM Segment Performance** | What is my projected finish and where am I gaining or losing time? | ![GM Segment Performance](assets/Segment-performance.png) |
+| **GM Power Balance** | Am I spending modeled reserve faster or slower than planned? | ![GM Power Balance](assets/power-balance.png) |
+| **GM Cardiac / H10 Cardiac** | Is power-to-heart-rate efficiency changing, and is clean H10 RR context available? | ![GM Cardiac fields](assets/Cardiac-drift.png) |
 
 These are advisory training displays, not medical measurements or guarantees of performance.
 
