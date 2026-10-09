@@ -57,7 +57,7 @@ class PacingCoachBitmapRenderer(
             })
             centered(
                 canvas,
-                "${active.effort.label()}  ·  ${currentIndex + 1}/${zones.size} ZONES",
+                pacingSectionCounterLabel(active.effort, currentIndex, zones.size),
                 banner.centerX(),
                 banner.centerY(),
                 banner.height() * 0.41f,
@@ -202,6 +202,9 @@ class PacingCoachBitmapRenderer(
     private fun withAlpha(color: Int, alpha: Int) = Color.argb(alpha.coerceIn(0, 255), Color.red(color), Color.green(color), Color.blue(color))
     private fun effortColor(effort: Effort) = when (effort) { Effort.RECOVER -> Color.rgb(34, 177, 93); Effort.HOLD -> Color.rgb(39, 132, 226); Effort.PUSH -> Color.rgb(239, 86, 65) }
 }
+
+internal fun pacingSectionCounterLabel(effort: Effort, currentIndex: Int, sectionCount: Int): String =
+    "${effort.label()}  ·  ${currentIndex + 1}/$sectionCount SECTIONS"
 
 internal fun currentZoneIndex(zones: List<PacingZone>, progressMeters: Double): Int =
     zones.indexOfFirst { progressMeters >= it.startDistanceMeters && progressMeters < it.endDistanceMeters }

@@ -66,6 +66,12 @@ class RrWindowMetricsTest {
     }
 
     @Test
+    fun `dfa alpha one does not publish before the two minute qualification`() {
+        assertNull(DfaAlpha1Calculator.calculate(syntheticRr(count = 132, stepMs = 900)))
+        assertTrue(requireNotNull(DfaAlpha1Calculator.calculate(syntheticRr(count = 134, stepMs = 900))).isFinite())
+    }
+
+    @Test
     fun `dfa alpha one refuses to bridge a recent dropout`() {
         val observations = syntheticRr(count = 150, stepMs = 900).toMutableList()
         observations[100] = observations[100].copy(

@@ -60,6 +60,24 @@ class CardiacDriftTrackerTest {
     }
 
     @Test
+    fun `short effort builds useful response history without claiming drift`() {
+        val tracker = CardiacDriftTracker(
+            baselineDurationMs = 180_000L,
+            rollingWindowMs = 30_000L,
+            minimumWindowSamples = 20,
+            historyIntervalMs = 15_000L,
+        )
+        var snapshot = tracker.add(sample(0, 220.0, 135.0), 0f)
+        for (second in 1..120) {
+            snapshot = tracker.add(sample(second, 220.0, 135.0 + second / 60.0), second / 180f)
+        }
+
+        assertNull(snapshot.driftPct)
+        assertTrue(snapshot.history.size >= 5)
+        assertTrue(snapshot.history.all { it.powerIndex.isFinite() && it.heartRateIndex.isFinite() })
+    }
+
+    @Test
     fun `coasting and stopped readings do not create drift spikes`() {
         val tracker = CardiacDriftTracker(
             baselineDurationMs = 10_000L,

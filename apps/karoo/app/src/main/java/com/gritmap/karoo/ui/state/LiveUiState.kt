@@ -58,6 +58,26 @@ data class LiveUiState(
             currentHeartRateBpm?.takeIf { it > 0 }?.let { heartRate -> power.toDouble() / heartRate }
         }
 
+    /** Progressive physiology disclosure; short efforts remain useful without overclaiming drift. */
+    val cardiacPresentationMode: CardiacPresentationMode
+        get() = when {
+            currentHeartRateBpm == null -> CardiacPresentationMode.WAITING_FOR_HR
+            rollingPowerWatts3s == null && currentPowerWatts == null -> CardiacPresentationMode.HR_RESPONSE
+            cardiacDriftPct == null || cardiacDriftValidSeconds < 180 -> CardiacPresentationMode.HR_RESPONSE
+            cardiacDriftValidSeconds < 360 -> CardiacPresentationMode.EMERGING_DRIFT
+            else -> CardiacPresentationMode.CARDIAC_DRIFT
+        }
+
+    /** H10 context is additive only on efforts long enough to support an evolving trend. */
+    val h10ContextEligible: Boolean
+        get() = (plannedFinishSeconds ?: 0) >= 360 ||
+            (elapsedAttemptSeconds?.toInt() ?: 0) >= 360 ||
+            cardiacDriftValidSeconds >= 360
+
+    val h10ContextQualified: Boolean
+        get() = h10ContextEligible && h10EnhancedAvailable && h10DfaAlpha1 != null &&
+            h10ValidRrPct >= 95
+
     val nextPacingZone: PacingZone?
         get() = pacingZones.firstOrNull { it.startDistanceMeters > progressMeters }
 
@@ -76,6 +96,13 @@ data class LiveUiState(
     companion object {
         val Idle = LiveUiState()
     }
+}
+
+enum class CardiacPresentationMode {
+    WAITING_FOR_HR,
+    HR_RESPONSE,
+    EMERGING_DRIFT,
+    CARDIAC_DRIFT,
 }
 
 data class ElevationSample(

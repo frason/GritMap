@@ -6,6 +6,7 @@ import android.graphics.Color
 import android.graphics.Paint
 import android.graphics.Path
 import com.gritmap.karoo.ui.state.CardiacDriftSample
+import com.gritmap.karoo.ui.state.CardiacPresentationMode
 import com.gritmap.karoo.ui.state.GuidanceIcon
 import com.gritmap.karoo.ui.state.LiveUiState
 import kotlin.math.max
@@ -78,7 +79,7 @@ class CardiacDriftBitmapRenderer(
         canvas.drawColor(palette.background)
         val margin = w * 0.035f
 
-        text(canvas, "GM CARDIAC DRIFT", margin, h * 0.045f, w * 0.061f, palette.primaryText, Paint.Align.LEFT)
+        text(canvas, "GM CARDIAC", margin, h * 0.045f, w * 0.061f, palette.primaryText, Paint.Align.LEFT)
         text(canvas, validTime(state.cardiacDriftValidSeconds), w - margin, h * 0.045f, w * 0.055f, palette.secondaryText, Paint.Align.RIGHT)
 
         val drift = state.cardiacDriftPct
@@ -96,7 +97,14 @@ class CardiacDriftBitmapRenderer(
         val bannerTop = h * 0.085f
         val bannerBottom = h * 0.19f
         canvas.drawRoundRect(margin, bannerTop, w - margin, bannerBottom, 18f, 18f, Paint(Paint.ANTI_ALIAS_FLAG).apply { color = bannerColor })
-        centered(canvas, "$action • DRIFT ${driftStatus(drift)}", w / 2f, (bannerTop + bannerBottom) / 2f, w * 0.077f, Color.WHITE)
+        centered(
+            canvas,
+            "$action • ${presentationStatus(state)}",
+            w / 2f,
+            (bannerTop + bannerBottom) / 2f,
+            w * 0.072f,
+            Color.WHITE,
+        )
 
         val cardsTop = h * 0.205f
         val cardsBottom = h * 0.37f
@@ -104,7 +112,7 @@ class CardiacDriftBitmapRenderer(
         val cardWidth = (w - margin * 2f - gap) / 2f
         metricCard(
             canvas, margin, cardsTop, margin + cardWidth, cardsBottom,
-            "HR DRIFT", formatDrift(drift), "${driftTrend(state.cardiacDriftHistory)} ${driftStatus(drift)}", driftColor(drift),
+            primaryMetricLabel(state), primaryMetricValue(state), primaryMetricSubtitle(state), driftColor(drift),
         )
         val hrCost = state.cardiacEfficiencyWattsPerBpm?.takeIf { it > 0.0 }?.let { 100.0 / it }
         metricCard(
@@ -132,9 +140,27 @@ class CardiacDriftBitmapRenderer(
         val chartLeft = w * 0.14f
         val chartRight = w * 0.96f
         val chartTop = h * 0.51f
-        val chartBottom = h * 0.865f
-        text(canvas, "EFFICIENCY INDEX", margin, h * 0.475f, w * 0.058f, palette.primaryText, Paint.Align.LEFT)
+        val showH10Strip = state.h10ContextEligible &&
+            (state.h10ValidRrPct > 0 || state.h10DfaHistory.isNotEmpty() || state.h10DfaAlpha1 != null)
+        val chartBottom = if (showH10Strip) h * 0.785f else h * 0.865f
+        text(
+            canvas,
+            if (state.cardiacPresentationMode == CardiacPresentationMode.CARDIAC_DRIFT) {
+                "EFFICIENCY INDEX"
+            } else {
+                "EFFICIENCY RESPONSE"
+            },
+            margin,
+            h * 0.475f,
+            w * 0.058f,
+            palette.primaryText,
+            Paint.Align.LEFT,
+        )
         drawEfficiencyChart(canvas, state.cardiacDriftHistory, chartLeft, chartTop, chartRight, chartBottom)
+
+        if (showH10Strip) {
+            drawH10ContextStrip(canvas, state, margin, h * 0.825f, w - margin, h * 0.895f)
+        }
 
         val confidence = confidenceCompactLabel(state)
         val footerTop = h * 0.925f
@@ -146,6 +172,45 @@ class CardiacDriftBitmapRenderer(
         return bitmap
     }
 
+    private fun drawH10ContextStrip(
+        canvas: Canvas,
+        state: LiveUiState,
+        left: Float,
+        top: Float,
+        right: Float,
+        bottom: Float,
+    ) {
+        val radius = 10f
+        canvas.drawRoundRect(left, top, right, bottom, radius, radius, Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            color = Color.rgb(31, 35, 40)
+        })
+        val samples = state.h10DfaHistory
+        if (samples.isNotEmpty()) {
+            val minimum = samples.first().elapsedSeconds
+            val span = (samples.last().elapsedSeconds - minimum).coerceAtLeast(1)
+            samples.zipWithNext().forEach { (sample, next) ->
+                val x1 = left + (sample.elapsedSeconds - minimum).toFloat() / span * (right - left)
+                val x2 = left + (next.elapsedSeconds - minimum).toFloat() / span * (right - left)
+                canvas.drawRect(x1, top, x2.coerceAtLeast(x1 + 2f), bottom, Paint().apply {
+                    color = h10Color(sample.alpha1)
+                })
+            }
+        }
+        val status = when {
+            state.h10ContextQualified ->
+                "H10 α1 ${state.h10DfaAlpha1?.let { "%.2f".format(it) } ?: "--"} • EXPERIMENTAL"
+            state.h10ValidRrPct < 95 -> "H10 • SIGNAL ${state.h10ValidRrPct}%"
+            else -> "H10 • COLLECTING 2 MIN"
+        }
+        centered(canvas, status, (left + right) / 2f, (top + bottom) / 2f, 19f, Color.WHITE)
+    }
+
+    private fun h10Color(alpha1: Double): Int = when {
+        alpha1 >= 0.75 -> Color.rgb(32, 170, 91)
+        alpha1 >= 0.50 -> Color.rgb(239, 174, 55)
+        else -> Color.rgb(231, 91, 64)
+    }
+
     fun renderSmallThreshold(state: LiveUiState, width: Int, height: Int): Bitmap {
         val w = max(width, 1).toFloat()
         val h = max(height, 1).toFloat()
@@ -153,10 +218,9 @@ class CardiacDriftBitmapRenderer(
         val canvas = Canvas(bitmap)
         canvas.drawColor(palette.background)
         val drift = state.cardiacDriftPct
-        text(canvas, "GM DRIFT", w * 0.07f, h * 0.15f, (w * 0.075f).coerceIn(16f, 25f), palette.primaryText, Paint.Align.LEFT)
-        centered(canvas, formatDrift(drift), w / 2f, h * 0.46f, (w * 0.18f).coerceIn(34f, 60f), palette.primaryText)
-        val trend = driftTrend(state.cardiacDriftHistory)
-        centered(canvas, "$trend ${driftStatus(drift)}", w / 2f, h * 0.69f, (w * 0.075f).coerceIn(17f, 26f), driftColor(drift))
+        text(canvas, "GM CARDIAC", w * 0.07f, h * 0.15f, (w * 0.075f).coerceIn(16f, 25f), palette.primaryText, Paint.Align.LEFT)
+        centered(canvas, primaryMetricValue(state), w / 2f, h * 0.46f, (w * 0.18f).coerceIn(34f, 60f), palette.primaryText)
+        centered(canvas, primaryMetricSubtitle(state), w / 2f, h * 0.69f, (w * 0.068f).coerceIn(15f, 24f), driftColor(drift))
         val left = w * 0.08f
         val right = w * 0.92f
         val top = h * 0.84f
@@ -181,7 +245,7 @@ class CardiacDriftBitmapRenderer(
         val canvas = Canvas(bitmap)
         canvas.drawColor(palette.background)
         val margin = w * 0.035f
-        text(canvas, "GM POWER/HR DRIFT", margin, h * 0.12f, (w * 0.045f).coerceIn(17f, 25f), palette.primaryText, Paint.Align.LEFT)
+        text(canvas, "GM CARDIAC", margin, h * 0.12f, (w * 0.045f).coerceIn(17f, 25f), palette.primaryText, Paint.Align.LEFT)
         text(canvas, confidenceShort(state), w - margin, h * 0.12f, (w * 0.038f).coerceIn(15f, 21f), confidenceColor(state), Paint.Align.RIGHT)
 
         val last = state.cardiacDriftHistory.lastOrNull()
@@ -250,13 +314,14 @@ class CardiacDriftBitmapRenderer(
             val fillPath = Path()
             history.forEachIndexed { index, sample ->
                 val xx = x(sample.elapsedSeconds)
-                val yy = y(100.0 - sample.driftPct)
+                val efficiencyIndex = sample.powerIndex / sample.heartRateIndex.coerceAtLeast(1.0) * 100.0
+                val yy = y(efficiencyIndex)
                 if (index == 0) { linePath.moveTo(xx, yy); fillPath.moveTo(xx, bottom); fillPath.lineTo(xx, yy) }
                 else { linePath.lineTo(xx, yy); fillPath.lineTo(xx, yy) }
             }
             val last = history.last()
             val lastX = x(last.elapsedSeconds)
-            val lastValue = 100.0 - last.driftPct
+            val lastValue = last.powerIndex / last.heartRateIndex.coerceAtLeast(1.0) * 100.0
             val lastY = y(lastValue)
             fillPath.lineTo(lastX, bottom); fillPath.close()
             canvas.drawPath(fillPath, Paint(Paint.ANTI_ALIAS_FLAG).apply { color = Color.argb(58, 38, 135, 232) })
@@ -316,6 +381,36 @@ class CardiacDriftBitmapRenderer(
         kotlin.math.abs(value) < 3.0 -> "STABLE"
         kotlin.math.abs(value) < 5.0 -> "WATCH"
         else -> "HIGH"
+    }
+
+    private fun presentationStatus(state: LiveUiState): String = when (state.cardiacPresentationMode) {
+        CardiacPresentationMode.WAITING_FOR_HR -> "WAITING FOR HR"
+        CardiacPresentationMode.HR_RESPONSE -> "HR RESPONSE"
+        CardiacPresentationMode.EMERGING_DRIFT -> "DRIFT FORMING"
+        CardiacPresentationMode.CARDIAC_DRIFT -> "DRIFT ${driftStatus(state.cardiacDriftPct)}"
+    }
+
+    private fun primaryMetricLabel(state: LiveUiState): String = when (state.cardiacPresentationMode) {
+        CardiacPresentationMode.WAITING_FOR_HR -> "HEART RATE"
+        CardiacPresentationMode.HR_RESPONSE -> "HR RESPONSE"
+        CardiacPresentationMode.EMERGING_DRIFT -> "DRIFT FORMING"
+        CardiacPresentationMode.CARDIAC_DRIFT -> "HR DRIFT"
+    }
+
+    private fun primaryMetricValue(state: LiveUiState): String = when (state.cardiacPresentationMode) {
+        CardiacPresentationMode.WAITING_FOR_HR -> "--"
+        CardiacPresentationMode.HR_RESPONSE -> state.currentHeartRateBpm?.let { "$it" } ?: "--"
+        CardiacPresentationMode.EMERGING_DRIFT,
+        CardiacPresentationMode.CARDIAC_DRIFT,
+        -> formatDrift(state.cardiacDriftPct)
+    }
+
+    private fun primaryMetricSubtitle(state: LiveUiState): String = when (state.cardiacPresentationMode) {
+        CardiacPresentationMode.WAITING_FOR_HR -> "PAIR HR SENSOR"
+        CardiacPresentationMode.HR_RESPONSE -> "BPM • BUILDING BASELINE"
+        CardiacPresentationMode.EMERGING_DRIFT -> "${driftTrend(state.cardiacDriftHistory)} EARLY TREND"
+        CardiacPresentationMode.CARDIAC_DRIFT ->
+            "${driftTrend(state.cardiacDriftHistory)} ${driftStatus(state.cardiacDriftPct)}"
     }
 
     private fun driftTrend(history: List<CardiacDriftSample>): String {

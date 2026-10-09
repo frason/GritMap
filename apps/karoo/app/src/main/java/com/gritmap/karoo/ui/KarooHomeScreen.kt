@@ -278,7 +278,7 @@ private fun SegmentCard(
                 }
                 val details = buildList {
                     segment.planSource?.let { add(it.sourceLabel()) }
-                    if (segment.pacingZoneCount > 0) add("${segment.pacingZoneCount} pacing zones")
+                    if (segment.pacingZoneCount > 0) add("${segment.pacingZoneCount} pacing sections")
                     segment.planFtpWatts?.let { add("Built at $it W FTP") }
                 }
                 if (details.isNotEmpty()) Text(details.joinToString(" · "), color = SecondaryText)
@@ -331,7 +331,7 @@ private fun SegmentDetailScreen(
             if (segment.hasBaselinePlan) {
                 DetailValue("Goal", segment.targetFinishTimeSeconds?.let(::formatDuration) ?: "Fastest sustainable")
                 DetailValue("Source", segment.planSource?.sourceLabel() ?: "Local")
-                DetailValue("Zones", segment.pacingZoneCount.toString())
+                DetailValue("Sections", segment.pacingZoneCount.toString())
                 DetailValue("Current FTP", riderFtpWatts?.let { "$it W · Karoo" } ?: "Waiting for Karoo")
                 DetailValue("Generated at", segment.planFtpWatts?.let { "$it W FTP" } ?: "Not provided")
                 if (segment.planStatus(riderFtpWatts) == SegmentPlanStatus.OUTDATED) {

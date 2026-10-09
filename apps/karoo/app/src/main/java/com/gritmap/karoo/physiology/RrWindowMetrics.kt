@@ -55,7 +55,8 @@ object RrWindowMetricsCalculator {
  * Invalid beats break the usable suffix: the calculation never bridges a known dropout.
  */
 object DfaAlpha1Calculator {
-    private const val MINIMUM_DURATION_MS = 110_000L
+    // A nominal two-minute window; beat timestamps span slightly less than wall-clock capture.
+    private const val MINIMUM_DURATION_MS = 118_000L
     private const val MINIMUM_INTERVALS = 100
 
     fun calculate(observations: List<RrObservation>): Double? {

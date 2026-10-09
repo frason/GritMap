@@ -26,6 +26,11 @@ class PacingCoachBitmapRendererTest {
     )
 
     @Test
+    fun `coach counter calls plan stretches sections`() {
+        assertEquals("HOLD  ·  3/8 SECTIONS", pacingSectionCounterLabel(Effort.HOLD, 2, 8))
+    }
+
+    @Test
     fun `zone stack centers the zone containing current progress`() {
         assertEquals(1, currentZoneIndex(zones, 145.0))
         assertEquals(2, currentZoneIndex(zones, 300.0))

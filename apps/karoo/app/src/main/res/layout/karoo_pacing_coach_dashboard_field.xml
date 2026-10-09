@@ -4,5 +4,5 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:background="@color/gm_field_background"
-    android:contentDescription="Pacing zones with target and actual power"
+    android:contentDescription="Pacing sections with target and actual power"
     android:scaleType="fitCenter" />

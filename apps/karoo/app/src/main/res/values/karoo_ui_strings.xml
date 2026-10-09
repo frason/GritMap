@@ -8,7 +8,7 @@
     <string name="karoo_target_power_name">GM Target Power</string>
     <string name="karoo_target_power_description">Current recommended segment power target</string>
     <string name="karoo_pacing_profile_name">GM Pacing Profile</string>
-    <string name="karoo_pacing_profile_description">Elevation, pacing zones, and segment progress</string>
+    <string name="karoo_pacing_profile_description">Elevation, pacing sections, and segment progress</string>
     <string name="karoo_power_delta_name">GM Power Delta</string>
     <string name="karoo_power_delta_description">Difference between current power and the pacing target</string>
     <string name="karoo_predicted_finish_name">GM Predicted Finish</string>

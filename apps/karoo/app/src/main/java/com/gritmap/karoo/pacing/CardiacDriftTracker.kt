@@ -40,6 +40,8 @@ class CardiacDriftTracker(
     private var baselineEfficiency: Double? = null
     private var baselinePower: Double? = null
     private var baselineHeartRate: Double? = null
+    private var responsePower: Double? = null
+    private var responseHeartRate: Double? = null
     private var smoothedDriftPct: Double? = null
     private var totalSamples = 0
     private var pairedSamples = 0
@@ -80,6 +82,10 @@ class CardiacDriftTracker(
 
         val baseline = baselineEfficiency
         val current = if (rollingSamples.size >= minimumWindowSamples) efficiency(rollingSamples) else null
+        if (current != null && responsePower == null) {
+            responsePower = averagePower(rollingSamples)
+            responseHeartRate = averageHeartRate(rollingSamples)
+        }
         if (baseline != null && current != null && baseline > 0.0) {
             val raw = ((baseline - current) / baseline * 100.0).coerceIn(-25.0, 25.0)
             val previous = smoothedDriftPct
@@ -87,21 +93,28 @@ class CardiacDriftTracker(
             val stable = if (kotlin.math.abs(smoothed) < deadbandPct) 0.0 else smoothed
             smoothedDriftPct = stable
 
-            val lastHistory = lastHistoryTimestampMs
-            if (lastHistory == null || sample.timestampMs - lastHistory >= historyIntervalMs) {
-                val elapsedSeconds = ((sample.timestampMs - first) / 1_000L).toInt().coerceAtLeast(0)
-                history.addLast(
-                    CardiacDriftSample(
-                        progressFraction = progressFraction.coerceIn(0f, 1f),
-                        driftPct = stable,
-                        elapsedSeconds = elapsedSeconds,
-                        powerIndex = averagePower(rollingSamples) / baselinePower!!.coerceAtLeast(1.0) * 100.0,
-                        heartRateIndex = averageHeartRate(rollingSamples) / baselineHeartRate!!.coerceAtLeast(1.0) * 100.0,
-                    ),
-                )
-                lastHistoryTimestampMs = sample.timestampMs
-                while (history.size > maximumHistorySamples) history.removeFirst()
-            }
+        }
+        val responsePowerValue = responsePower
+        val responseHeartRateValue = responseHeartRate
+        val lastHistory = lastHistoryTimestampMs
+        if (current != null && responsePowerValue != null && responseHeartRateValue != null &&
+            (lastHistory == null || sample.timestampMs - lastHistory >= historyIntervalMs)
+        ) {
+            val powerIndex = averagePower(rollingSamples) / responsePowerValue.coerceAtLeast(1.0) * 100.0
+            val heartRateIndex = averageHeartRate(rollingSamples) / responseHeartRateValue.coerceAtLeast(1.0) * 100.0
+            val responseDrift = 100.0 - powerIndex / heartRateIndex.coerceAtLeast(1.0) * 100.0
+            val elapsedSeconds = ((sample.timestampMs - first) / 1_000L).toInt().coerceAtLeast(0)
+            history.addLast(
+                CardiacDriftSample(
+                    progressFraction = progressFraction.coerceIn(0f, 1f),
+                    driftPct = smoothedDriftPct ?: responseDrift,
+                    elapsedSeconds = elapsedSeconds,
+                    powerIndex = powerIndex,
+                    heartRateIndex = heartRateIndex,
+                ),
+            )
+            lastHistoryTimestampMs = sample.timestampMs
+            while (history.size > maximumHistorySamples) history.removeFirst()
         }
         return snapshot()
     }

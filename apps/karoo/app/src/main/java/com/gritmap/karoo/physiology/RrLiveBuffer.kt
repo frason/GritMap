@@ -6,8 +6,8 @@ import java.util.ArrayDeque
 class RrLiveBuffer(
     private val maximumWindowMs: Long = 120_000L,
     private val maximumSamples: Int = 512,
-    private val minimumValidPct: Int = 90,
-    private val minimumConsecutiveValidMs: Long = 60_000L,
+    private val minimumValidPct: Int = 95,
+    private val minimumConsecutiveValidMs: Long = 120_000L,
     private val minimumWindowSamples: Int = 2,
 ) {
     init {

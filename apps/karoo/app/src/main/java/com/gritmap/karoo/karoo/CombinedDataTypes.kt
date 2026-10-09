@@ -346,7 +346,7 @@ internal fun pacingCoachText(state: LiveUiState): PacingCoachText {
         next = next?.let {
             "NEXT ${it.effort.name}  ·  ${it.targetPowerWatts} W  ·  " +
                 formatCoachDistance(state.distanceToNextZoneMeters?.toDouble() ?: 0.0, state.distanceUnitSystem)
-        } ?: "Final pacing zone",
+        } ?: "Final pacing section",
         paceRelation = coachPaceRelation(state),
         quality = coachGuidanceQuality(state),
     )

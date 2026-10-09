@@ -72,13 +72,13 @@ choose GritMap. A practical beta setup is:
 ### Page 1 — live pacing
 
 - **GM Pacing Profile** as the large visual field. It combines the route ahead, virtual pacer,
-  target versus actual power, elevation profile, and the next pacing zone.
+  target versus actual power, elevation profile, and the next pacing section.
 - Optional small numeric fields: **GM Target Power**, **GM Power Delta**, and
   **GM Predicted Finish**.
 
 ### Page 2 — execution and result
 
-- **GM Pacing Coach** as a large field for the current, previous, and upcoming plan zones.
+- **GM Pacing Coach** as a large field for the current, previous, and upcoming plan sections.
 - **GM Segment Performance** as a large field for projected finish and quarter-mile splits.
 
 ### Optional physiology page
@@ -110,6 +110,16 @@ saved direction.
 
 ## Report a beta problem
 
-Include the GritMap version shown on the Karoo **Segments** screen, the segment name, what sensors
-were connected, and whether the problem occurred before, during, or after segment detection. A
-photo of the data page and the exported FIT file are especially useful.
+Send all of the following:
+
+- The GritMap version and build number shown on the Karoo **Segments** screen.
+- The segment name, connected sensors, and whether the problem happened before, during, or after
+  segment detection.
+- A photo of the affected data page and the ride's exported FIT file.
+- A photo of **GritMap > Settings > Diagnostics** after tapping **Refresh Diagnostics**. Do this
+  before reinstalling or clearing the app.
+- For an H10 problem, also include the final **GM H10 Cardiac** screen and say whether it progressed
+  from `COLLECTING RR` to a live alpha-1 value.
+
+Do not post FIT files or diagnostic artifacts publicly without checking their location and sensor
+data first.
