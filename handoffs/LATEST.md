@@ -41,6 +41,10 @@ rider-facing "section" strings to match on the Karoo are in
 **Task:** write `docs/PRIVACY.md`, the privacy policy for the TestFlight Privacy Policy URL (an external
 testing gate), with every claim checked against the code, plus the App Store Connect "App Privacy" answers.
 
+# Handoff: "Remove saved token" and the unused demo map deleted (committed locally, not pushed)
+
+Share to Open Segments' maintainer section now has a confirmable **Remove saved token** (clears the Keychain item, returns to the no-token state; unit-tested); the unused `MapScreen.tsx` (the only user of `demotiles.maplibre.org`) is deleted, so the app contacts only GitHub, OpenFreeMap and the local Karoo. `docs/PRIVACY.md` updated in the same commit. typecheck, 633/633 tests, web:smoke clean; screenshots in `docs/screenshots/token-removal/`. Details: `handoffs/archive/2026-10-09-0210-claude-token-removal-dead-map.md`.
+
 # Handoff: privacy policy (docs/PRIVACY.md) and App Privacy answers (committed locally, not pushed)
 
 Docs only. `docs/PRIVACY.md` is a plain-language, host-agnostic policy checked claim by claim against the phone code and (read-only) the Karoo extension; `docs/BETA_TESTFLIGHT.md` step 9 has the App Store Connect answers (**Data Not Collected, no tracking**). Jason must fill two TODOs
