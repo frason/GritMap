@@ -1,3 +1,7 @@
+# Handoff: adaptive cardiac guidance and signed 0.10.43 beta candidate
+
+Karoo commit `d38057f` makes `GM Cardiac Drift` progressively useful for short, medium, and long efforts; adds qualified H10 alpha-1 context to long efforts; tightens RR qualification to approximately two clean minutes at 95% validity; and changes rider-facing pacing-plan wording from zones to **sections** without changing shared contracts. A signed `0.10.43-beta`/code 66 candidate passed 183/183 JVM tests, lint, minified beta build, signature/version verification, and is staged at `/Users/frason/Documents/CS Agent Team for ChatGPT/GritMap Beta Builds/gritmap-karoo-0.10.43-beta.apk` (SHA-256 `bfd21b83b5bbabdb95128329499b9f9ac6be9abea258af47969ab5f70f0005a2`). It is not installed; the physical Karoo remains on `0.10.42-beta`. Next: install in place, inspect previews, then perform the checklist in `docs/H10_RIDE_VALIDATION_CHECKLIST.md`. Details: `handoffs/archive/2026-10-08-2252-codex-adaptive-cardiac-01043.md`.
+
 # Coordinator: next task for Codex (2026-10-08 16:20)
 
 Read `docs/GOALS.md` first. The previous task (signed beta APK, install guide, empty states) is **complete**
