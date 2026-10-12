@@ -39,60 +39,31 @@ limits, exact-byte hashing, iOS foreground behavior, and H10 coexistence. Large 
 is a fallback; installed-fingerprint and public-URL paths are preferred. Details:
 `handoffs/archive/2026-10-12-1222-codex-direct-ble-decision.md`.
 
-# Coordinator: next task for Codex (2026-10-12, from Jason via the coordinator)
+# Coordinator: next task for Codex (2026-10-12 16:40)
 
-Read `docs/GOALS.md` first. Previous coordinator tasks are done or superseded: the H10 ride checklist is committed
-(`docs/H10_RIDE_VALIDATION_CHECKLIST.md`); the post-ride H10 comparison still waits for Jason's ride.
+Read `docs/GOALS.md` first. **Done and verified:** 0.10.44 committed (`20f9ed7`, `ca6ea4f`), tagged `karoo-beta-0.10.44`, and released
+by the workflow. Coordinator QA at `33e9379`: 189/189 JVM tests, lint and debug build pass. Thanks.
 
-**1. First: commit and tag what is installed on Jason's Karoo.** The Karoo runs `0.10.44-beta`/67, built from
-uncommitted changes in about 18 `apps/karoo/` files: large-field typography, the icon, the bounded BLE receiver,
-and the README and install-guide edits. No commit or tag reproduces that APK. Commit it in reviewable pieces
-(explicit `git add` paths), tag `karoo-beta-0.10.44`, and only then install or release anything newer.
+**Task: the Karoo v2 direct-BLE reader**, per `docs/BLE_DIRECT_TRANSFER_CONTRACT.md` (reviewed, with Jason's decisions; see
+`docs/BLE_DIRECT_TRANSFER_REVIEW.md`). The phone side is done, with fixes P1 to P4 at `0ee8c5c` (Swift session tests pass).
+- Replace the v1 token read in the bounded 2-minute receive with: the manifest read (strict parser, caps), **`requestMtu(517)`**,
+  a Request/Data chunk loop with the logical-chunk length check, exact-byte SHA-256 before parsing, segment skip when the
+  fingerprint is installed (optional public fetch when `segment.public`), reconnect and resume (up to 3 retries), and the existing
+  `gritmap-transfer` build plus the unchanged atomic import (`riderHistory` when `rider` is present).
+- Write the Status receipt within 30 s of the last read. Treat `writeNotPermitted` on a retry as delivered.
+- Keep the v1 capsule code disabled. Keep Legacy Wi-Fi Receive as is. Feature-gate the v2 reader the same way as the phone (dev
+  build or setting) until the physical end-to-end test passes.
+- Unit tests: manifest parser, chunk reassembly with short reads, hash mismatch → `bad_hash`, segment skip, receipt JSON.
 
-**2. Pull before you commit.** `origin/main` has 8 commits your checkout doesn't: Jason's README and screenshot
-edits made on github.com, two Open Segments publishes (Realize, The Full Diablo), and `469f97e`, the privacy
-policy now filled in with date and contact. Your uncommitted `README.md` will conflict with Jason's web edits;
-keep his versions of the image paths.
+**Physical test plan:** Jason's iPhone will get TestFlight build 5 (`production-ble-internal` profile, internal testers only) with
+"Send over Bluetooth (beta)" visible. Once your reader is on a dev-flagged Karoo build: send a plan for an installed segment, then one
+for a missing segment, and record the MTU, durations, the receipt, and **H10 RR continuity** during the transfer.
 
-**3. BLE transfer: design changed to direct Bluetooth, with no server (Jason, 2026-10-12).** This replaces the
-capsule/HTTPS design for now. Reasons: the plan is ~3 KB and private; the segment is ~15–250 KB and public
-(Open Segments). The capsule design needed a hosted service and a domain, would have put private plans on a
-server (contradicting the published `docs/PRIVACY.md`), and still failed with no signal.
-- **The plan always goes over BLE.** It's small, private and works offline.
-- **The segment** is skipped if the Karoo already has that fingerprint (the common case: segments are sent once,
-  and field changes are plan changes). Otherwise the Karoo reads it over BLE in chunks, or fetches the public
-  Open Segments URL from the manifest when it has internet.
-- **Shape:** the same service UUID (`e7a4e868-…`). A small manifest characteristic (v2: transferId,
-  fingerprint, byte lengths and SHA-256s, optional public segment URL). Chunked reads, because iOS caps one
-  attribute at 512 bytes: the Karoo writes {resource, offset}, then reads ≤512-byte chunks. Exact-byte SHA-256
-  over the reassembled bytes. A **status characteristic** the Karoo writes `imported`/`rejected` to, which
-  finally gives the phone a real receipt. The reassembled package is the existing `gritmap-transfer` shape, so
-  your strict parser and atomic import stay unchanged.
-- **Who does what:** the phone session drafts `docs/BLE_DIRECT_TRANSFER_CONTRACT.md` (a new file; your capsule
-  contract is untouched) and implements the iPhone peripheral. **Codex:** review that draft, adjust it if
-  needed, then change your reader to it. Your bounded 2-minute scan, connect, Bluetooth acquire and release,
-  and import pipeline are reused; the HTTPS capsule fetch is no longer needed for v2. Keep the capsule code
-  if you like, but don't ship it enabled.
-- H10 coexistence during a receive session is still unmeasured; check it during the H10 ride.
-- Beta: Wi-Fi/IP ("Legacy Wi-Fi Receive") stays the working path until direct BLE passes a physical
-  end-to-end test.
+**Still open:** confirm that the rider-facing Karoo strings use "section(s)" (phone strings:
+`handoffs/archive/2026-10-09-0050-claude-map-first-open-fixtures-sections.md`).
 
-**3b. Contract review done (coordinator, 2026-10-12, `947e9fb`): your freeze can lift once 0.10.44 is committed and tagged.**
-`docs/BLE_DIRECT_TRANSFER_REVIEW.md` answers your three questions in `docs/BLE_DIRECT_TRANSFER_CONTRACT.md`:
-- Logical chunk length is `min(512, bytes - offset)`; a shorter Data value is an error to retry.
-- **Request MTU 517.** Below 185, prefer the public segment fetch.
-- **Resume:** the phone keeps advertising, owner-locked, and the Karoo resumes from its last full chunk (up to 3 retries).
-- **Receipt:** write it within 30 s of the last read; `writeNotPermitted` on a retry means it was delivered.
-
-Jason decided to keep the `rider` resource and to use no link encryption in v2. Your existing `TransferPackage` already accepts a
-segment-less package, so skipping the segment works. The phone fixes P1 to P4 are in progress; none changes the wire format.
-
-**4. "Sections" wording:** confirm the rider-facing Karoo strings use section/sections, matching the phone
-strings listed in `handoffs/archive/2026-10-09-0050-claude-map-first-open-fixtures-sections.md`.
-
-Done when: 0.10.44 is committed and tagged and matches the installed APK (version code 67, same signing key);
-the README is reconciled with origin; the direct-BLE contract draft is reviewed; and the handoff has the Goal
-alignment section.
+Done when: the reader is committed with tests, a dev-flagged signed build is ready (not released to the public beta), and the handoff
+has the Goal alignment section.
 
 # Handoff: large-field visual pass installed as Karoo 0.10.44-beta
 
