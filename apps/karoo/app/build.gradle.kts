@@ -24,8 +24,8 @@ android {
         applicationId = "com.gritmap.karoo"
         minSdk = 31
         targetSdk = 31
-        versionCode = providers.gradleProperty("gritmapVersionCode").orNull?.toInt() ?: 66
-        versionName = providers.gradleProperty("gritmapVersionName").orNull ?: "0.10.43"
+        versionCode = providers.gradleProperty("gritmapVersionCode").orNull?.toInt() ?: 67
+        versionName = providers.gradleProperty("gritmapVersionName").orNull ?: "0.10.44"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables.useSupportLibrary = true
