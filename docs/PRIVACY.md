@@ -1,6 +1,6 @@
 # GritMap Privacy Policy
 
-**Last updated:** [TODO: Jason, set to the date this is published]
+**Last updated:** October 12, 2026
 
 GritMap is a cycling app for iPhone, with an optional extension for Hammerhead Karoo bike computers. It helps you plan how to pace a
 climb, ride it, and see how your effort compared with the plan. This page explains what GritMap does with your information.
@@ -111,6 +111,6 @@ update this page and the "Last updated" date before the change reaches you. Mate
 
 ## Contact
 
-Questions, or a request to take down a shared segment: [TODO: Jason, add a contact email or form]
+Questions, or a request to take down a shared segment: [jfrasier@gmail.com](mailto:jfrasier@gmail.com)
 
 *This is a plain-language description of how the app works. It is not legal advice.*
