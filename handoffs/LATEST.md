@@ -1,3 +1,14 @@
+# Handoff: Karoo 0.10.44 published and independently verified
+
+`main` was rebased cleanly onto current GitHub history and pushed. The first `0.10.44` tag run
+correctly failed because Gradle still defaulted to `0.10.43`/66; commit `ca6ea4f` fixes the defaults
+to `0.10.44`/67. The failed unpublished tag was replaced with an annotated tag pointing to
+`ca6ea4f`. Corrected workflow `38308093435` passed tests, lint, signed/minified build, asset
+verification, upload, and release publication. The public APK is
+`https://github.com/frason/GritMap/releases/latest/download/gritmap-karoo.apk`, SHA-256
+`6b07e5151581c4d1996ef579f12812a6c32ee0409369c8b1f5c899283e5e1af5`. Details:
+`handoffs/archive/2026-10-12-1409-codex-karoo-01044-published.md`.
+
 # Handoff: installed Karoo 0.10.44 source committed and tagged
 
 Commit `20f9ed7` captures the Karoo source installed as `0.10.44-beta`/67 after rebasing onto current
