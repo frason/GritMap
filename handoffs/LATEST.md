@@ -1,3 +1,138 @@
+# Handoff: installed Karoo 0.10.44 source committed and tagged
+
+Commit `f3442c4` captures the Karoo source installed as `0.10.44-beta`/67: the approved large-field
+typography, stable Pacing Profile title, launcher icon, and bounded v1 BLE capsule receiver. Annotated
+tag `karoo-beta-0.10.44` points directly to that commit. Lint and a versioned debug APK build pass.
+The JVM suite is 188/189 on this Mac because the pre-existing
+`NeedleAgentManagerTest.timeoutReturnsFallbackWithoutConcurrentInference` wall-clock assertion
+requires `<70 ms` and fails even in isolation; functional fallback still succeeds. No direct-BLE v2
+Karoo work was started. Details:
+`handoffs/archive/2026-10-12-1259-codex-karoo-01044-committed-tagged.md`.
+
+# Decision: direct BLE approved in principle; freeze Karoo protocol work until contract review
+
+Jason approved the recommendation on 2026-10-12 to use Claude's direct-Bluetooth v2 design instead
+of building the hosted capsule service now. The private plan always travels over BLE. The public
+segment is skipped when its fingerprint is already installed, otherwise fetched from Open Segments
+when available or transferred over BLE as the offline fallback. The existing bounded, user-triggered
+two-minute receive window, strict `gritmap-transfer` validation, atomic import, receipt, and Legacy
+Wi-Fi fallback remain required.
+
+Do **not** rewrite the Karoo receiver from the v1 capsule protocol until
+`docs/BLE_DIRECT_TRANSFER_CONTRACT.md` has been reviewed against the actual phone implementation and
+both sides agree on the wire behavior. Preserve the v1 capsule code but do not ship it enabled. The
+review must explicitly settle ATT/MTU chunk behavior, connected-session timeout versus scan timeout,
+retry/resume rules, receipt/rejection behavior, optional rider data, link-encryption choice, size
+limits, exact-byte hashing, iOS foreground behavior, and H10 coexistence. Large BLE segment transfer
+is a fallback; installed-fingerprint and public-URL paths are preferred. Details:
+`handoffs/archive/2026-10-12-1222-codex-direct-ble-decision.md`.
+
+# Coordinator: next task for Codex (2026-10-12, from Jason via the coordinator)
+
+Read `docs/GOALS.md` first. Previous coordinator tasks are done or superseded: the H10 ride checklist is committed
+(`docs/H10_RIDE_VALIDATION_CHECKLIST.md`); the post-ride H10 comparison still waits for Jason's ride.
+
+**1. First: commit and tag what is installed on Jason's Karoo.** The Karoo runs `0.10.44-beta`/67, built from
+uncommitted changes in about 18 `apps/karoo/` files: large-field typography, the icon, the bounded BLE receiver,
+and the README and install-guide edits. No commit or tag reproduces that APK. Commit it in reviewable pieces
+(explicit `git add` paths), tag `karoo-beta-0.10.44`, and only then install or release anything newer.
+
+**2. Pull before you commit.** `origin/main` has 8 commits your checkout doesn't: Jason's README and screenshot
+edits made on github.com, two Open Segments publishes (Realize, The Full Diablo), and `469f97e`, the privacy
+policy now filled in with date and contact. Your uncommitted `README.md` will conflict with Jason's web edits;
+keep his versions of the image paths.
+
+**3. BLE transfer: design changed to direct Bluetooth, with no server (Jason, 2026-10-12).** This replaces the
+capsule/HTTPS design for now. Reasons: the plan is ~3 KB and private; the segment is ~15–250 KB and public
+(Open Segments). The capsule design needed a hosted service and a domain, would have put private plans on a
+server (contradicting the published `docs/PRIVACY.md`), and still failed with no signal.
+- **The plan always goes over BLE.** It's small, private and works offline.
+- **The segment** is skipped if the Karoo already has that fingerprint (the common case: segments are sent once,
+  and field changes are plan changes). Otherwise the Karoo reads it over BLE in chunks, or fetches the public
+  Open Segments URL from the manifest when it has internet.
+- **Shape:** the same service UUID (`e7a4e868-…`). A small manifest characteristic (v2: transferId,
+  fingerprint, byte lengths and SHA-256s, optional public segment URL). Chunked reads, because iOS caps one
+  attribute at 512 bytes: the Karoo writes {resource, offset}, then reads ≤512-byte chunks. Exact-byte SHA-256
+  over the reassembled bytes. A **status characteristic** the Karoo writes `imported`/`rejected` to, which
+  finally gives the phone a real receipt. The reassembled package is the existing `gritmap-transfer` shape, so
+  your strict parser and atomic import stay unchanged.
+- **Who does what:** the phone session drafts `docs/BLE_DIRECT_TRANSFER_CONTRACT.md` (a new file; your capsule
+  contract is untouched) and implements the iPhone peripheral. **Codex:** review that draft, adjust it if
+  needed, then change your reader to it. Your bounded 2-minute scan, connect, Bluetooth acquire and release,
+  and import pipeline are reused; the HTTPS capsule fetch is no longer needed for v2. Keep the capsule code
+  if you like, but don't ship it enabled.
+- H10 coexistence during a receive session is still unmeasured; check it during the H10 ride.
+- Beta: Wi-Fi/IP ("Legacy Wi-Fi Receive") stays the working path until direct BLE passes a physical
+  end-to-end test.
+
+**3b. Contract review done (coordinator, 2026-10-12, `947e9fb`): your freeze can lift once 0.10.44 is committed and tagged.**
+`docs/BLE_DIRECT_TRANSFER_REVIEW.md` answers your three questions in `docs/BLE_DIRECT_TRANSFER_CONTRACT.md`:
+- Logical chunk length is `min(512, bytes - offset)`; a shorter Data value is an error to retry.
+- **Request MTU 517.** Below 185, prefer the public segment fetch.
+- **Resume:** the phone keeps advertising, owner-locked, and the Karoo resumes from its last full chunk (up to 3 retries).
+- **Receipt:** write it within 30 s of the last read; `writeNotPermitted` on a retry means it was delivered.
+
+Jason decided to keep the `rider` resource and to use no link encryption in v2. Your existing `TransferPackage` already accepts a
+segment-less package, so skipping the segment works. The phone fixes P1 to P4 are in progress; none changes the wire format.
+
+**4. "Sections" wording:** confirm the rider-facing Karoo strings use section/sections, matching the phone
+strings listed in `handoffs/archive/2026-10-09-0050-claude-map-first-open-fixtures-sections.md`.
+
+Done when: 0.10.44 is committed and tagged and matches the installed APK (version code 67, same signing key);
+the README is reconciled with origin; the direct-BLE contract draft is reviewed; and the handoff has the Goal
+alignment section.
+
+# Handoff: large-field visual pass installed as Karoo 0.10.44-beta
+
+The approved large-field density/type pass, stable `GM PACING PROFILE` title, launcher icon, and
+bounded Bluetooth receiver are installed in place on the connected Karoo as `0.10.44-beta`/67.
+The signed/minified beta build passed, `adb install -r` succeeded, the original install timestamp
+was preserved, MainActivity displayed in 839 ms, Hammerhead reconnected the extension, and recent
+logcat contained no GritMap fatal exception. The public release remains 0.10.43 and all current
+milestones are still uncommitted. Details:
+`handoffs/archive/2026-10-10-2130-codex-karoo-01044-installed.md`.
+
+# Handoff: Karoo large visual fields share the Pacing Profile hierarchy
+
+Using Jason's five supplied device screenshots, Cardiac Drift, Power Balance, Segment Performance,
+and Pacing Coach now match Pacing Profile's header scale and information hierarchy. Pacing Profile
+itself changed only its top-left title to `GM PACING PROFILE`. Exact typography changes are audited
+in `docs/KAROO_LARGE_FIELD_TYPOGRAPHY_AUDIT.md`. Regenerated 480 px previews were inspected with no
+clipping; full Karoo QA passes (189/189 JVM tests, lint, debug build). Nothing was installed or
+committed, and the public beta is unchanged. Details:
+`handoffs/archive/2026-10-09-1654-codex-large-field-density.md`.
+
+# Handoff: Karoo BLE transfer is user-triggered and bounded
+
+The Karoo-side no-IP transfer path now uses an explicit Inbox action rather than an always-on
+extension scan: **Receive from Phone** opens a filtered, low-latency BLE receiver for at most two
+minutes, stops scanning before GATT, and releases Karoo Bluetooth on every exit path. The existing
+address-based receiver remains as **Legacy Wi-Fi Receive**. Full Karoo QA passes (189/189 JVM tests,
+lint, debug build). This supersedes the continuous-scan architecture in the preceding BLE handoff.
+It remains uncommitted and cannot work end to end until the phone advertiser and HTTPS capsule
+service are implemented. Details:
+`handoffs/archive/2026-10-09-1642-codex-bounded-ble-receive.md`.
+
+# Handoff: Karoo BLE transfer-capsule receiver is implemented
+
+The no-IP Karoo receiver is implemented and verified in isolation: a low-power filtered BLE scan
+reads a 36-byte, 128-bit capability token; Karoo then fetches a strict short-lived HTTPS capsule,
+downloads the public segment and private plan separately, verifies both SHA-256 hashes, and imports
+them through the existing atomic `gritmap-transfer` path. The exact UUIDs, schemas, size limits and
+phone/server obligations are in `docs/BLE_TRANSFER_CAPSULE_CONTRACT.md`. Full Karoo QA passes
+(189/189 JVM tests, lint, debug build). It is not installed or end-to-end usable yet because the
+iPhone advertiser and capsule service do not exist, and physical H10 coexistence remains mandatory
+before release. Details: `handoffs/archive/2026-10-09-1630-codex-ble-transfer-capsule-karoo.md`.
+
+# Handoff: approved GritMap icon installed on the Karoo
+
+The Karoo launcher now uses Jason's approved dark bike-and-arrow GritMap icon while notifications
+and data-field selectors retain the purpose-built monochrome extension glyph. Debug build and lint
+pass; a signed/minified beta build also passes and was installed in place on the connected Karoo
+without clearing app data. The work is uncommitted and is not yet in the public 0.10.43 asset.
+Next: visually confirm it in the Karoo app grid, then commit and publish it in the next beta tag.
+Details: `handoffs/archive/2026-10-09-1435-codex-karoo-app-icon.md`.
+
 # Handoff: first public Karoo beta release published and independently verified
 
 The first public Karoo beta release is live: `https://github.com/frason/GritMap/releases/tag/karoo-beta-0.10.43`. The initial run failed because the Android setup action requested Google's removed `tools` package; commit `8959916` fixes it and corrected run `37979085132` passed setup, tests, lint, signed/minified build, signature/version verification, artifact upload, and release publication. The public APK was downloaded again and independently verified: `com.gritmap.karoo`, code 66, `0.10.43-beta`, GritMap Beta certificate SHA-256 `eac4c309da0e0410b2926c6a478b17038cdf7407fe3d4d86341eebf53a90f5f6`, asset SHA-256 `1f0d298f218d445b03596bb429a02f15e86c266058303b208ecda2f684ba9254`. Stable link: `https://github.com/frason/GritMap/releases/latest/download/gritmap-karoo.apk`. Next: physically install that public asset through Hammerhead Companion and verify data retention/previews. Details: `handoffs/archive/2026-10-09-1224-codex-public-karoo-release.md`.
@@ -9,32 +144,6 @@ Commit `2dad59a` adds the root public-beta README, Hammerhead Companion/ADB inst
 # Handoff: adaptive cardiac guidance and signed 0.10.43 beta candidate
 
 Karoo commit `d38057f` makes `GM Cardiac Drift` progressively useful for short, medium, and long efforts; adds qualified H10 alpha-1 context to long efforts; tightens RR qualification to approximately two clean minutes at 95% validity; and changes rider-facing pacing-plan wording from zones to **sections** without changing shared contracts. A signed `0.10.43-beta`/code 66 candidate passed 183/183 JVM tests, lint, minified beta build, signature/version verification, and is staged at `/Users/frason/Documents/CS Agent Team for ChatGPT/GritMap Beta Builds/gritmap-karoo-0.10.43-beta.apk` (SHA-256 `bfd21b83b5bbabdb95128329499b9f9ac6be9abea258af47969ab5f70f0005a2`). It is not installed; the physical Karoo remains on `0.10.42-beta`. Next: install in place, inspect previews, then perform the checklist in `docs/H10_RIDE_VALIDATION_CHECKLIST.md`. Details: `handoffs/archive/2026-10-08-2252-codex-adaptive-cardiac-01043.md`.
-
-# Coordinator: next task for Codex (2026-10-08 16:20)
-
-Read `docs/GOALS.md` first. The previous task (signed beta APK, install guide, empty states) is **complete**
-(`1eb405f`, `01aeaf6`, tag `karoo-beta-0.10.42`). Coordinator QA: 176/176 JVM tests, lint and debug build pass;
-the device reads `0.10.42-beta`/65. (The 0.10.42 handoff's "175 tests" is superseded; QA counts match.)
-
-**Wording decision (Jason, 2026-10-08 21:15): "sections".** The stretches of a pacing plan are called
-**sections** on both phone and Karoo. "Zones" stays only for power and HR training zones (Z2, threshold),
-because the same word for two things confused riders. Codex: rename the rider-facing pacing-plan text in the
-Karoo fields (for example "3/8 ZONES", "pacing zones", "Zones" on Pacing Coach, Segment Performance and Profile)
-and in `docs/BETA_KAROO_INSTALL.md` to section/sections. Ship it in the next H10 build, and keep internal
-identifiers unless renaming is cheap. Update the renderer tests. The phone is listing its exact strings in its next
-handoff, so match them.
-
-**Task: physical validation of GM H10 Cardiac (the GOALS.md H10 track milestone), plus support for stranger bug reports.**
-- Prepare a one-page rider checklist for Jason's next ride: add the field, ride an active segment with
-  the H10 for 3+ minutes, and what to watch for (`COLLECTING RR` → live α1, readability under effort).
-- After the ride, compare the displayed values with the saved RR artifact, and report stability and
-  dropout behavior with numbers.
-- Make sure a beta tester's problem report is actionable: the "Report a beta problem" section of the
-  guide should tell them exactly what to send (logs and version), and the Karoo should expose them.
-- Out of scope: automatic H10-driven pacing, Needle, pairing.
-
-Done when: the checklist is committed, the post-ride comparison is in a handoff with the Goal
-alignment section, and any beta-blocking H10 issue is listed first.
 
 # Coordinator: current phone task (2026-10-09 00:50, sent to the GritMap MVP session)
 
