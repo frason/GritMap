@@ -49,6 +49,10 @@ rider-facing "section" strings to match on the Karoo are in
 **Task:** write `docs/PRIVACY.md`, the privacy policy for the TestFlight Privacy Policy URL (an external
 testing gate), with every claim checked against the code, plus the App Store Connect "App Privacy" answers.
 
+# Handoff: direct Bluetooth send, phone side (dev-flagged), and v2 contract draft (committed locally, not pushed)
+
+The iPhone can now hand a plan, and the segment only when the Karoo lacks it, straight to the Karoo over Bluetooth with no server (`89938ea`, contract draft `2d64df9`: `docs/BLE_DIRECT_TRANSFER_CONTRACT.md`). Local Expo module `modules/gritmap-ble-peripheral` (CoreBluetooth) serves a manifest, chunked plan/segment reads and a receipt; "Imported on your Karoo" appears only after an `imported` receipt. Hidden unless a dev build, `EXPO_PUBLIC_GRITMAP_BLE_TRANSFER=1` or `dev_ble_transfer`=1; the Wi-Fi/IP send is unchanged. typecheck, 649/649 tests, web:smoke clean; Swift session tests pass; Release simulator build succeeds (simulators have no Bluetooth radio). **Not yet run on a physical iPhone** (no nRF Connect check recorded) and no Karoo implements v2. Codex's to-do/confirm list and Jason's steps: `handoffs/archive/2026-10-12-1210-claude-direct-ble-phone-side.md`.
+
 # Handoff: expo-font declared; icons verified in a Release build (committed locally, not pushed)
 
 `expo-font ~57.0.4` is now a declared dependency (peer of `@expo/vector-icons`) with `ios/Podfile.lock` updated; `expo install` also added `expo-font` to app.json's `plugins` (no EAS fields). Unsigned Release simulator build on a fresh install shows the tab-bar and list icons; `expo-doctor` is down to the two expected warnings (non-CNG sync, patch-version mismatches, not bumped). typecheck, 633/633 tests, web:smoke clean. The app icon is still the Expo placeholder. Details: `handoffs/archive/2026-10-09-0830-claude-expo-font.md`.
