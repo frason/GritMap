@@ -77,9 +77,12 @@ The phone app currently falls short of standard design practice. The redesign ta
 Moving data between the phone and the Karoo must get easier over time, and each change should
 move toward that, not around it:
 - Beta: keep the working IP route, with clear instructions.
-- Next after the beta: pair once, then "Send" just works (no retyped IP, no receive screen left
-  open on the Karoo), sends are authenticated, and the phone shows the Karoo's real import result
-  (`docs/KAROO_PAIRING_CONTRACT.md`).
+- In progress (dev-flagged, ships once it passes a physical end-to-end test): **direct Bluetooth, no
+  server** (decided 2026-10-12, `docs/BLE_DIRECT_TRANSFER_CONTRACT.md`). The plan, which is small and
+  private, always goes over Bluetooth. The segment, which is large and public, is skipped if the Karoo
+  already has it, or else sent in chunks or fetched from Open Segments. The Karoo writes back an
+  imported/rejected receipt. No IP to type, works with no signal, and nothing passes through a server. The
+  earlier token-plus-HTTPS "capsule" design is shelved: it needed hosting and put private plans on a server.
 - Then: the phone can read what the Karoo already has (segments, plans, versions) to avoid
   duplicates and stale plans.
 - Later: completed attempts and live summaries flow back from the Karoo automatically, replacing
