@@ -231,6 +231,8 @@ PODS:
   - EXUpdatesInterface (57.0.1):
     - ExpoModulesCore
   - FBLazyVector (0.86.2)
+  - GritMapBlePeripheral (0.1.0):
+    - ExpoModulesCore
   - hermes-engine (250829098.0.16):
     - hermes-engine/Pre-built (= 250829098.0.16)
   - hermes-engine/Pre-built (250829098.0.16)
@@ -2263,6 +2265,7 @@ DEPENDENCIES:
   - ExpoSQLite (from `../node_modules/expo-sqlite/ios`)
   - EXUpdatesInterface (from `../node_modules/expo-updates-interface/ios`)
   - FBLazyVector (from `../node_modules/react-native/Libraries/FBLazyVector`)
+  - GritMapBlePeripheral (from `../modules/gritmap-ble-peripheral/ios`)
   - hermes-engine (from `../node_modules/react-native/sdks/hermes-engine/hermes-engine.podspec`)
   - "MapLibreReactNative (from `../node_modules/@maplibre/maplibre-react-native`)"
   - RCTDeprecation (from `../node_modules/react-native/ReactApple/Libraries/RCTFoundation/RCTDeprecation`)
@@ -2390,6 +2393,8 @@ EXTERNAL SOURCES:
     :path: "../node_modules/expo-updates-interface/ios"
   FBLazyVector:
     :path: "../node_modules/react-native/Libraries/FBLazyVector"
+  GritMapBlePeripheral:
+    :path: "../modules/gritmap-ble-peripheral/ios"
   hermes-engine:
     :podspec: "../node_modules/react-native/sdks/hermes-engine/hermes-engine.podspec"
     :tag: hermes-v250829098.0.16
@@ -2572,6 +2577,7 @@ SPEC CHECKSUMS:
   ExpoSQLite: ddd65ed74bdebcff20f6766e682f9321ecb28ab8
   EXUpdatesInterface: 92d2aa5194b6fb93ca8ab749db75665cb28b2e60
   FBLazyVector: 3c3be9a019176b5699455f7f66c5444b78a411c6
+  GritMapBlePeripheral: f8fee2375f5cefad040b795cd5d426bc34407fa7
   hermes-engine: f6a6beb6d2e48f7ce8fe190e4c602bdceee8802f
   MapLibreReactNative: 9f1f16d5f5f522309ad1f2afc483a34cfc56fe6e
   RCTDeprecation: bccb6545c26db881ecddfd83a3f9ea82aba1605f

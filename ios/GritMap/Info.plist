@@ -55,6 +55,8 @@
 	<array>
 		<string>_expo._tcp</string>
 	</array>
+	<key>NSBluetoothAlwaysUsageDescription</key>
+	<string>GritMap uses Bluetooth to hand a segment and plan to your Karoo, only while you are on the Send screen.</string>
 	<key>NSLocalNetworkUsageDescription</key>
 	<string>GritMap sends segments directly to your Karoo over your local WiFi network.</string>
 	<key>RCTNewArchEnabled</key>

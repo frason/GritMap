@@ -9,6 +9,8 @@ import { sendSegmentToKaroo } from "../karoo/sendSegmentToKaroo";
 import type { SegmentsStackParamList } from "../navigation/types";
 import { KAROO_ADDRESS_EXAMPLE, KAROO_RECEIVE_SCREEN, KAROO_STEPS } from "../onboarding/onboardingCopy";
 import { AppText, Button, Card, ErrorState, LoadingState, Notice, ScreenScroll, TextField } from "../theme/components";
+import { isBleTransferEnabled } from "../transfer/bleTransferSettings";
+import { BleSendSection } from "./BleSendSection";
 import { spacing } from "../theme/spacing";
 
 type SendToKarooRoute = RouteProp<SegmentsStackParamList, "SendToKaroo">;
@@ -110,6 +112,7 @@ export function SendToKarooScreen() {
           {sendStatus.text}
         </Notice>
       )}
+      {isBleTransferEnabled(database, __DEV__) ? <BleSendSection segment={segment} /> : null}
     </ScreenScroll>
   );
 }

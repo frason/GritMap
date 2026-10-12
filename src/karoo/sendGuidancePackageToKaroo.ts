@@ -1,6 +1,5 @@
 import type { SegmentDetail } from "../db/getSegmentDetail.ts";
-import { toPortableSegmentJson } from "../segments/toPortableSegmentJson.ts";
-import { buildBaselinePacingPlan, toBaselinePlanWire } from "../pacing/buildBaselinePacingPlan.ts";
+import { buildTransferBaselinePlan, buildTransferSegmentJson } from "./buildTransferParts.ts";
 import type { SentBaselinePlan } from "../db/planSends.ts";
 import type { SavedSegmentPlan } from "../db/segmentPlans.ts";
 import { buildRiderHistoryPackage } from "../pacing/buildRiderHistoryPackage.ts";
@@ -48,52 +47,16 @@ export async function sendGuidancePackageToKaroo(
   nowMs: number,
   importedPlan?: SavedSegmentPlan,
 ): Promise<SendGuidanceResult> {
-  let baselinePacingPlan: object;
-  if (importedPlan !== undefined) {
-    if (importedPlan.ftpWatts !== Math.round(rider.ftpWatts)) {
-      return {
-        ok: false,
-        message: `This plan was written for an FTP of ${importedPlan.ftpWatts} W but yours is ${Math.round(rider.ftpWatts)} W. Import an updated plan first.`,
-      };
-    }
-    baselinePacingPlan = toBaselinePlanWire({
-      id: packageId,
-      segmentFingerprint: segment.fingerprint,
-      createdAtMs: nowMs,
-      generator: { type: "manual", modelVersion: importedPlan.source },
-      ftpWatts: importedPlan.ftpWatts,
-      ...(importedPlan.targetFinishSeconds === undefined
-        ? {}
-        : { targetFinishTimeSeconds: importedPlan.targetFinishSeconds }),
-      zones: importedPlan.zones,
-    });
-  } else if (targetDurationMs === undefined) {
-    return { ok: false, message: "Set a goal time first." };
-  } else {
-    baselinePacingPlan = buildBaselinePacingPlan({
-      id: packageId,
-      segmentFingerprint: segment.fingerprint,
-      referencePolyline: segment.referencePolyline,
-      ftpWatts: rider.ftpWatts,
-      targetDurationMs,
-      createdAtMs: nowMs,
-    });
-  }
+  const planResult = buildTransferBaselinePlan({ segment, rider, targetDurationMs, importedPlan, packageId, nowMs });
+  if (!planResult.ok) return { ok: false, message: planResult.message };
+  const baselinePacingPlan = planResult.baselinePacingPlan;
 
   const json = {
     schemaVersion: 1,
     packageType: "gritmap-transfer",
     packageId,
     createdAtMs: nowMs,
-    segment: toPortableSegmentJson({
-      id: segment.segmentId,
-      name: segment.name,
-      schemaVersion: segment.schemaVersion,
-      corridorMeters: segment.corridorMeters,
-      requiredCoveragePct: segment.requiredCoveragePct,
-      fingerprint: segment.fingerprint,
-      referencePolyline: segment.referencePolyline,
-    }),
+    segment: buildTransferSegmentJson(segment),
     riderHistory: buildRiderHistoryPackage({
       ftpWatts: rider.ftpWatts,
       weightKg: rider.weightKg,
