@@ -1,7 +1,7 @@
 # BLE direct transfer contract (v2): DRAFT for Codex review
 
 Status: **draft, reviewed 2026-10-12** (`docs/BLE_DIRECT_TRANSFER_REVIEW.md`; Jason's decisions D1: keep `rider`, D2: no link
-encryption in v2). The phone fixes P1 to P4 from that review are pending. Phone side (advertiser, manifest, chunks, receipt) is implemented behind a development flag
+encryption in v2). The phone fixes P1 to P4 from that review are implemented (2026-10-12). Phone side (advertiser, manifest, chunks, receipt) is implemented behind a development flag
 (`modules/gritmap-ble-peripheral`, `src/transfer/`). The Karoo side is not implemented. This replaces the capsule/HTTPS design in
 `docs/BLE_TRANSFER_CAPSULE_CONTRACT.md` (v1, Karoo receiver only, left untouched): **no server, no domain, no uploads.** The Wi-Fi/IP send
 (`gritmap-transfer` over HTTP) stays the working path and is unchanged.
@@ -136,7 +136,7 @@ After import (or rejection) the Karoo writes **Status** (with response):
 
 Plain status text only: Preparing; Waiting for your Karoo (open GritMap, then Inbox, then Receive from Phone); Karoo connected; Sending the
 plan (n of m); then either **"Imported on your Karoo"** (receipt `imported`), **"Your Karoo couldn't use this transfer"** with the code mapped
-to words (receipt `rejected`), or **"Sent; check your Karoo"** when the plan was fully read but no receipt arrived within 30 s. Timeouts say so.
+to words (receipt `rejected`), or **"Sent; check your Karoo"** when the plan was fully read but no receipt arrived within 60 s. Timeouts say so.
 
 ## What Codex must implement / confirm
 

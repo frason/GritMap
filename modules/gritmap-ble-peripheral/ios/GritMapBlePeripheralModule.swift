@@ -11,13 +11,13 @@ private let statusUUID = CBUUID(string: "C0BB77AF-3BD8-4C60-B669-91AC74C778B9")
 /// Must match modules/gritmap-ble-peripheral/index.ts. Events never carry the transfer's bytes.
 private let stateEvent = "onStateChange"
 
-private let inactivitySeconds: TimeInterval = 30
 private let sessionCapSeconds: TimeInterval = 600
 private let maxAdvertiseSeconds: TimeInterval = 120
 
 /// A bounded, one-shot BLE peripheral for one transfer. It advertises only the transfer service UUID
-/// until a central reads the manifest, then serves that central alone. The bytes live in memory only,
-/// are never logged, and are dropped on every exit (receipt, timeout, background, stop).
+/// for the whole session; the first central to read the manifest owns the session and every other
+/// central is refused, so the owning Karoo can reconnect after a dropped link and resume. The bytes live
+/// in memory only, are never logged, and are dropped on every exit (receipt, timeout, background, stop).
 private final class TransferPeripheral: NSObject, CBPeripheralManagerDelegate {
   private var manager: CBPeripheralManager?
   private var session: TransferSession?
@@ -102,11 +102,14 @@ private final class TransferPeripheral: NSObject, CBPeripheralManagerDelegate {
     }
   }
 
+  /// Restarts the idle timer: 30 s while the Karoo is reading, 60 s once the plan is fully served (the Karoo
+  /// is importing and will write the receipt).
   private func touch() {
-    schedule(&inactivityTimer, after: inactivitySeconds) { [weak self] in
+    guard let session = session else { return }
+    schedule(&inactivityTimer, after: session.idleLimitSeconds()) { [weak self] in
       guard let self = self, let session = self.session else { return }
       // Plan fully read but no receipt: the most we can honestly say is "sent".
-      self.finish(session.planFullyServed() ? "sentUnconfirmed" : "timedOut")
+      self.finish(session.idleOutcome())
     }
   }
 
@@ -115,11 +118,13 @@ private final class TransferPeripheral: NSObject, CBPeripheralManagerDelegate {
     case .manifestRead:
       if connected { return }  // a long read arrives as several reads
       connected = true
-      // The Karoo has found us: stop advertising and keep serving only it.
+      // The Karoo has found us: the discovery window is over. Keep advertising, so the same Karoo can
+      // reconnect and resume, but the session is locked to it (other centrals are refused).
       advertiseTimer?.cancel(); advertiseTimer = nil
-      manager?.stopAdvertising()
-      schedule(&capTimer, after: sessionCapSeconds) { [weak self] in self?.finish("timedOut") }
-      touch()
+      schedule(&capTimer, after: sessionCapSeconds) { [weak self] in
+        guard let self = self, let session = self.session else { return }
+        self.finish(session.idleOutcome())
+      }
       emit(["state": "connected"])
     case .progress(let resource, let served, let total):
       emit(["state": "progress", "resource": resource, "served": served, "total": total])
@@ -163,20 +168,22 @@ private final class TransferPeripheral: NSObject, CBPeripheralManagerDelegate {
     let outcome: TransferSession.Outcome<Data>
     switch request.characteristic.uuid {
     case manifestUUID:
-      outcome = session.readManifest(central: central) { self.handle($0) }
+      outcome = session.readManifest(central: central, valueOffset: request.offset) { self.handle($0) }
     case dataUUID:
-      outcome = session.readData(central: central, valueOffset: request.offset) { self.handle($0) }
-      touch()
+      // One ATT read response carries at most MTU - 1 bytes; maximumUpdateValueLength is MTU - 3.
+      outcome = session.readData(central: central, valueOffset: request.offset,
+                                 maxResponseBytes: request.central.maximumUpdateValueLength + 2) { self.handle($0) }
     default:
       peripheral.respond(to: request, withResult: .attributeNotFound)
       return
     }
     switch outcome {
     case .ok(let data):
-      request.value = request.characteristic.uuid == manifestUUID && request.offset > 0
-        ? (request.offset <= data.count ? data.subdata(in: request.offset..<data.count) : Data())
-        : data
+      request.value = data
+      touch()
       peripheral.respond(to: request, withResult: .success)
+    case .invalidOffset:
+      peripheral.respond(to: request, withResult: .invalidOffset)
     case .refused:
       peripheral.respond(to: request, withResult: .readNotPermitted)
     }
@@ -190,7 +197,7 @@ private final class TransferPeripheral: NSObject, CBPeripheralManagerDelegate {
       let body = request.value ?? Data()
       switch request.characteristic.uuid {
       case requestUUID:
-        if case .refused = session.writeRequest(central: central, body: body) { allowed = false } else { touch() }
+        if case .ok = session.writeRequest(central: central, body: body, emit: { self.handle($0) }) { touch() } else { allowed = false }
       case statusUUID:
         if case .refused = session.writeStatus(central: central, body: body, emit: { self.handle($0) }) { allowed = false }
       default:
@@ -233,6 +240,9 @@ public final class GritMapBlePeripheralModule: Module {
           throw Exception(name: "ERR_INVALID_TRANSFER", description: "Invalid rider")
         }
         resources["rider"] = rider
+      }
+      if let mismatch = TransferSession.manifestMismatch(manifest: manifestData, resources: resources) {
+        throw Exception(name: "ERR_INVALID_TRANSFER", description: "Manifest does not match the resources: \(mismatch)")
       }
       let session = TransferSession(transferId: transferId, manifest: manifestData, resources: resources)
       self.peripheral.start(session: session, advertiseSeconds: min(max(advertiseMs / 1000.0, 1.0), maxAdvertiseSeconds))

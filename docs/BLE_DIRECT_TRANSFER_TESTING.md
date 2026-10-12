@@ -8,8 +8,9 @@ Karoo side is not implemented. The Wi-Fi/IP send remains the working path and is
 - Module `modules/gritmap-ble-peripheral` (Swift, CoreBluetooth `CBPeripheralManager`). The serving rules live in
   `TransferSession.swift`, which has no Bluetooth dependency and is unit-tested on a Mac.
 - Advertises **only** service `e7a4e868-0a21-45d6-ac63-5812c740ba12` (no local name) for at most 2 minutes, only while the Send screen is
-  foregrounded. After a central reads the manifest it stops advertising and serves that central alone.
-- Serves **Manifest** (read), **Request** (write), **Data** (read), **Status** (write). It stops on receipt, 30 s idle, 10 min total,
+  foregrounded. The first central to read the manifest owns the session and every other central is refused; advertising
+  continues for the whole session so that same Karoo can reconnect and resume at its last complete chunk.
+- Serves **Manifest** (read), **Request** (write), **Data** (read), **Status** (write). It stops on receipt, 30 s idle (60 s once the plan is fully read, to leave time for the receipt), 10 min total,
   leaving the screen, backgrounding the app, or Stop. The bytes live in memory only and are never logged.
 - Wording: Preparing, Waiting for your Karoo, Karoo connected, Sending the plan... n%, then "Imported on your Karoo." only after a
   receipt with `status:"imported"`; "Sent; check your Karoo" if the plan was fully read but no receipt arrived.
@@ -41,13 +42,16 @@ device with **nRF Connect for Mobile** (or nRF Connect for Desktop):
 2. In GritMap: segment, menu, Send to Karoo, **Start Bluetooth send** (allow Bluetooth). Status: "Waiting for your Karoo...".
 3. nRF Connect, Scanner: filter by the service UUID. The advertiser appears with name N/A. Connect; expand the service; four characteristics.
 4. Read **Manifest** `A9C5876C-...`: UTF-8 JSON, 400-500 bytes: `{"v":2,"transferId":"...","createdAtMs":...,"plan":{"bytes":N,...},...}`.
-   The iPhone shows "Karoo connected" and stops advertising.
+   The iPhone shows "Karoo connected" (and keeps advertising; a second scanner that tries to read is refused).
 5. Write **Request** `59E28123-...` (Text/UTF-8, with response): `{"resource":"plan","offset":0}`. Read **Data** `83E82BA5-...`: the first
    512 bytes of the plan (hex). Repeat with `"offset":512`, `1024`, ... until `offset + length = plan.bytes`. The iPhone shows
    "Sending the plan to your Karoo... n%".
+   Resume check: disconnect nRF Connect mid-way and reconnect (the phone is still advertising); it can read the manifest again and
+   continue at the next offset. A second device that connects and reads is refused. The phone counts a chunk as read only after its
+   last byte went out (nRF Connect issues the Read Blob requests for you), so "Sent" can't appear after a half-read last chunk.
 6. Write **Status** `C0BB77AF-...`: `{"transferId":"<id from the manifest>","status":"imported","code":"ok"}`. The iPhone shows
    "Imported on your Karoo." and ends the session. (Write `"status":"rejected","code":"bad_hash"` to see the rejection wording.)
-7. Not writing any receipt: after the plan is read and 30 s pass, the iPhone shows "Sent; check your Karoo."
+7. Not writing any receipt: after the plan is read and 60 s pass, the iPhone shows "Sent; check your Karoo."
 
 Optional on a Mac (also needs the physical iPhone): `swiftc -o /tmp/fake-karoo scripts/fake-karoo.swift && /tmp/fake-karoo
 [--skip-segment] [--receipt imported|rejected]` scans, reads the manifest, walks the chunks, verifies the hashes and writes a receipt, printing
