@@ -1,6 +1,7 @@
 # Handoff: installed Karoo 0.10.44 source committed and tagged
 
-Commit `f3442c4` captures the Karoo source installed as `0.10.44-beta`/67: the approved large-field
+Commit `20f9ed7` captures the Karoo source installed as `0.10.44-beta`/67 after rebasing onto current
+`origin/main`: the approved large-field
 typography, stable Pacing Profile title, launcher icon, and bounded v1 BLE capsule receiver. Annotated
 tag `karoo-beta-0.10.44` points directly to that commit. Lint and a versioned debug APK build pass.
 The JVM suite is 188/189 on this Mac because the pre-existing

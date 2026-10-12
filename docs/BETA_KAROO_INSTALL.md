@@ -12,25 +12,33 @@ the pacing guidance only when it is safe to do so.
 - Update the Karoo to software version **1.538.2049 or newer**.
 - Install Hammerhead Companion **1.12.0 or newer** on your iPhone and connect it to the Karoo.
 - Connect the Karoo to Wi-Fi.
-- Download the supplied `gritmap-karoo-<version>-beta.apk` file to the iPhone.
+- Have the direct GitHub APK URL ready. Do not download the APK into Files first.
 
-Hammerhead documents the same APK-file workflow in its
+Hammerhead documents both URL and APK-file workflows in its
 [official Companion App sideloading guide](https://support.hammerhead.io/hc/en-us/articles/31576497036827-Companion-App-Sideloading).
 
 ## Install from your iPhone
 
-1. Open the downloaded APK in the iPhone Files app.
-2. Tap **Share** and choose **Hammerhead** (the Hammerhead Companion app).
-3. Wait while Companion shows **Transferring**.
+1. On the iPhone, long-press this direct link without opening or downloading it:
+   [Install the latest GritMap Karoo beta](https://github.com/frason/GritMap/releases/latest/download/gritmap-karoo.apk).
+2. Choose **Share Link**, then choose **Hammerhead** (the Hammerhead Companion app). Do not choose
+   **Download Linked File** and do not share a downloaded copy from Files. That path can rename the
+   file to a UUID and has been observed to leave the Karoo stuck on **Loading** without delivering
+   the APK.
+3. Keep the Karoo connected to Wi-Fi while Companion shows **Transferring**.
 4. An install prompt appears on the Karoo. Tap **Install**.
 5. Open the Karoo app drawer and launch **GritMap** once.
 6. Allow location access when asked. The optional display-over-other-apps permission is not
    required for the official GritMap data fields.
 
-For an update, repeat these steps with the newer APK. Do not uninstall the previous beta first:
+For an update, repeat these steps with the same stable link. Do not uninstall the previous beta first:
 installing the signed update over it preserves your GritMap segments and settings.
 
 ### If Companion cannot install the APK
+
+If the Karoo displays a UUID filename and stays on **Loading**, waiting longer will not repair that
+transfer. Back out of the screen, verify the Karoo and Companion versions and both devices' network
+connections, then retry by sharing the direct link above rather than a downloaded file.
 
 Use Android Platform Tools on a Mac or PC as a fallback:
 

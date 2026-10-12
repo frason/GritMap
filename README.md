@@ -20,9 +20,12 @@ The current extension requires a **Hammerhead Karoo 3**. Karoo 2 is not supporte
 
 ### Install with Hammerhead Companion
 
-1. On your phone, open the [latest GritMap Karoo release](https://github.com/frason/GritMap/releases/latest).
-2. Download or long-press the `gritmap-karoo.apk` asset and choose **Share**.
-3. Select **Hammerhead Companion**.
+1. On your phone, long-press [`gritmap-karoo.apk`](https://github.com/frason/GritMap/releases/latest/download/gritmap-karoo.apk)
+   without opening or downloading it.
+2. Choose **Share Link**, then select **Hammerhead Companion**. Do not first download the APK and
+   share it from Files; on iPhone that file-transfer route can leave the Karoo on a UUID-named
+   loading screen without delivering the APK.
+3. Keep the Karoo on Wi-Fi while it retrieves the GitHub URL.
 4. Approve the installation on the Karoo, then open **GritMap** from its app list.
 5. Follow the [Karoo beta setup guide](docs/BETA_KAROO_INSTALL.md) to grant permissions and add
    GritMap fields to a ride profile.
