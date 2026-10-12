@@ -19,6 +19,12 @@
     },
     "production": {
       "autoIncrement": true
+    },
+    "production-ble-internal": {
+      "extends": "production",
+      "env": {
+        "EXPO_PUBLIC_GRITMAP_BLE_TRANSFER": "1"
+      }
     }
   },
   "submit": {
@@ -26,6 +32,9 @@
       "ios": {
         "ascAppId": "6820850686"
       }
+    },
+    "production-ble-internal": {
+      "extends": "production"
     }
   }
 }
