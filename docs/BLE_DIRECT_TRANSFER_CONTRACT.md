@@ -1,6 +1,7 @@
 # BLE direct transfer contract (v2): DRAFT for Codex review
 
-Status: **draft**, 2026-10-12. Phone side (advertiser, manifest, chunks, receipt) is implemented behind a development flag
+Status: **draft, reviewed 2026-10-12** (`docs/BLE_DIRECT_TRANSFER_REVIEW.md`; Jason's decisions D1: keep `rider`, D2: no link
+encryption in v2). The phone fixes P1 to P4 from that review are pending. Phone side (advertiser, manifest, chunks, receipt) is implemented behind a development flag
 (`modules/gritmap-ble-peripheral`, `src/transfer/`). The Karoo side is not implemented. This replaces the capsule/HTTPS design in
 `docs/BLE_TRANSFER_CAPSULE_CONTRACT.md` (v1, Karoo receiver only, left untouched): **no server, no domain, no uploads.** The Wi-Fi/IP send
 (`gritmap-transfer` over HTTP) stays the working path and is unchanged.
@@ -14,10 +15,13 @@ keeps `docs/PRIVACY.md` true (nothing leaves the two devices).
   (no local name, no manufacturer data), only while the Send screen is foregrounded.
 - The Karoo is the **central**. The rider taps Inbox, **Receive from Phone**; the Karoo scans (filtered by the service UUID) for at most
   2 minutes, connects, runs the exchange below, and disconnects. No bonding, no stored phone address (iOS rotates addresses).
-- **Advertising window:** 2 minutes from Start, or until a central reads the manifest. After the first manifest read the phone stops
-  advertising and serves only that central (the first central to read the manifest or write a request owns the session; others are refused).
-- **Session limits:** the session ends on a receipt write, 30 s without any request, 10 minutes in total, the phone leaving the foreground,
-  or the rider tapping Stop. The phone forgets the bytes and the transfer id on every exit.
+- **Advertising window:** discovery is limited to 2 minutes from Start. Once a central reads the manifest, it owns the session (the first
+  central to read the manifest or write a request; others are refused). The phone **keeps advertising for the rest of the session**, so the
+  owning Karoo can reconnect after a dropped link and **resume from its last complete chunk** (requests are offset-based). The Karoo retries a
+  dropped connection up to 3 times within the 30 s inactivity window. (Review R3 / phone fix P2.)
+- **Session limits:** the session ends on a receipt write, 30 s without any request or read, 10 minutes in total, the phone leaving the
+  foreground, or the rider tapping Stop. Once the plan is fully served, the phone waits up to **60 s** for the receipt before ending with
+  "Sent; check your Karoo" (review R3 / phone fix P3). The phone forgets the bytes and the transfer id on every exit.
 
 ## GATT layout
 
@@ -33,7 +37,16 @@ than mis-parsing a v2 document.
 | Status | `c0bb77af-3bd8-4c60-b669-91ac74c778b9` | write (with response) | the receipt JSON, at most 128 bytes |
 
 A long read (Read + Read Blob) is used for values longer than the ATT MTU; the phone answers by value offset (`request.offset` in
-CoreBluetooth). The Karoo should request an MTU of 247 or more to cut round trips.
+CoreBluetooth). Android's `readCharacteristic` performs the long read internally.
+
+- **Logical chunk length.** The Data value for a request at `offset` is exactly `min(chunkBytes, bytes - offset)` bytes. The Karoo knows this
+  from the manifest and must treat a shorter value as an error and retry, never as end of data.
+- **MTU.** The Karoo **must** request MTU 517 (`requestMtu(517)`) before reading. The plan (a few KB) is fine at any MTU. At the default MTU
+  of 23 a 250 KiB segment needs over 12,000 round trips (about 7 to 15 minutes, more than the session cap). So if the negotiated MTU is below
+  185 and the segment is needed, the Karoo prefers the Open Segments fetch when `segment.public` is set and it has internet. Otherwise it
+  reads over BLE while showing progress. At MTU 247 or more, a 250 KiB segment takes roughly 1 to 2 minutes.
+- **ATT errors the Karoo can expect:** `readNotPermitted` / `writeNotPermitted` (not the owner, session ended, malformed or out-of-range
+  request), `attributeNotFound` (no session), `invalidOffset` (value offset past the end; phone fix P4).
 
 ## Manifest
 
@@ -60,7 +73,7 @@ CoreBluetooth). The Karoo should request an MTU of 247 or more to cut round trip
   knows the segment is published; in the beta it is normally absent.
 - **Caps** (reusing the capsule limits): plan at most **128 KiB**, segment at most **512 KiB**, rider at most **16 KiB**. The phone refuses to
   advertise a transfer over a cap; the Karoo must reject a manifest over a cap before reading.
-- `rider` (optional) is the same `riderHistory` object the Wi-Fi send includes (FTP, weight, max heart rate). It is included so a plan sent
+- `rider` (optional; **kept**, decision D1) is the same `riderHistory` object the Wi-Fi send includes (FTP, weight, max heart rate). It is included so a plan sent
   here is accepted exactly like the Wi-Fi one (the Karoo's strict parser requires an installed profile whose FTP matches the plan's). If
   absent, the Karoo imports the plan against its existing profile.
 
@@ -98,7 +111,9 @@ After import (or rejection) the Karoo writes **Status** (with response):
 - `status`: `imported` or `rejected`. `code`: 1 to 32 characters `[a-z0-9_]`. Defined codes: `ok`, `ok_segment_existing`; for `rejected`:
   `bad_hash`, `bad_segment`, `bad_plan`, `fingerprint_mismatch`, `ftp_mismatch`, `too_large`, `storage`, `timeout`, `cancelled`,
   `unsupported_version`, `other`. The phone shows rider text for known codes and a generic message for unknown ones.
-- The phone accepts a receipt only from the session's central, only once, and only with the matching `transferId`.
+- The phone accepts a receipt only from the session's central, only once, and only with the matching `transferId`. If the Karoo retries a
+  receipt write because a response was lost and gets `writeNotPermitted`, it treats the receipt as delivered and does not retry again.
+- The Karoo writes the receipt **within 30 s of its last read**; if the import can't finish in that time, it writes `rejected` with code `timeout`.
 - **Only a receipt with `status:"imported"` allows the phone to say "Imported on your Karoo".** A transfer that has not received a receipt shows
   "Sent; check your Karoo". The Karoo should write the receipt after the transaction commits, and may write `rejected` early on any
   validation failure.
@@ -108,8 +123,9 @@ After import (or rejection) the Karoo writes **Status** (with response):
 - Link-layer encryption is **not** required (no bonding, no characteristic encryption permissions): the plan (watts per section, FTP) and
   the segment travel in the clear within Bluetooth range (about 10 m) during a window of at most 2 minutes plus the session. Mitigations:
   one-shot, first-central-owns-the-session, a window that closes as soon as the Karoo reads, a 128-bit `transferId`, hashes that make
-  tampering detectable by the Karoo. The segment is public data; the plan is low-sensitivity but private. Requiring encryption (a system
-  pairing prompt on the Karoo, "Just Works" LE Secure Connections) is an open decision for Jason and Codex: it would add a pairing step.
+  tampering detectable by the Karoo. The segment is public data; the plan is low-sensitivity but private. **Decided (D2, Jason 2026-10-12): no link
+  encryption in v2.** `docs/PRIVACY.md` will state this in one sentence before the feature is visible to riders. Revisit after the beta
+  ("Just Works" LE Secure Connections would add a pairing prompt on the Karoo).
 - A nearby central that reads the manifest first takes the session, so the rider's Karoo would find nothing to connect to. The phone
   shows the steps that actually happened (Karoo connected, plan sent n of m, receipt) so the rider can tell the difference from a
   successful transfer: no receipt means "Sent; check your Karoo" at best.
@@ -130,8 +146,9 @@ to words (receipt `rejected`), or **"Sent; check your Karoo"** when the plan was
 4. Skip the segment when the fingerprint is installed; optional HTTPS fetch of the Open Segments file when `segment.public`; plan always over BLE.
 5. Build the existing `gritmap-transfer` JSON (with `riderHistory` when `rider` is present) and call the existing importer unchanged.
 6. Write the Status receipt with the codes above after commit (or on rejection).
-7. Confirm: whether the optional `rider` resource is wanted; whether to require link encryption; whether the chunk size 512 and the
-   30 s inactivity limit are acceptable on the Karoo's BLE stack; behaviour during a live H10 session (RR continuity).
+7. Also implement: MTU 517 request, the logical-chunk length check, reconnect and resume (up to 3 retries), and the receipt rules (within 30 s;
+   `writeNotPermitted` on a retry means delivered). Resolved: `rider` is kept (D1); no link encryption (D2). Still to confirm
+   physically: chunk size 512 and the 30 s inactivity limit on the Karoo's stack, the reconnect behaviour, and RR continuity during a live H10 session.
 
 Reference vectors: `src/transfer/directTransfer.test.ts` builds a manifest, resources and receipts from the Karoo's own
 `Diablo.Northgate-to-Junction.40m30.guidance-package.json` fixture and walks the chunk protocol with an in-memory reference reader.
