@@ -24,8 +24,8 @@ class SegmentPerformanceBitmapRenderer(
         val canvas = Canvas(bitmap)
         canvas.drawColor(palette.background)
         val margin = w * 0.035f
-        text(canvas, "GM SEGMENT PERFORMANCE", margin, h * 0.042f, w * 0.048f, palette.primaryText, Paint.Align.LEFT)
-        text(canvas, performanceDistance(state), w - margin, h * 0.042f, w * 0.043f, palette.secondaryText, Paint.Align.RIGHT)
+        text(canvas, "GM PERFORMANCE", margin, h * 0.042f, w * 0.061f, palette.primaryText, Paint.Align.LEFT)
+        text(canvas, performanceDistance(state), w - margin, h * 0.042f, w * 0.050f, palette.secondaryText, Paint.Align.RIGHT)
 
         val plan = state.plannedFinishSeconds
         val predicted = state.predictedFinishSeconds
@@ -36,15 +36,15 @@ class SegmentPerformanceBitmapRenderer(
         canvas.drawRoundRect(margin, bannerTop, w - margin, bannerBottom, 18f, 18f, Paint(Paint.ANTI_ALIAS_FLAG).apply {
             color = if (improving) Color.rgb(38, 135, 232) else Color.rgb(231, 91, 64)
         })
-        centered(canvas, "${actionLabel(state.recommendation?.icon)} • ${resultHeadline(timeBank)}", w / 2f, (bannerTop + bannerBottom) / 2f, w * 0.061f, Color.WHITE)
+        centered(canvas, "${actionLabel(state.recommendation?.icon)} • ${resultHeadline(timeBank)}", w / 2f, (bannerTop + bannerBottom) / 2f, w * 0.068f, Color.WHITE)
 
         val resultColor = if (improving) Color.rgb(32, 190, 105) else Color.rgb(239, 91, 69)
         centered(canvas, predicted?.let(::clock) ?: "--:--", w / 2f, h * 0.235f, w * 0.120f, palette.primaryText)
-        centered(canvas, "EXPECTED FINISH  •  GOAL ${plan?.let(::clock) ?: "--:--"}  •  ${resultHeadline(timeBank)}", w / 2f, h * 0.300f, w * 0.035f, resultColor)
+        centered(canvas, "GOAL ${plan?.let(::clock) ?: "--:--"}  •  ${resultHeadline(timeBank)}", w / 2f, h * 0.300f, w * 0.044f, resultColor)
 
         drawTimeBank(canvas, timeBank, w, h * 0.365f)
 
-        text(canvas, "¼-MILE SPLITS VS PLAN", margin, h * 0.455f, w * 0.043f, palette.primaryText, Paint.Align.LEFT)
+        text(canvas, "¼-MILE SPLITS VS PLAN", margin, h * 0.455f, w * 0.052f, palette.primaryText, Paint.Align.LEFT)
         if (state.segmentSplitDeltasSeconds.isEmpty()) {
             drawAwaitingFirstSplit(canvas, state, margin, h * 0.49f, w - margin, h * 0.79f)
         } else {
@@ -117,8 +117,8 @@ class SegmentPerformanceBitmapRenderer(
     private fun drawMetricCard(canvas: Canvas, left: Float, top: Float, right: Float, bottom: Float, label: String, value: String, color: Int) {
         canvas.drawRoundRect(left, top, right, bottom, 17f, 17f, Paint(Paint.ANTI_ALIAS_FLAG).apply { this.color = Color.rgb(20, 23, 27) })
         canvas.drawRoundRect(left, top, left + 8f, bottom, 6f, 6f, Paint(Paint.ANTI_ALIAS_FLAG).apply { this.color = color })
-        centered(canvas, value, (left + right) / 2f, top + (bottom - top) * 0.42f, 35f, palette.primaryText)
-        centered(canvas, label, (left + right) / 2f, top + (bottom - top) * 0.76f, 17f, palette.secondaryText)
+        centered(canvas, value, (left + right) / 2f, top + (bottom - top) * 0.41f, 40f, palette.primaryText)
+        centered(canvas, label, (left + right) / 2f, top + (bottom - top) * 0.76f, 20f, palette.secondaryText)
     }
 
     private fun finishComparison(timeBank: Int?, plan: Int?): String {

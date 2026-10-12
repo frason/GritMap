@@ -46,6 +46,7 @@ class KarooFieldLayoutTest {
     fun `large profile gives the head up route the legacy footer space`() {
         val presentation = pacingProfilePresentation(KarooPreviewState, KarooFieldLayout.LARGE)
 
+        assertEquals("GM PACING PROFILE", presentation.title)
         assertFalse(presentation.compactStrip)
         assertTrue(presentation.verticalPacer)
         assertTrue(presentation.showHeader)

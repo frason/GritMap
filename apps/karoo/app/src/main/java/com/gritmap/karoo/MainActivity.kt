@@ -1,6 +1,7 @@
 package com.gritmap.karoo
 
 import android.Manifest
+import android.content.pm.PackageManager
 import android.content.Intent
 import android.net.Uri
 import android.os.Bundle
@@ -35,12 +36,16 @@ import androidx.lifecycle.lifecycleScope
 import com.gritmap.karoo.data.DatabaseProvider
 import com.gritmap.karoo.data.SegmentLibraryRow
 import com.gritmap.karoo.importing.HttpSegmentInbox
+import com.gritmap.karoo.importing.BleTransferReceiveResult
+import com.gritmap.karoo.importing.BleTransferReceiveSession
+import com.gritmap.karoo.importing.HttpsTransferResourceClient
 import com.gritmap.karoo.importing.RiderHistoryImportRepository
 import com.gritmap.karoo.importing.SegmentImportRepository
 import com.gritmap.karoo.importing.SegmentInboxProcessor
 import com.gritmap.karoo.importing.SegmentLibraryRepository
 import com.gritmap.karoo.importing.StagedFileSegmentInbox
 import com.gritmap.karoo.importing.TransferPackageRepository
+import com.gritmap.karoo.importing.TransferCapsuleReceiver
 import com.gritmap.karoo.physiology.H10DiagnosticActivity
 import com.gritmap.karoo.service.LiveDiagnostics
 import com.gritmap.karoo.service.LiveServiceStarter
@@ -51,6 +56,8 @@ import com.gritmap.karoo.ui.state.LiveDemoController
 import java.io.IOException
 import java.io.File
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.Json
@@ -76,7 +83,8 @@ class MainActivity : ComponentActivity() {
             }
             var overlayGranted by remember { mutableStateOf(Settings.canDrawOverlays(this@MainActivity)) }
             var diagnosticLines by remember { mutableStateOf<List<String>>(emptyList()) }
-            var receiveInbox by remember { mutableStateOf<HttpSegmentInbox?>(null) }
+            var bleReceiveJob by remember { mutableStateOf<Job?>(null) }
+            var legacyReceiveInbox by remember { mutableStateOf<HttpSegmentInbox?>(null) }
             val demoRunning by LiveDemoController.running.collectAsState()
             val liveRiderProfile by RiderProfileStore.profile.collectAsState()
             var storedRiderProfile by remember { mutableStateOf<KarooRiderProfile?>(null) }
@@ -91,9 +99,13 @@ class MainActivity : ComponentActivity() {
                 ActivityResultContracts.RequestMultiplePermissions(),
             ) {
                 locationGranted = LiveServiceStarter.hasLocationPermission(this@MainActivity)
-                if (locationGranted) {
+                val bluetoothGranted = hasBluetoothTransferPermissions()
+                if (locationGranted && bluetoothGranted) {
                     LiveServiceStarter.startIfPermitted(this@MainActivity, "permission-result")
-                    status = "Location enabled; live matching service started"
+                    status = "Location and phone transfer enabled"
+                } else if (locationGranted) {
+                    LiveDiagnostics.record(this@MainActivity, "bluetooth_permission_denied")
+                    status = "Bluetooth denied; live matching works but phone transfer is disabled"
                 } else {
                     LiveDiagnostics.record(this@MainActivity, "location_permission_denied")
                     status = "Location permission denied; live segment matching is disabled"
@@ -112,15 +124,17 @@ class MainActivity : ComponentActivity() {
                 storedRiderProfile = database.riderHistoryDao().profile()?.let {
                     KarooRiderProfile(it.ftpWatts, it.weightKg, it.maxHeartRateBpm)
                 }
-                if (locationGranted) {
-                    LiveServiceStarter.startIfPermitted(this@MainActivity, "launcher")
-                } else {
+                if (!locationGranted || !hasBluetoothTransferPermissions()) {
                     locationPermissionLauncher.launch(
                         arrayOf(
                             Manifest.permission.ACCESS_COARSE_LOCATION,
                             Manifest.permission.ACCESS_FINE_LOCATION,
+                            Manifest.permission.BLUETOOTH_SCAN,
+                            Manifest.permission.BLUETOOTH_CONNECT,
                         ),
                     )
+                } else {
+                    LiveServiceStarter.startIfPermitted(this@MainActivity, "launcher")
                 }
             }
             val segmentPicker = rememberLauncherForActivityResult(
@@ -174,7 +188,8 @@ class MainActivity : ComponentActivity() {
                 KarooHomeScreen(
                     segments = segments,
                     status = status,
-                    receiveActive = receiveInbox != null,
+                    receiveActive = bleReceiveJob != null,
+                    legacyReceiveActive = legacyReceiveInbox != null,
                     locationGranted = locationGranted,
                     overlayGranted = overlayGranted,
                     demoRunning = demoRunning,
@@ -183,7 +198,9 @@ class MainActivity : ComponentActivity() {
                     riderProfile = riderProfile,
                     pendingDeleteId = pendingDeleteId,
                     onEnableLocation = {
-                        if (LiveServiceStarter.hasLocationPermission(this@MainActivity)) {
+                        if (LiveServiceStarter.hasLocationPermission(this@MainActivity) &&
+                            hasBluetoothTransferPermissions()
+                        ) {
                             locationGranted = true
                             LiveServiceStarter.startIfPermitted(this@MainActivity, "launcher-button")
                             status = "Location enabled; live matching service started"
@@ -192,6 +209,8 @@ class MainActivity : ComponentActivity() {
                                 arrayOf(
                                     Manifest.permission.ACCESS_COARSE_LOCATION,
                                     Manifest.permission.ACCESS_FINE_LOCATION,
+                                    Manifest.permission.BLUETOOTH_SCAN,
+                                    Manifest.permission.BLUETOOTH_CONNECT,
                                 ),
                             )
                         }
@@ -252,20 +271,68 @@ class MainActivity : ComponentActivity() {
                         }
                     },
                     onReceive = {
-                        val activeInbox = receiveInbox
+                        val activeJob = bleReceiveJob
+                        if (activeJob != null) {
+                            activeJob.cancel()
+                            bleReceiveJob = null
+                            status = "Bluetooth receive cancelled"
+                        } else if (!hasBluetoothTransferPermissions()) {
+                            status = "Allow Bluetooth, then tap Receive from Phone again"
+                            locationPermissionLauncher.launch(
+                                arrayOf(
+                                    Manifest.permission.BLUETOOTH_SCAN,
+                                    Manifest.permission.BLUETOOTH_CONNECT,
+                                ),
+                            )
+                        } else {
+                            status = "Listening over Bluetooth for 2 minutes… Keep Send to Karoo open on your phone"
+                            bleReceiveJob = lifecycleScope.launch {
+                                val receiver = TransferCapsuleReceiver(
+                                    HttpsTransferResourceClient(),
+                                    transferImporter::importPackage,
+                                )
+                                val session = BleTransferReceiveSession(this@MainActivity, receiver)
+                                try {
+                                    status = when (val result = session.receive()) {
+                                        is BleTransferReceiveResult.Imported -> {
+                                            refreshLibrary()
+                                            val name = result.result.segmentName ?: "segment plan"
+                                            "Received $name over Bluetooth"
+                                        }
+                                        BleTransferReceiveResult.TimedOut ->
+                                            "No phone found in 2 minutes. Try again or use Legacy Wi-Fi Receive."
+                                    }
+                                } catch (_: CancellationException) {
+                                    status = "Bluetooth receive cancelled"
+                                } catch (error: Exception) {
+                                    LiveDiagnostics.record(
+                                        this@MainActivity,
+                                        "ble_transfer_failed",
+                                        "error=${error.javaClass.simpleName}:${error.message}",
+                                    )
+                                    status = "Bluetooth receive failed: ${error.message}"
+                                } finally {
+                                    bleReceiveJob = null
+                                    refreshDiagnostics()
+                                }
+                            }
+                        }
+                    },
+                    onLegacyReceive = {
+                        val activeInbox = legacyReceiveInbox
                         if (activeInbox != null) {
                             activeInbox.stop()
-                            receiveInbox = null
-                            status = "Cancelled"
+                            legacyReceiveInbox = null
+                            status = "Legacy Wi-Fi receive cancelled"
                         } else {
                             val address = HttpSegmentInbox.localIpAddress()
                             val inbox = HttpSegmentInbox()
-                            receiveInbox = inbox
+                            legacyReceiveInbox = inbox
                             status = if (address != null) {
-                                "Waiting ${HttpSegmentInbox.DEFAULT_TIMEOUT_MINUTES} min for phone… " +
+                                "Legacy Wi-Fi: waiting ${HttpSegmentInbox.DEFAULT_TIMEOUT_MINUTES} min… " +
                                     "send to http://$address:${HttpSegmentInbox.DEFAULT_PORT}/transfer"
                             } else {
-                                "Waiting for phone… (connect to WiFi to see this Karoo's address)"
+                                "Legacy Wi-Fi needs both devices on the same network"
                             }
                             lifecycleScope.launch {
                                 val result = runCatching {
@@ -277,7 +344,7 @@ class MainActivity : ComponentActivity() {
                                     refreshLibrary()
                                     outcome
                                 }
-                                receiveInbox = null
+                                legacyReceiveInbox = null
                                 status = result.fold(
                                     onSuccess = { outcome ->
                                         when {
@@ -329,6 +396,10 @@ class MainActivity : ComponentActivity() {
         addCategory(Intent.CATEGORY_OPENABLE)
         type = "application/json"
     }.resolveActivity(packageManager) != null
+
+    private fun hasBluetoothTransferPermissions(): Boolean =
+        checkSelfPermission(Manifest.permission.BLUETOOTH_SCAN) == PackageManager.PERMISSION_GRANTED &&
+            checkSelfPermission(Manifest.permission.BLUETOOTH_CONNECT) == PackageManager.PERMISSION_GRANTED
 
     private suspend fun <T> importStagedJson(
         folderName: String,

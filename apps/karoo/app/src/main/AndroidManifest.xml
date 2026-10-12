@@ -24,7 +24,8 @@
     <application
         android:allowBackup="false"
         android:dataExtractionRules="@xml/data_extraction_rules"
-        android:icon="@drawable/karoo_ic_extension"
+        android:icon="@mipmap/ic_launcher"
+        android:roundIcon="@mipmap/ic_launcher_round"
         android:label="@string/karoo_extension_name"
         android:supportsRtl="true"
         android:theme="@style/Theme.GritMapKaroo">

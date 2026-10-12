@@ -165,7 +165,9 @@ internal fun pacingProfilePresentation(
     state: LiveUiState,
     layout: KarooFieldLayout,
 ): PacingProfilePresentation {
-    val title = state.segmentName.ifBlank { "GritMap" }
+    // Large visual fields use a stable field identity in the top-left; segment context remains
+    // available in the route/progress content rather than truncating unpredictably in the header.
+    val title = "GM PACING PROFILE"
     val progress = if (state.totalDistanceMeters > 0.0) {
         "${formatDistance(state.progressMeters, state.distanceUnitSystem)} / " +
             formatDistance(state.totalDistanceMeters, state.distanceUnitSystem)

@@ -79,8 +79,8 @@ class CardiacDriftBitmapRenderer(
         canvas.drawColor(palette.background)
         val margin = w * 0.035f
 
-        text(canvas, "GM CARDIAC", margin, h * 0.045f, w * 0.061f, palette.primaryText, Paint.Align.LEFT)
-        text(canvas, validTime(state.cardiacDriftValidSeconds), w - margin, h * 0.045f, w * 0.055f, palette.secondaryText, Paint.Align.RIGHT)
+        text(canvas, "GM CARDIAC DRIFT", margin, h * 0.045f, w * 0.052f, palette.primaryText, Paint.Align.LEFT)
+        text(canvas, validTime(state.cardiacDriftValidSeconds), w - margin, h * 0.045f, w * 0.050f, palette.secondaryText, Paint.Align.RIGHT)
 
         val drift = state.cardiacDriftPct
         val action = when (state.recommendation?.icon) {

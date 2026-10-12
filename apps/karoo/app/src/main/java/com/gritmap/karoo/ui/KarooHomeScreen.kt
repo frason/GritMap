@@ -62,6 +62,7 @@ fun KarooHomeScreen(
     segments: List<SegmentLibraryRow>,
     status: String,
     receiveActive: Boolean,
+    legacyReceiveActive: Boolean,
     locationGranted: Boolean,
     overlayGranted: Boolean,
     demoRunning: Boolean,
@@ -70,6 +71,7 @@ fun KarooHomeScreen(
     riderProfile: KarooRiderProfile?,
     pendingDeleteId: String?,
     onReceive: () -> Unit,
+    onLegacyReceive: () -> Unit,
     onImportSegment: () -> Unit,
     onImportHistory: () -> Unit,
     onEnableLocation: () -> Unit,
@@ -124,7 +126,9 @@ fun KarooHomeScreen(
                 HomeDestination.INBOX -> InboxScreen(
                     status = status,
                     receiveActive = receiveActive,
+                    legacyReceiveActive = legacyReceiveActive,
                     onReceive = onReceive,
+                    onLegacyReceive = onLegacyReceive,
                     onImportSegment = onImportSegment,
                     onImportHistory = onImportHistory,
                 )
@@ -414,7 +418,9 @@ private fun StatusBadge(label: String, color: Color) {
 private fun InboxScreen(
     status: String,
     receiveActive: Boolean,
+    legacyReceiveActive: Boolean,
     onReceive: () -> Unit,
+    onLegacyReceive: () -> Unit,
     onImportSegment: () -> Unit,
     onImportHistory: () -> Unit,
 ) {
@@ -428,13 +434,16 @@ private fun InboxScreen(
                 Text(if (receiveActive) "WAITING FOR PHONE" else "PHONE TRANSFER",
                     color = if (receiveActive) ReadyGreen else SecondaryText,
                     style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.Bold)
-                Text(if (receiveActive) "Receiver is open" else "Send segments and pacing plans over Wi-Fi",
+                Text(if (receiveActive) "Bluetooth receiver is open" else "Send segments and pacing plans over Bluetooth",
                     color = Color.White, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
                 Button(onClick = onReceive, modifier = Modifier.fillMaxWidth()) {
                     Text(if (receiveActive) "Cancel Receiving" else "Receive from Phone")
                 }
                 Text(status, color = SecondaryText, style = MaterialTheme.typography.bodyMedium)
             }
+        }
+        OutlinedButton(onClick = onLegacyReceive, modifier = Modifier.fillMaxWidth()) {
+            Text(if (legacyReceiveActive) "Cancel Legacy Wi-Fi Receive" else "Legacy Wi-Fi Receive")
         }
         SectionLabel("FILE IMPORTS")
         OutlinedButton(onClick = onImportSegment, modifier = Modifier.fillMaxWidth()) {
@@ -443,7 +452,7 @@ private fun InboxScreen(
         OutlinedButton(onClick = onImportHistory, modifier = Modifier.fillMaxWidth()) {
             Text("Import Rider History JSON")
         }
-        Text("Keep this screen open while transferring. The receiver closes after 10 minutes.",
+        Text("Keep this screen open while transferring. Bluetooth closes automatically after 2 minutes.",
             color = SecondaryText, style = MaterialTheme.typography.bodySmall)
     }
 }

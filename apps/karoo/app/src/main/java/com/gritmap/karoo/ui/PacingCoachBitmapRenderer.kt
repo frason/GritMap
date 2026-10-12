@@ -48,7 +48,16 @@ class PacingCoachBitmapRenderer(
         if (headerHeight > 0f) {
             val active = zones[currentIndex]
             val titleY = headerHeight * 0.20f
-            text(canvas, state.segmentName.ifBlank { "GM PACING COACH" }, margin, titleY, w * 0.047f, palette.primaryText, Paint.Align.LEFT)
+            text(canvas, "GM PACING COACH", margin, titleY, w * 0.061f, palette.primaryText, Paint.Align.LEFT)
+            text(
+                canvas,
+                coachProgressLabel(state),
+                w - margin,
+                titleY,
+                w * 0.050f,
+                palette.secondaryText,
+                Paint.Align.RIGHT,
+            )
 
             val banner = RectF(margin, headerHeight * 0.38f, w - margin, headerHeight * 0.96f)
             val bannerRadius = banner.height() * 0.25f
@@ -69,7 +78,7 @@ class PacingCoachBitmapRenderer(
         val availableBottom = h - h * 0.025f
         val centerY = (availableTop + availableBottom) / 2f
         val visibleSlots = visibleRadius * 2 + 1
-        val baseGap = (availableBottom - availableTop) / (visibleSlots + 0.35f)
+        val baseGap = (availableBottom - availableTop) / (visibleSlots + 0.15f)
         val activeCompletion = zoneCompletion(state.progressMeters, zones[currentIndex], currentIndex, currentIndex)
         val stackPosition = continuousStackPosition(currentIndex, activeCompletion, zones.lastIndex)
         val range = powerRange(state)
@@ -82,7 +91,7 @@ class PacingCoachBitmapRenderer(
             val scale = emphasis.first
             val alpha = emphasis.second
             if (alpha <= 8) return@forEach
-            val rowHeight = min(baseGap * 0.82f, h * 0.19f) * scale
+            val rowHeight = min(baseGap * 0.90f, h * 0.205f) * scale
             val y = centerY - relativePosition * baseGap
             val rowWidth = (w - margin * 2f) * scale
             val left = (w - rowWidth) / 2f
@@ -152,7 +161,7 @@ class PacingCoachBitmapRenderer(
             strokeWidth = if (zoneIndex == currentIndex) 4f else 3f
         })
 
-        val labelSize = (bottom - top) * if (zoneIndex == currentIndex) 0.27f else 0.23f
+        val labelSize = (bottom - top) * if (zoneIndex == currentIndex) 0.30f else 0.25f
         val labelBox = RectF(
             left + (right - left) * 0.025f,
             top + (bottom - top) * 0.12f,
@@ -165,11 +174,11 @@ class PacingCoachBitmapRenderer(
         })
         val labelX = labelBox.left + labelBox.width() * 0.08f
         text(canvas, zone.effort.label(), labelX, labelBox.top + labelBox.height() * 0.31f, labelSize, Color.argb(alpha, 255, 255, 255), Paint.Align.LEFT)
-        text(canvas, "${zone.targetPowerWatts} W", labelX, labelBox.top + labelBox.height() * 0.71f, labelSize * 0.82f, Color.argb(alpha, 255, 255, 255), Paint.Align.LEFT)
+        text(canvas, "${zone.targetPowerWatts} W", labelX, labelBox.top + labelBox.height() * 0.71f, labelSize * 0.90f, Color.argb(alpha, 255, 255, 255), Paint.Align.LEFT)
 
         if (actual != null && actualX != null) {
             val valueX = (actualX - 8f).coerceIn(left + (right - left) * 0.42f, right - 8f)
-            text(canvas, "$actual W", valueX, (top + bottom) / 2f, labelSize * 1.05f, Color.argb(alpha, 255, 255, 255), Paint.Align.RIGHT)
+            text(canvas, "$actual W", valueX, (top + bottom) / 2f, labelSize * 1.15f, Color.argb(alpha, 255, 255, 255), Paint.Align.RIGHT)
         }
     }
 
@@ -201,6 +210,13 @@ class PacingCoachBitmapRenderer(
     private fun centered(canvas: Canvas, value: String, x: Float, y: Float, size: Float, color: Int) = text(canvas, value, x, y, size, color, Paint.Align.CENTER)
     private fun withAlpha(color: Int, alpha: Int) = Color.argb(alpha.coerceIn(0, 255), Color.red(color), Color.green(color), Color.blue(color))
     private fun effortColor(effort: Effort) = when (effort) { Effort.RECOVER -> Color.rgb(34, 177, 93); Effort.HOLD -> Color.rgb(39, 132, 226); Effort.PUSH -> Color.rgb(239, 86, 65) }
+}
+
+private fun coachProgressLabel(state: LiveUiState): String = when {
+    state.totalDistanceMeters <= 0.0 -> "WAITING"
+    state.distanceUnitSystem == com.gritmap.karoo.ui.state.UnitSystem.IMPERIAL ->
+        "${(state.progressMeters * 3.28084).toInt()} / ${(state.totalDistanceMeters * 3.28084).toInt()} FT"
+    else -> "${state.progressMeters.toInt()} / ${state.totalDistanceMeters.toInt()} M"
 }
 
 internal fun pacingSectionCounterLabel(effort: Effort, currentIndex: Int, sectionCount: Int): String =

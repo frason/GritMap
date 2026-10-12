@@ -87,7 +87,7 @@ class WPrimeBalanceBitmapRenderer(
             "GM POWER BALANCE",
             width * 0.04f,
             height * 0.052f,
-            (width * 0.052f).coerceIn(22f, 27f),
+            (width * 0.061f).coerceIn(27f, 32f),
             palette.primaryText,
             Paint.Align.LEFT,
         )
@@ -96,7 +96,7 @@ class WPrimeBalanceBitmapRenderer(
             progressLabel(liveState),
             width * 0.96f,
             height * 0.052f,
-            (width * 0.047f).coerceIn(20f, 25f),
+            (width * 0.052f).coerceIn(24f, 29f),
             palette.secondaryText,
             Paint.Align.RIGHT,
         )
@@ -106,7 +106,7 @@ class WPrimeBalanceBitmapRenderer(
             projectedFinishHeadline(state),
             width / 2f,
             height * 0.255f,
-            (width * 0.05f).coerceIn(24f, 29f),
+            (width * 0.058f).coerceIn(27f, 32f),
             palette.primaryText,
         )
 
@@ -199,7 +199,7 @@ class WPrimeBalanceBitmapRenderer(
             energyStatusLabel(state.energyFlowStatus),
             width / 2f,
             height * 0.715f,
-            (width * 0.037f).coerceIn(20f, 26f),
+            (width * 0.050f).coerceIn(23f, 29f),
             statusColor(state.energyFlowStatus),
         )
         val plannedRate = state.plannedBalanceChangeJoulesPerSecond
@@ -468,8 +468,8 @@ class WPrimeBalanceBitmapRenderer(
         canvas.drawRoundRect(left, top, right, bottom, 14f, 14f, surface)
         canvas.drawRoundRect(left, top, right, bottom, 14f, 14f, border)
         val centerX = (left + right) / 2f
-        drawCenteredText(canvas, label, centerX, top + (bottom - top) * 0.30f, 21f, palette.secondaryText)
-        drawCenteredText(canvas, value, centerX, top + (bottom - top) * 0.68f, 35f, palette.primaryText)
+        drawCenteredText(canvas, label, centerX, top + (bottom - top) * 0.29f, 23f, palette.secondaryText)
+        drawCenteredText(canvas, value, centerX, top + (bottom - top) * 0.68f, 40f, palette.primaryText)
     }
 
     private fun statusColor(status: EnergyFlowStatus): Int = when (status) {
