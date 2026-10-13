@@ -1,3 +1,14 @@
+# Handoff: Karoo direct-BLE v2 reader implemented and dev-gated
+
+Commit `3d503c3` adds the Karoo central for the reviewed direct-Bluetooth v2 contract: strict
+manifest/caps, MTU 517, exact Request/Data chunks, SHA-256-before-parse, installed-segment skip,
+optional public fetch, three reconnect/resume attempts, optional rider history, unchanged atomic
+`gritmap-transfer` import, and receipt retry semantics. It is enabled in debug builds and hidden in
+release/beta unless `-PgritmapDirectBleV2=true`; Legacy Wi-Fi and public `0.10.44` are unchanged.
+Full Karoo QA passes (196/196 JVM tests, lint, debug/native build), and a debug-signed dev APK is
+ready. Physical iPhone/Karoo transfer and H10 coexistence are still required; no APK was installed or
+released. Details: `handoffs/archive/2026-10-12-1935-codex-karoo-direct-ble-v2.md`.
+
 # Handoff: Karoo 0.10.44 published and independently verified
 
 `main` was rebased cleanly onto current GitHub history and pushed. The first `0.10.44` tag run
