@@ -38,14 +38,13 @@ import com.gritmap.karoo.data.SegmentLibraryRow
 import com.gritmap.karoo.importing.HttpSegmentInbox
 import com.gritmap.karoo.importing.BleTransferReceiveResult
 import com.gritmap.karoo.importing.BleTransferReceiveSession
-import com.gritmap.karoo.importing.HttpsTransferResourceClient
+import com.gritmap.karoo.importing.DirectBleTransferReceiver
 import com.gritmap.karoo.importing.RiderHistoryImportRepository
 import com.gritmap.karoo.importing.SegmentImportRepository
 import com.gritmap.karoo.importing.SegmentInboxProcessor
 import com.gritmap.karoo.importing.SegmentLibraryRepository
 import com.gritmap.karoo.importing.StagedFileSegmentInbox
 import com.gritmap.karoo.importing.TransferPackageRepository
-import com.gritmap.karoo.importing.TransferCapsuleReceiver
 import com.gritmap.karoo.physiology.H10DiagnosticActivity
 import com.gritmap.karoo.service.LiveDiagnostics
 import com.gritmap.karoo.service.LiveServiceStarter
@@ -271,6 +270,10 @@ class MainActivity : ComponentActivity() {
                         }
                     },
                     onReceive = {
+                        if (!BuildConfig.DIRECT_BLE_V2_ENABLED) {
+                            status = "Bluetooth transfer is available only in development builds; use Legacy Wi-Fi Receive"
+                            return@KarooHomeScreen
+                        }
                         val activeJob = bleReceiveJob
                         if (activeJob != null) {
                             activeJob.cancel()
@@ -287,9 +290,12 @@ class MainActivity : ComponentActivity() {
                         } else {
                             status = "Listening over Bluetooth for 2 minutes… Keep Send to Karoo open on your phone"
                             bleReceiveJob = lifecycleScope.launch {
-                                val receiver = TransferCapsuleReceiver(
-                                    HttpsTransferResourceClient(),
-                                    transferImporter::importPackage,
+                                val receiver = DirectBleTransferReceiver(
+                                    this@MainActivity,
+                                    segmentExists = { fingerprint ->
+                                        database.segmentDao().segmentByFingerprint(fingerprint) != null
+                                    },
+                                    importPackage = transferImporter::importPackage,
                                 )
                                 val session = BleTransferReceiveSession(this@MainActivity, receiver)
                                 try {
@@ -318,6 +324,7 @@ class MainActivity : ComponentActivity() {
                             }
                         }
                     },
+                    directBleEnabled = BuildConfig.DIRECT_BLE_V2_ENABLED,
                     onLegacyReceive = {
                         val activeInbox = legacyReceiveInbox
                         if (activeInbox != null) {

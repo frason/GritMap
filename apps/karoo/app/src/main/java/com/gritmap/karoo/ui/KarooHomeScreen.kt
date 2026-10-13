@@ -71,6 +71,7 @@ fun KarooHomeScreen(
     riderProfile: KarooRiderProfile?,
     pendingDeleteId: String?,
     onReceive: () -> Unit,
+    directBleEnabled: Boolean,
     onLegacyReceive: () -> Unit,
     onImportSegment: () -> Unit,
     onImportHistory: () -> Unit,
@@ -128,6 +129,7 @@ fun KarooHomeScreen(
                     receiveActive = receiveActive,
                     legacyReceiveActive = legacyReceiveActive,
                     onReceive = onReceive,
+                    directBleEnabled = directBleEnabled,
                     onLegacyReceive = onLegacyReceive,
                     onImportSegment = onImportSegment,
                     onImportHistory = onImportHistory,
@@ -420,6 +422,7 @@ private fun InboxScreen(
     receiveActive: Boolean,
     legacyReceiveActive: Boolean,
     onReceive: () -> Unit,
+    directBleEnabled: Boolean,
     onLegacyReceive: () -> Unit,
     onImportSegment: () -> Unit,
     onImportHistory: () -> Unit,
@@ -429,7 +432,7 @@ private fun InboxScreen(
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
         ScreenHeader("Inbox")
-        Card(colors = CardDefaults.cardColors(containerColor = CardBackground)) {
+        if (directBleEnabled) Card(colors = CardDefaults.cardColors(containerColor = CardBackground)) {
             Column(Modifier.fillMaxWidth().padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
                 Text(if (receiveActive) "WAITING FOR PHONE" else "PHONE TRANSFER",
                     color = if (receiveActive) ReadyGreen else SecondaryText,

@@ -1,8 +1,9 @@
 # BLE direct transfer contract (v2): DRAFT for Codex review
 
-Status: **draft, reviewed 2026-10-12** (`docs/BLE_DIRECT_TRANSFER_REVIEW.md`; Jason's decisions D1: keep `rider`, D2: no link
-encryption in v2). The phone fixes P1 to P4 from that review are implemented (2026-10-12). Phone side (advertiser, manifest, chunks, receipt) is implemented behind a development flag
-(`modules/gritmap-ble-peripheral`, `src/transfer/`). The Karoo side is not implemented. This replaces the capsule/HTTPS design in
+Status: **reviewed and implemented behind development flags, awaiting physical Karoo verification** (2026-10-12; see
+`docs/BLE_DIRECT_TRANSFER_REVIEW.md`; Jason's decisions D1: keep `rider`, D2: no link encryption in v2). The phone fixes P1 to P4 from that
+review are implemented. The phone advertiser/manifest/chunks/receipt and the Karoo central reader are both implemented behind development
+flags. This replaces the capsule/HTTPS design in
 `docs/BLE_TRANSFER_CAPSULE_CONTRACT.md` (v1, Karoo receiver only, left untouched): **no server, no domain, no uploads.** The Wi-Fi/IP send
 (`gritmap-transfer` over HTTP) stays the working path and is unchanged.
 

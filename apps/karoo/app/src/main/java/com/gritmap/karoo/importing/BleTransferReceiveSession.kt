@@ -27,7 +27,7 @@ sealed interface BleTransferReceiveResult {
  */
 class BleTransferReceiveSession(
     context: Context,
-    private val receiver: TransferCapsuleReceiver,
+    private val receiver: DirectBleTransferReceiver,
     private val client: BleTransferTokenClient = BleTransferTokenClient(context),
     private val karooSystem: KarooSystemService = KarooSystemService(context.applicationContext),
 ) {
@@ -46,8 +46,8 @@ class BleTransferReceiveSession(
             return try {
                 withTimeout(timeoutMs) {
                     while (true) {
-                        val token = scanAndReadToken() ?: continue
-                        return@withTimeout BleTransferReceiveResult.Imported(receiver.receive(token))
+                        val device = scanForPhone() ?: continue
+                        return@withTimeout BleTransferReceiveResult.Imported(receiver.receive(device))
                     }
                     @Suppress("UNREACHABLE_CODE")
                     BleTransferReceiveResult.TimedOut
@@ -69,7 +69,7 @@ class BleTransferReceiveSession(
         return client.isAdapterOn()
     }
 
-    private suspend fun scanAndReadToken(): TransferCapsuleToken? {
+    private suspend fun scanForPhone(): BluetoothDevice? {
         val sightings = Channel<BluetoothDevice>(Channel.CONFLATED)
         var scan: ScanCallback? = null
         return try {
@@ -77,7 +77,7 @@ class BleTransferReceiveSession(
             val device = withTimeoutOrNull(SCAN_ATTEMPT_TIMEOUT_MS) { sightings.receive() } ?: return null
             client.stopScan(scan)
             scan = null
-            client.read(device)
+            device
         } finally {
             scan?.let(client::stopScan)
             sightings.close()

@@ -26,6 +26,11 @@ android {
         targetSdk = 31
         versionCode = providers.gradleProperty("gritmapVersionCode").orNull?.toInt() ?: 67
         versionName = providers.gradleProperty("gritmapVersionName").orNull ?: "0.10.44"
+        buildConfigField(
+            "boolean",
+            "DIRECT_BLE_V2_ENABLED",
+            providers.gradleProperty("gritmapDirectBleV2").orNull ?: "false",
+        )
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables.useSupportLibrary = true
@@ -51,6 +56,9 @@ android {
     }
 
     buildTypes {
+        debug {
+            buildConfigField("boolean", "DIRECT_BLE_V2_ENABLED", "true")
+        }
         release {
             isMinifyEnabled = true
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
