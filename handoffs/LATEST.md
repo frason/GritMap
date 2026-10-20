@@ -1,3 +1,80 @@
+# Handoff: BLE update committed (2026-10-20 09:00 PDT)
+
+Commit `67bfc60` contains BLE callback/lifecycle fixes, regression tests and physical-test archives. Prior QA: 198 tests, lint and signed build pass; two new-segment transfers and installed-segment skip physically verified on `0.10.44-ble2`/69. No push/tag/release. H10 coexistence and deliberate reconnect/resume remain open; next public code >=70. Separate H10 export request remains uncommitted. Details: `handoffs/archive/2026-10-20-0900-codex-ble-update-committed.md`.
+
+# Handoff: installed-segment skip log-verified (2026-10-19 22:41)
+
+Karoo reconnected. Repeat transfer at 22:33:57 used MTU 517, read only plan (1759 B) and rider (114 B), and completed `ble_imported existing=true durationMs=3840`; installed code delivers `ok_segment_existing` on this path. Both missing-segment and installed-segment paths now have successful physical log evidence. **Still open:** live H10 RR continuity and deliberate reconnect/resume. Implementation and handoffs remain uncommitted; next public code >=70. Details: `handoffs/archive/2026-10-19-2241-codex-installed-segment-skip-verified.md`.
+
+# Handoff: repeat Bluetooth transfer confirmed (2026-10-19 22:34)
+
+Jason confirmed a successful resend after the two new-segment tests. Karoo was unavailable to ADB, so `existing=true` / `ok_segment_existing` is not independently log-verified yet. **Still open:** live H10 RR continuity, deliberate reconnect/resume, and repeat-transfer log confirmation. No source changes this turn; previous implementation/handoffs remain uncommitted. Details: `handoffs/archive/2026-10-19-2234-codex-repeat-transfer-confirmed.md`.
+
+# Handoff: two physical Bluetooth transfers passed (2026-10-19 22:23)
+
+Jason confirmed two separate segments worked on `0.10.44-ble2`/69. Karoo logs confirm both imports/receipts succeeded with MTU 517: 4792 B segment in 5.331 s total; 10961 B segment in 8.689 s total. Both were missing-segment paths; no reconnect logged. **Still open:** resend an installed segment (`ok_segment_existing`), reconnect/resume validation, and live H10 RR continuity. Changes remain uncommitted; next public code >=70. Details: `handoffs/archive/2026-10-19-2223-codex-two-ble-transfers-passed.md`.
+
+# Handoff: BLE callback fix installed; physical retest pending (2026-10-19 21:50)
+
+**Bluetooth remains blocked on physical retest.** The callback-routing and connection-lifecycle fix is installed as `0.10.44-ble2`/69. Final QA: 198 tests, lint, signed/minified beta build pass; existing segment/plan and settings retained. No physical transfer run after this fix yet. Next public release requires code >=70. Implementation and handoffs are uncommitted. Details: `handoffs/archive/2026-10-19-2150-codex-ble-callback-fix.md`.
+
+# Handoff: Bluetooth test build installed (2026-10-19)
+
+`0.10.44-ble1`/68 is now installed in place on Jason’s Karoo 3. APK hash/signature match the coordinator handoff; the existing segment, pacing plan, settings, first-install timestamp, and data inode survived. App launch succeeds; Bluetooth Inbox is Ready. **Installation is complete; the three physical transfer/H10 tests below remain open.** Next public release must use versionCode >=69. Details: `handoffs/archive/2026-10-19-2128-codex-ble-test-installed.md`.
+
+# Coordinator: BUG for Codex, first physical BLE test failed (2026-10-19 21:40)
+
+**Bug (first in line, blocks the Bluetooth beta):** the first real phone→Karoo transfer on `0.10.44-ble1` ended with the Karoo error
+`ble_transfer_failed error=IllegalStateException:Unexpected BLE read event` (logcat tag `GritMapLive`, 21:36:28.753, read-only `adb logcat`).
+The message comes from `DirectBleGattClient.Connection.read()`: the awaited result was not a `GattEvent.Read` (most likely during the plan connection's `readManifest()`).
+
+What the log shows (iPhone private address omitted):
+- **The data path works.** A full segment was read over BLE: manifest 475 B, then 10 Request-write/Data-read pairs of 512 B ×9 + 184 B =
+  4792 B, in about 2.3 s (21:36:26.05 to 28.33), with MTU 517 negotiated. Roughly 2 KB/s, so a 250 KB segment would take about 2 minutes.
+- **Then the plan phase failed, most likely during that connection's manifest read.** From 28.355 to 28.506 the log has 4 `onConfigureMTU`
+  callbacks and 3 `configureMTU` requests within 150 ms (several connections or duplicate MTU callbacks), then service discovery completes
+  at 28.522. The manifest read response (op 11, 475 B) arrives at 28.641, and a write response (op 19) at 28.729, then `ble_transfer_failed`
+  at 28.753. Jason's iPhone showed **"Your Karoo couldn't use this transfer. Try again"**, which means the Karoo's `catch` block
+  delivered a **`rejected` receipt (code `other`)** over the current connection: the 28.729 write is that receipt, and the exception
+  was thrown just before it, i.e. the awaited manifest read was satisfied by a stray event before its real response arrived.
+  So the receipt path is verified on hardware (phone parsed and displayed it). The error is also mislabeled `other`.
+- **Connections leak.** At 21:36:39 three earlier GATT clients (cif 3, 4, 5) were still connected and were dropped by the phone with reason
+  0x13. `close()` calls `gatt.disconnect()` then `gatt.close()` immediately without waiting for `STATE_DISCONNECTED`, and
+  `receive()` reconnects for every resource (manifest, segment, plan, rider), so stale links stay up.
+
+Likely causes (please confirm with the logging below):
+1. `Connection` has one shared `pending` deferred, and `complete()` accepts the **first event of any type**. A duplicate or late
+   `onMtuChanged` (Android reports one for the local request and one for a remote-initiated exchange) or `onServicesDiscovered` then
+   satisfies the wrong `await()` and kills the transfer.
+2. Reconnecting for each resource multiplies those events and leaks links. The contract only requires reconnect-and-resume after a *drop*.
+
+Fix direction (your code, your call):
+- Make the GATT client robust: keep events typed or queued, **ignore** stale Mtu/Services/Connection(connected) events while awaiting a
+  Read/Write, and treat only a disconnect or a non-success status as failure. Include the unexpected event's class and the operation in
+  the error text; today it only says "read event".
+- Use **one connection** for manifest + plan + rider + segment, with reconnect-and-resume only after a real drop. If the public-segment
+  fetch (line 28 comment) needs to happen between reads, do it before the single connection, or keep the connection alive.
+- On close: call `disconnect()`, wait for `STATE_DISCONNECTED` (with a short timeout), then `close()`.
+- Add a unit test with a fake GATT that delivers a duplicate MTU callback during a read, and one that disconnects mid-chunk.
+
+Re-test when fixed, in order: segment already on the Karoo; a missing segment; one with the H10 connected. Jason's iPhone has build 5.
+The phone session's evidence of the phone side: `handoffs/archive/2026-10-12-1910-claude-ble-hardware-check.md`. If you build a new test
+APK, use versionCode 69 or higher, never tag it, and install with `adb install -r`.
+
+# Coordinator: QUEUED for Codex after the BLE fix (2026-10-19 22:10): multi-segment tracking and PR display
+
+Jason decided (see `docs/GOALS.md` priority 7 and the proposal `docs/KAROO_MULTI_SEGMENT_AND_PR.md`, on `origin/main`): the Karoo must not
+be limited to one segment at a time. **Do this after the BLE fix and its physical re-test; it is post-beta.**
+- Track every segment you start, concurrently, each with its own recorded attempt; completing one must not reset the others.
+- Headline rule: the active segment that has a plan, else the one that ends first; a small secondary line for the others.
+- No plan on the headlined segment: show the rider's PR with live ahead/behind; no PR yet: progress and elapsed time only.
+- The Karoo can compute a PR only from attempts recorded on the Karoo, so the phone will send a `segmentRecord` (best time plus splits).
+  **Your parser must accept it before the phone sends it** (the current parser fails closed on unknown keys).
+First step, please: a short design note (concurrency model, headline selector, rendering) and a review of the contract proposal. Evidence for
+why: on the Diablo pair, riding from the Northgate gate tracks Diablo Northgate to Junction only, because `LiveSegmentCoordinator` runs
+discovery only while it has no candidates (`discover` is inside `if (candidates.isEmpty())`) and `reset()` clears all candidates when one
+finishes. The Full Diablo starts 950 m into Northgate to Junction, so it is never discovered.
+
 # Coordinator: next task for Codex (2026-10-19 21:15)
 
 Read `docs/GOALS.md` first. Status: iPhone build 7 is in external TestFlight review (submitted 2026-10-19). Public Karoo
