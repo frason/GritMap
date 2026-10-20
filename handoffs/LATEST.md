@@ -1,3 +1,7 @@
+# Handoff: H10 export request committed (2026-10-20 09:04 PDT)
+
+`273bd59` commits the H10 recordings list/export request; the feature is **not implemented**. BLE commits `67bfc60` and `1c2de1a` are retained, and newer remote multi-segment docs `3d30816` merged cleanly. Push authorized and follows this handoff commit; no tag/release. Details: `handoffs/archive/2026-10-20-0904-codex-h10-request-committed.md`.
+
 # Handoff: BLE update committed (2026-10-20 09:00 PDT)
 
 Commit `67bfc60` contains BLE callback/lifecycle fixes, regression tests and physical-test archives. Prior QA: 198 tests, lint and signed build pass; two new-segment transfers and installed-segment skip physically verified on `0.10.44-ble2`/69. No push/tag/release. H10 coexistence and deliberate reconnect/resume remain open; next public code >=70. Separate H10 export request remains uncommitted. Details: `handoffs/archive/2026-10-20-0900-codex-ble-update-committed.md`.
