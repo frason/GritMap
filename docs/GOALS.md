@@ -85,7 +85,7 @@ The phone app currently falls short of standard design practice. The redesign ta
 Moving data between the phone and the Karoo must get easier over time, and each change should
 move toward that, not around it:
 - Beta: keep the working IP route, with clear instructions.
-- In progress (dev-flagged, ships once it passes a physical end-to-end test): **direct Bluetooth, no
+- Karoo side verified on hardware 2026-10-20; hidden in beta build 7 and ships to riders in a later build: **direct Bluetooth, no
   server** (decided 2026-10-12, `docs/BLE_DIRECT_TRANSFER_CONTRACT.md`). The plan, which is small and
   private, always goes over Bluetooth. The segment, which is large and public, is skipped if the Karoo
   already has it, or else sent in chunks or fetched from Open Segments. The Karoo writes back an

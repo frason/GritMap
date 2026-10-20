@@ -69,10 +69,10 @@ Re-test when fixed, in order: segment already on the Karoo; a missing segment; o
 The phone session's evidence of the phone side: `handoffs/archive/2026-10-12-1910-claude-ble-hardware-check.md`. If you build a new test
 APK, use versionCode 69 or higher, never tag it, and install with `adb install -r`.
 
-# Coordinator: QUEUED for Codex after the BLE fix (2026-10-19 22:10): multi-segment tracking and PR display
+# Coordinator: READY for Codex (2026-10-20 09:30): multi-segment tracking and PR display. Unblocked, start with the design note
 
 Jason decided (see `docs/GOALS.md` priority 7 and the proposal `docs/KAROO_MULTI_SEGMENT_AND_PR.md`, on `origin/main`): the Karoo must not
-be limited to one segment at a time. **Do this after the BLE fix and its physical re-test; it is post-beta.**
+be limited to one segment at a time. **The BLE fix is committed and physically verified (Jason confirmed 2026-10-20), so this is unblocked. It is still post-beta: do not change the beta Karoo build for it, and do not touch the BLE contract without the phone session.**
 - Track every segment you start, concurrently, each with its own recorded attempt; completing one must not reset the others.
 - Headline rule: the active segment that has a plan, else the one that ends first; a small secondary line for the others.
 - No plan on the headlined segment: show the rider's PR with live ahead/behind; no PR yet: progress and elapsed time only.
