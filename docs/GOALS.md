@@ -16,7 +16,9 @@ segments created by others, with no subscription.
 ## Audience
 
 Started as Jason's own training tool. **Now aiming at a beta of 20+ cyclists who are strangers to
-the project, targeted for about 2026-10-15.**
+the project. Original target 2026-10-15 slipped: build 7 (iPhone, Bluetooth hidden) was submitted for
+external TestFlight Beta App Review on 2026-10-19; the beta opens when Apple approves it (expected about
+2026-10-21) via a public TestFlight link. Karoo side: public release `karoo-beta-0.10.44`, Karoo 3 only.**
 
 Beta platform: iPhone (TestFlight) plus the GritMap Karoo extension (sideloaded APK). Android phone
 support is not required for the beta.
@@ -36,7 +38,7 @@ tokens. A fresh install with an empty database must work.
 
 ## Priorities, in order
 
-1. **Beta-ready loop by ~2026-10-15.** Tagged, reproducible Karoo build; EAS/TestFlight setup;
+1. **Beta-ready loop (submitted for review 2026-10-19).** Tagged, reproducible Karoo build; EAS/TestFlight setup;
    first-run onboarding (FTP, weight, connecting to the Karoo, empty states); full loop walked on a fresh
    install. Includes:
    - **Beta-loop screens meet standard mobile design practice** (see Phone design below):
