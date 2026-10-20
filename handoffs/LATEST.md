@@ -2,6 +2,10 @@
 
 Commit `67bfc60` contains BLE callback/lifecycle fixes, regression tests and physical-test archives. Prior QA: 198 tests, lint and signed build pass; two new-segment transfers and installed-segment skip physically verified on `0.10.44-ble2`/69. No push/tag/release. H10 coexistence and deliberate reconnect/resume remain open; next public code >=70. Separate H10 export request remains uncommitted. Details: `handoffs/archive/2026-10-20-0900-codex-ble-update-committed.md`.
 
+# Requested task: H10 recordings list and export (2026-10-19 22:46)
+
+Jason requested a rider-facing list of saved H10 RR recordings with export for Claude/other analysis tools. **Not implemented.** First confirm whether the October 18 ride has a separate RR artifact: its FIT has regular Polar ANT+ BPM but no RR/HRV or DFA alpha-1 fields; private GritMap storage could not be inspected using run-as on the non-debuggable beta. Preserve original recordings and app data; do not commit personal ride data. Supports the H10 parallel track without blocking the beta loop. Details and requested scope: `handoffs/archive/2026-10-19-2246-codex-h10-recordings-export-request.md`.
+
 # Handoff: installed-segment skip log-verified (2026-10-19 22:41)
 
 Karoo reconnected. Repeat transfer at 22:33:57 used MTU 517, read only plan (1759 B) and rider (114 B), and completed `ble_imported existing=true durationMs=3840`; installed code delivers `ok_segment_existing` on this path. Both missing-segment and installed-segment paths now have successful physical log evidence. **Still open:** live H10 RR continuity and deliberate reconnect/resume. Implementation and handoffs remain uncommitted; next public code >=70. Details: `handoffs/archive/2026-10-19-2241-codex-installed-segment-skip-verified.md`.
