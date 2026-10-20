@@ -61,6 +61,11 @@ tokens. A fresh install with an empty database must work.
    the segment that has a plan, else the one that ends first, with a small line for the others. A segment with
    no plan shows the rider's PR with live ahead/behind. The phone sends each segment's best time and splits
    (new `segmentRecord` contract field; Karoo parser first, phone sender second).
+8. **Realistic plan targets and live replanning** (decided 2026-10-20). Plans must never target above what the rider has actually sustained on a
+   quarter-mile (history ceiling, with a %FTP fallback and an energy-budget check); capped effort is redistributed to easier grades, with adjacent-step
+   smoothing; an infeasible goal returns the best achievable time and the gap. The Karoo replans the remaining quarter-miles at each boundary from what
+   the rider actually did (deadband, within the same ceilings). Needle assists the live layer only, clamped to the ceilings, with silent fallback to the
+   deterministic replanner. Phone: ceilings and plan. Karoo: replanning and Needle. Ceilings travel in the plan contract.
 
 **Parallel Karoo track, active (must not block the beta loop): H10 / cardiac physiology.** The GM
 H10 Cardiac field ships in the beta as an optional, experimental, advisory field. Riders without an
@@ -102,7 +107,7 @@ move toward that, not around it:
 
 - AI-generated pacing plans inside GritMap: deferred. Pasting an external AI's plan through the
   coach-plan contract (`source: "ai-coach"`) stays supported.
-- Needle / on-device AI recommendations on the Karoo: deferred.
+- Needle / on-device AI recommendations on the Karoo: **no longer deferred only for the realistic-targets and live-replanning work** (decided 2026-10-20, see priority 8). Needle stays advisory and clamped by the deterministic engine; other Needle uses remain deferred.
 - H10-driven automatic pacing changes: deferred until validated, and a separate decision.
 - Automatic Karoo → phone ride sync: deferred past the beta (manual FIT import is fine), but
   planned. See Phone ↔ Karoo sharing.
