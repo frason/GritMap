@@ -1,3 +1,33 @@
+# Coordinator: next task for Codex (2026-10-19 21:15)
+
+Read `docs/GOALS.md` first. Status: iPhone build 7 is in external TestFlight review (submitted 2026-10-19). Public Karoo
+release is `karoo-beta-0.10.44` (Karoo 3 only). Your v2 BLE reader (`99d1878`, with its handoff `abdbfb9`) passed coordinator QA:
+196/196 JVM tests, lint and build, and it matches `docs/BLE_DIRECT_TRANSFER_CONTRACT.md`.
+
+**Task 1: install the BLE test build on Jason's Karoo, then run the physical test with him.**
+- The coordinator has already built it from committed `abdbfb9`, with no source changes:
+  `./gradlew :app:assembleBeta -PgritmapBetaSigningProperties=<beta-signing.properties> -PgritmapVersionCode=68
+  -PgritmapVersionName=0.10.44-ble1 -PgritmapDirectBleV2=true` (JDK 17).
+  APK: `~/Downloads/gritmap-karoo-0.10.44-ble1.apk`. SHA-256 `1a166ae026ee42743215eccb18818d9b1fe73d43fc16306645f1bbc038f29b92`,
+  signer SHA-256 `eac4c309…f5f6` (the beta key, same as 0.10.44). Rebuilding with the same flags is fine; record the hash if it differs.
+- Install **in place**: `adb install -r` (or Companion). Never uninstall or clear data. Confirm `0.10.44-ble1`/68 via dumpsys,
+  and confirm the GritMap library and settings survived.
+- Do **not** tag or publish this as a release. It is a dev-flagged test build only.
+- Physical test with Jason (iPhone has internal TestFlight build 5, `production-ble-internal`):
+  1. a plan for a segment already on the Karoo (expect receipt `ok_segment_existing`);
+  2. a plan for a segment the Karoo doesn't have (segment over BLE, then `ok`);
+  3. one transfer during a live H10 connection: check RR continuity.
+  For each, record the negotiated MTU, the duration, the receipt shown on the phone, and any reconnects. Note anything that doesn't
+  match the contract. The phone session's hardware check is `handoffs/archive/2026-10-12-1910-claude-ble-hardware-check.md`.
+
+**Version code rule:** this test build uses code 68, so **the next public Karoo release must use versionCode 69 or higher**, or it
+won't install over the test build on Jason's Karoo.
+
+**Still open from before:** confirm the rider-facing Karoo strings say "section(s)" for pacing-plan stretches.
+
+Done when: the test build is installed and verified on the device, the three physical results are written up in a handoff with the
+Goal alignment section, and any bug is listed first with a repro.
+
 # Handoff: Karoo direct-BLE v2 reader implemented and dev-gated
 
 Commit `3d503c3` adds the Karoo central for the reviewed direct-Bluetooth v2 contract: strict
@@ -49,32 +79,6 @@ retry/resume rules, receipt/rejection behavior, optional rider data, link-encryp
 limits, exact-byte hashing, iOS foreground behavior, and H10 coexistence. Large BLE segment transfer
 is a fallback; installed-fingerprint and public-URL paths are preferred. Details:
 `handoffs/archive/2026-10-12-1222-codex-direct-ble-decision.md`.
-
-# Coordinator: next task for Codex (2026-10-12 16:40)
-
-Read `docs/GOALS.md` first. **Done and verified:** 0.10.44 committed (`20f9ed7`, `ca6ea4f`), tagged `karoo-beta-0.10.44`, and released
-by the workflow. Coordinator QA at `33e9379`: 189/189 JVM tests, lint and debug build pass. Thanks.
-
-**Task: the Karoo v2 direct-BLE reader**, per `docs/BLE_DIRECT_TRANSFER_CONTRACT.md` (reviewed, with Jason's decisions; see
-`docs/BLE_DIRECT_TRANSFER_REVIEW.md`). The phone side is done, with fixes P1 to P4 at `0ee8c5c` (Swift session tests pass).
-- Replace the v1 token read in the bounded 2-minute receive with: the manifest read (strict parser, caps), **`requestMtu(517)`**,
-  a Request/Data chunk loop with the logical-chunk length check, exact-byte SHA-256 before parsing, segment skip when the
-  fingerprint is installed (optional public fetch when `segment.public`), reconnect and resume (up to 3 retries), and the existing
-  `gritmap-transfer` build plus the unchanged atomic import (`riderHistory` when `rider` is present).
-- Write the Status receipt within 30 s of the last read. Treat `writeNotPermitted` on a retry as delivered.
-- Keep the v1 capsule code disabled. Keep Legacy Wi-Fi Receive as is. Feature-gate the v2 reader the same way as the phone (dev
-  build or setting) until the physical end-to-end test passes.
-- Unit tests: manifest parser, chunk reassembly with short reads, hash mismatch → `bad_hash`, segment skip, receipt JSON.
-
-**Physical test plan:** Jason's iPhone will get TestFlight build 5 (`production-ble-internal` profile, internal testers only) with
-"Send over Bluetooth (beta)" visible. Once your reader is on a dev-flagged Karoo build: send a plan for an installed segment, then one
-for a missing segment, and record the MTU, durations, the receipt, and **H10 RR continuity** during the transfer.
-
-**Still open:** confirm that the rider-facing Karoo strings use "section(s)" (phone strings:
-`handoffs/archive/2026-10-09-0050-claude-map-first-open-fixtures-sections.md`).
-
-Done when: the reader is committed with tests, a dev-flagged signed build is ready (not released to the public beta), and the handoff
-has the Goal alignment section.
 
 # Handoff: large-field visual pass installed as Karoo 0.10.44-beta
 
