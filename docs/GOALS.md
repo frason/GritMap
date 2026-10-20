@@ -55,6 +55,12 @@ tokens. A fresh install with an empty database must work.
 5. **Progress over time per segment.** Extend the historical trend view (#68).
 6. **Deeper post-ride analysis.** Extend plan vs actual per zone toward why a zone was missed
    (power fade, HR drift, terrain).
+7. **Karoo tracks every segment you start, and shows your PR when there is no plan** (decided
+   2026-10-19, post-beta, `docs/KAROO_MULTI_SEGMENT_AND_PR.md`). The Karoo currently tracks one segment at a
+   time. Target: every started segment is tracked concurrently and records its attempt. The screen headlines
+   the segment that has a plan, else the one that ends first, with a small line for the others. A segment with
+   no plan shows the rider's PR with live ahead/behind. The phone sends each segment's best time and splits
+   (new `segmentRecord` contract field; Karoo parser first, phone sender second).
 
 **Parallel Karoo track, active (must not block the beta loop): H10 / cardiac physiology.** The GM
 H10 Cardiac field ships in the beta as an optional, experimental, advisory field. Riders without an
