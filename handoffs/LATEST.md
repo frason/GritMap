@@ -241,6 +241,10 @@ rider-facing "section" strings to match on the Karoo are in
 **Task:** write `docs/PRIVACY.md`, the privacy policy for the TestFlight Privacy Policy URL (an external
 testing gate), with every claim checked against the code, plus the App Store Connect "App Privacy" answers.
 
+# Handoff: build every GritMap screen as editable Figma frames (task for a fresh session) (2026-10-20 14:40 PDT)
+
+Jason wants to redesign the app and cut unnecessary screens, with every screen placed in Figma (file `cyaMDDfLBKFc4NNK1SUUnb`, GritMap-Screens). The previous session had no Figma tools because Figma was authorized after it started, so nothing is built yet. A new session in this project should read `docs/GOALS.md`, load the `figma-use` skill, and build the 17 routed screens plus onboarding and the duplicate modal as editable frames with tokens from `src/theme`, using simulator screenshots for maps. No phone-app or Karoo change. Details and the full screen/file table: `handoffs/archive/2026-10-20-1440-claude-figma-screens-handoff.md`.
+
 # Handoff: BLE direct transfer verified on a real iPhone (phone side); Karoo side still open (committed locally, not pushed)
 
 On Jason's iPhone 15 Pro Max (TestFlight build 5, `production-ble-internal`) a macOS central read the manifest, walked the plan (1360 B), segment (4792 B) and rider (114 B) chunks with every SHA-256 verified, wrote an `imported` receipt, and the phone showed "Imported on your Karoo". Also passed by hand with LightBlue: foreground-only advertising (gone ~10 s after backgrounding), no local name, GATT layout, manifest (475 B, v2), a wrong-id receipt refused, and advertising continuing after a manifest read. **Not run on hardware:** second central refused (needs a different device), reconnect-and-resume, MTU and chunk timings. No contract mismatch found; no code changed. The 30 s idle limit is painful for manual GUI testing (fine for a Karoo). Next: Codex implements the Karoo central. Details: `handoffs/archive/2026-10-12-1910-claude-ble-hardware-check.md`.
