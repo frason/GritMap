@@ -7,31 +7,43 @@ import android.bluetooth.BluetoothGattCallback
 import android.bluetooth.BluetoothGattCharacteristic
 import android.bluetooth.BluetoothProfile
 import android.content.Context
-import java.io.Closeable
+import android.util.Log
 import java.util.UUID
 import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.NonCancellable
+import kotlinx.coroutines.withContext
+import kotlinx.coroutines.withTimeoutOrNull
 import kotlinx.coroutines.withTimeout
 
 @SuppressLint("MissingPermission")
 class DirectBleGattClient(private val context: Context) {
     suspend fun connect(device: BluetoothDevice): Connection {
         val connection = Connection(context.applicationContext, device)
-        connection.open()
-        return connection
+        try {
+            connection.open()
+            return connection
+        } catch (error: Exception) {
+            connection.close()
+            throw error
+        }
     }
 
     class Connection internal constructor(
         private val context: Context,
         private val device: BluetoothDevice,
-    ) : Closeable {
+    ) {
         private var gatt: BluetoothGatt? = null
-        private var pending = CompletableDeferred<GattEvent>()
+        private val events = DirectBleEventGate<GattEvent>()
+        private val disconnected = CompletableDeferred<Unit>()
         var negotiatedMtu: Int = 23
             private set
 
         private val callback = object : BluetoothGattCallback() {
             override fun onConnectionStateChange(g: BluetoothGatt, status: Int, newState: Int) {
-                complete(GattEvent.Connection(status, newState))
+                if (newState == BluetoothProfile.STATE_DISCONNECTED) {
+                    disconnected.complete(Unit)
+                    events.fail(DirectBleDisconnectedException("BLE disconnected (status=$status)"))
+                } else complete(GattEvent.Connection(status, newState))
             }
             override fun onMtuChanged(g: BluetoothGatt, mtu: Int, status: Int) {
                 complete(GattEvent.Mtu(status, mtu))
@@ -49,18 +61,18 @@ class DirectBleGattClient(private val context: Context) {
         }
 
         internal suspend fun open() {
-            pending = CompletableDeferred()
+            events.expect("connect") { it is GattEvent.Connection }
             gatt = device.connectGatt(context, false, callback, BluetoothDevice.TRANSPORT_LE)
             val connected = await() as? GattEvent.Connection ?: error("Unexpected BLE connection event")
             check(connected.status == BluetoothGatt.GATT_SUCCESS && connected.state == BluetoothProfile.STATE_CONNECTED) {
                 "BLE connection failed (${connected.status})"
             }
-            pending = CompletableDeferred()
+            events.expect("MTU") { it is GattEvent.Mtu }
             if (requireNotNull(gatt).requestMtu(PREFERRED_MTU)) {
                 val event = await() as? GattEvent.Mtu ?: error("Unexpected BLE MTU event")
                 if (event.status == BluetoothGatt.GATT_SUCCESS) negotiatedMtu = event.mtu
             }
-            pending = CompletableDeferred()
+            events.expect("service discovery") { it is GattEvent.Services }
             check(requireNotNull(gatt).discoverServices()) { "Could not start BLE service discovery" }
             val services = await() as? GattEvent.Services ?: error("Unexpected BLE service event")
             check(services.status == BluetoothGatt.GATT_SUCCESS) { "BLE service discovery failed (${services.status})" }
@@ -68,6 +80,7 @@ class DirectBleGattClient(private val context: Context) {
             requireCharacteristic(REQUEST_UUID)
             requireCharacteristic(DATA_UUID)
             requireCharacteristic(STATUS_UUID)
+            Log.i("GritMapLive", "ble_connected mtu=$negotiatedMtu")
         }
 
         suspend fun readManifest(): ByteArray = read(MANIFEST_UUID)
@@ -90,10 +103,10 @@ class DirectBleGattClient(private val context: Context) {
         }
 
         private suspend fun read(uuid: UUID): ByteArray {
-            pending = CompletableDeferred()
+            events.expect("read $uuid") { it is GattEvent.Read && it.uuid == uuid }
             check(requireNotNull(gatt).readCharacteristic(requireCharacteristic(uuid))) { "Could not start BLE read" }
             val event = await() as? GattEvent.Read ?: error("Unexpected BLE read event")
-            if (event.status != BluetoothGatt.GATT_SUCCESS) throw GattStatusException(event.status, "BLE read failed")
+            if (event.status != BluetoothGatt.GATT_SUCCESS) throw GattStatusException(event.status, "BLE read $uuid failed")
             check(event.uuid == uuid) { "BLE read returned wrong characteristic" }
             return event.value
         }
@@ -103,10 +116,10 @@ class DirectBleGattClient(private val context: Context) {
             val characteristic = requireCharacteristic(uuid)
             characteristic.value = value
             characteristic.writeType = BluetoothGattCharacteristic.WRITE_TYPE_DEFAULT
-            pending = CompletableDeferred()
+            events.expect("write $uuid") { it is GattEvent.Write && it.uuid == uuid }
             check(requireNotNull(gatt).writeCharacteristic(characteristic)) { "Could not start BLE write" }
             val event = await() as? GattEvent.Write ?: error("Unexpected BLE write event")
-            if (event.status != BluetoothGatt.GATT_SUCCESS) throw GattStatusException(event.status, "BLE write failed")
+            if (event.status != BluetoothGatt.GATT_SUCCESS) throw GattStatusException(event.status, "BLE write $uuid failed")
             check(event.uuid == uuid) { "BLE write returned wrong characteristic" }
         }
 
@@ -115,16 +128,19 @@ class DirectBleGattClient(private val context: Context) {
                 "Direct Bluetooth transfer is unsupported"
             }
 
-        private suspend fun await(): GattEvent = withTimeout(OPERATION_TIMEOUT_MS) { pending.await() }
+        private suspend fun await(): GattEvent = withTimeout(OPERATION_TIMEOUT_MS) { events.await() }
 
-        private fun complete(event: GattEvent) {
-            if (!pending.isCompleted) pending.complete(event)
-        }
+        private fun complete(event: GattEvent) = events.complete(event)
 
-        override fun close() {
-            runCatching { gatt?.disconnect() }
-            runCatching { gatt?.close() }
-            gatt = null
+        suspend fun close() = withContext(NonCancellable) {
+            val current = gatt ?: return@withContext
+            try {
+                runCatching { current.disconnect() }
+                withTimeoutOrNull(2_000L) { disconnected.await() }
+            } finally {
+                current.close()
+                gatt = null
+            }
         }
     }
 

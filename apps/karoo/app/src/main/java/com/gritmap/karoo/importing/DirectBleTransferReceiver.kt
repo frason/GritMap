@@ -2,8 +2,13 @@ package com.gritmap.karoo.importing
 
 import android.bluetooth.BluetoothDevice
 import android.content.Context
+import android.util.Log
 import java.net.URL
 import java.security.MessageDigest
+import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.async
+import kotlinx.coroutines.withTimeoutOrNull
+import kotlinx.coroutines.TimeoutCancellationException
 import kotlinx.coroutines.withTimeout
 
 class DirectBleTransferReceiver(
@@ -16,6 +21,7 @@ class DirectBleTransferReceiver(
     private val publicClient: TransferResourceClient = HttpsTransferResourceClient(),
 ) {
     suspend fun receive(device: BluetoothDevice): TransferImportResult {
+        val started = System.nanoTime()
         var connection: DirectBleGattClient.Connection? = null
         var manifest: DirectTransferManifest? = null
         var receiptAttempted = false
@@ -23,22 +29,33 @@ class DirectBleTransferReceiver(
             connection = gattClient.connect(device)
             manifest = manifestParser.parse(connection.readManifest())
             val existing = segmentExists(manifest.segmentFingerprint)
-            connection.close()
-            connection = null
-            // Resolve the potentially slow public segment before the final BLE reads so the
-            // receipt deadline starts from the last plan/rider Data read, as the wire contract
-            // requires.
+            // Keep one GATT connection across resources. Fetch the segment before the plan
+            // so the phone's plan-served receipt deadline does not include a large download.
+            suspend fun resource(name: DirectTransferResourceName, descriptor: DirectTransferResource): ByteArray =
+                readResource(device, manifest, name, descriptor, requireNotNull(connection)) { connection = it }
             val segment = if (existing) null else {
-                readSegment(device, manifest) { connection = it }
+                val publicSegment = if (manifest.segment.isPublic) {
+                    val url = URL("https://raw.githubusercontent.com/frason/GritMap/main/registry/segments/${manifest.segmentFingerprint}.json")
+                    // HTTP uses blocking IO. Keep the phone session alive even if a socket
+                    // takes longer than a coroutine timeout to return.
+                    coroutineScope {
+                        val download = async {
+                            runCatching { publicClient.get(url, DirectTransferManifestParser.MAX_SEGMENT_BYTES) }.getOrNull()
+                        }
+                        while (!download.isCompleted) {
+                            withTimeoutOrNull(5_000L) { download.join() }
+                            if (!download.isCompleted) {
+                                val current = manifestParser.parse(requireNotNull(connection).readManifest())
+                                require(current.transferId == manifest.transferId) { "Bluetooth transfer changed during download" }
+                            }
+                        }
+                        download.await()
+                    }?.takeIf { it.size == manifest.segment.bytes && sha256(it) == manifest.segment.sha256 }
+                } else null
+                publicSegment ?: resource(DirectTransferResourceName.SEGMENT, manifest.segment)
             }
-            connection?.close()
-            connection = null
-            val plan = readResource(device, manifest, DirectTransferResourceName.PLAN, manifest.plan) { connection = it }
-            val rider = manifest.rider?.let {
-                connection?.close()
-                connection = null
-                readResource(device, manifest, DirectTransferResourceName.RIDER, it) { connection = it }
-            }
+            val plan = resource(DirectTransferResourceName.PLAN, manifest.plan)
+            val rider = manifest.rider?.let { resource(DirectTransferResourceName.RIDER, it) }
             val packageJson = packageBuilder.build(manifest, plan, segment, rider)
             val result = withTimeout(RECEIPT_DEADLINE_MS) {
                 val imported = importPackage(packageJson)
@@ -51,6 +68,7 @@ class DirectBleTransferReceiver(
                 )
                 imported
             }
+            Log.i("GritMapLive", "ble_imported existing=$existing durationMs=${(System.nanoTime() - started) / 1_000_000}")
             return result
         } catch (error: Exception) {
             val currentManifest = manifest
@@ -70,35 +88,19 @@ class DirectBleTransferReceiver(
         }
     }
 
-    private suspend fun readSegment(
-        device: BluetoothDevice,
-        manifest: DirectTransferManifest,
-        onConnection: (DirectBleGattClient.Connection) -> Unit,
-    ): ByteArray {
-        if (manifest.segment.isPublic) {
-            val url = URL("https://raw.githubusercontent.com/frason/GritMap/main/registry/segments/${manifest.segmentFingerprint}.json")
-            runCatching { publicClient.get(url, DirectTransferManifestParser.MAX_SEGMENT_BYTES) }
-                .getOrNull()
-                ?.takeIf { it.size == manifest.segment.bytes && sha256(it) == manifest.segment.sha256 }
-                ?.let { return it }
-        }
-        return readResource(device, manifest, DirectTransferResourceName.SEGMENT, manifest.segment, onConnection)
-    }
-
     private suspend fun readResource(
         device: BluetoothDevice,
         manifest: DirectTransferManifest,
         name: DirectTransferResourceName,
         descriptor: DirectTransferResource,
+        initial: DirectBleGattClient.Connection,
         onConnection: (DirectBleGattClient.Connection) -> Unit,
     ): ByteArray {
         val output = ByteArray(descriptor.bytes)
         var offset = 0
         var retries = 0
-        var connection = gattClient.connect(device).also(onConnection)
+        var connection = initial
         try {
-            val resumedManifest = manifestParser.parse(connection.readManifest())
-            require(resumedManifest.transferId == manifest.transferId) { "Bluetooth transfer changed while reconnecting" }
             while (offset < descriptor.bytes) {
                 val expected = minOf(manifest.chunkBytes, descriptor.bytes - offset)
                 try {
@@ -106,7 +108,8 @@ class DirectBleTransferReceiver(
                     chunk.copyInto(output, offset)
                     offset += chunk.size
                     retries = 0
-                } catch (error: Exception) {
+                } catch (error: DirectBleDisconnectedException) {
+                    Log.i("GritMapLive", "ble_resume resource=${name.wireName} offset=$offset")
                     connection.close()
                     if (++retries > MAX_RECONNECTS) throw error
                     connection = gattClient.connect(device).also(onConnection)
@@ -119,6 +122,7 @@ class DirectBleTransferReceiver(
             onConnection(connection)
         }
         if (sha256(output) != descriptor.sha256) throw DirectTransferHashMismatch("${name.wireName} SHA-256 mismatch")
+        Log.i("GritMapLive", "ble_resource resource=${name.wireName} bytes=${output.size}")
         return output
     }
 
@@ -151,6 +155,7 @@ class DirectBleTransferReceiver(
     }
 
     private fun rejectionCode(error: Exception): String = when {
+        error is TimeoutCancellationException -> "timeout"
         error is DirectTransferHashMismatch -> "bad_hash"
         error.message?.contains("segment", ignoreCase = true) == true -> "bad_segment"
         error.message?.contains("plan", ignoreCase = true) == true -> "bad_plan"
