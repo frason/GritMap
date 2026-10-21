@@ -109,6 +109,13 @@ describe("the plan's average power comes from the goal time", () => {
     assert.ok(mean(faster.rawZones) - mean(slower.rawZones) > 15, "the raw plans differ in level");
   });
 
+  it("an easier goal gives a genuinely easier plan after the realistic planner too (no history: ceilings follow the goal)", () => {
+    const history = { attempts: [], riderWeightKg: WEIGHT };
+    const easy = generateRealisticPlan({ referencePolyline: POLYLINE, ftpWatts: 250, goalDurationMs: 21 * 60_000, history });
+    const hard = generateRealisticPlan({ referencePolyline: POLYLINE, ftpWatts: 250, goalDurationMs: 18 * 60_000, history });
+    assert.ok(hard.realistic.achievedMeanWatts - easy.realistic.achievedMeanWatts > 10, `${easy.realistic.achievedMeanWatts} vs ${hard.realistic.achievedMeanWatts}`);
+  });
+
   it("an out-of-band goal is flagged as limited and the plan still comes back", () => {
     const plan = generateRealisticPlan({ referencePolyline: POLYLINE, ftpWatts: 250, goalDurationMs: 4 * 60_000, history: { attempts: [], riderWeightKg: WEIGHT } });
     assert.equal(plan.anchorLimited, "high");

@@ -8,6 +8,11 @@ export function loadCalibrationAttempts(
   database: GetAttemptDetailDatabase & GetAttemptTrackDatabase & ListAttemptsForSegmentDatabase,
   segmentId: string,
   limit = 3,
+  /**
+   * The rider's weight (kg) on the day of an effort, when the app knows it (a weight history; none is stored yet). Without it
+   * every effort is calibrated at the rider's current weight.
+   */
+  weightAt?: (startTimestampMs: number) => number | undefined,
 ): CalibrationAttempt[] {
   const attempts: CalibrationAttempt[] = [];
   const recent = listAttemptsForSegment(database, segmentId)
@@ -19,7 +24,12 @@ export function loadCalibrationAttempts(
     if (detail === undefined) continue;
     const track = getAttemptTrack(database, detail.rideId, detail.startPointIndex, detail.endPointIndex);
     if (track.length < 2) continue;
-    attempts.push({ track, durationMs: summary.endTimestampMs - summary.startTimestampMs });
+    const weight = weightAt?.(summary.startTimestampMs);
+    attempts.push({
+      track,
+      durationMs: summary.endTimestampMs - summary.startTimestampMs,
+      ...(weight === undefined ? {} : { riderWeightKg: weight }),
+    });
   }
   return attempts;
 }
