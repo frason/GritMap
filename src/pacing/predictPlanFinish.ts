@@ -3,6 +3,8 @@ import { computePlanVsActual, type ActualTrackPoint } from "./computePlanVsActua
 import {
   calibrationFactor,
   combineCalibrationFactors,
+  MAX_CALIBRATION_FACTOR,
+  MIN_CALIBRATION_FACTOR,
   predictFinishTime,
   type PredictionZone,
 } from "./predictFinishTime.ts";
@@ -11,6 +13,16 @@ export interface CalibrationAttempt {
   /** The effort's own track, distance re-based to its start (getAttemptTrack). */
   track: readonly ActualTrackPoint[];
   durationMs: number;
+  /** The rider's weight (kg) when that effort was ridden, if known; otherwise the current weight is used for it. */
+  riderWeightKg?: number;
+}
+
+export interface ModelCalibration {
+  /** Multiply the model's time by this to match how long the rider really takes. */
+  factor: number;
+  /** Spread of the efforts' individual factors, as % of the median. */
+  spreadPct: number;
+  attemptsUsed: number;
 }
 
 export interface PlanFinishPrediction {
@@ -44,6 +56,31 @@ export function predictPlanFinish(input: {
   const base = predictFinishTime(input.zones, input.referencePolyline, model);
   if (base === undefined || !base.hasElevation) return undefined;
 
+  const calibration = calibrateModel(input);
+  if (calibration === undefined) {
+    return { durationMs: base.durationMs, basis: "estimate", modelDurationMs: base.durationMs, attemptsUsed: 0 };
+  }
+  return {
+    durationMs: Math.round(base.durationMs * calibration.factor),
+    basis: "calibrated",
+    modelDurationMs: base.durationMs,
+    attemptsUsed: calibration.attemptsUsed,
+    spreadPct: calibration.spreadPct,
+  };
+}
+
+/**
+ * How far the physics model is off for this rider: each past effort's real time against the model's time for the power
+ * they actually held (their bike, position, conditions, and the weight they had that day when it is known), combined by
+ * the median. Depends only on the zone boundaries, not on the targets, so one calibration serves every candidate plan.
+ */
+export function calibrateModel(input: {
+  zones: readonly PredictionZone[];
+  referencePolyline: readonly SegmentReferencePoint[];
+  riderWeightKg: number;
+  attempts?: readonly CalibrationAttempt[];
+}): ModelCalibration | undefined {
+  if (input.zones.length === 0) return undefined;
   const segmentLengthMeters = input.zones[input.zones.length - 1]!.endDistanceMeters;
   const factors: number[] = [];
   for (const attempt of input.attempts ?? []) {
@@ -61,21 +98,17 @@ export function predictPlanFinish(input: {
         targetPowerWatts: zone.actualPowerWatts ?? zone.targetPowerWatts,
       })),
       input.referencePolyline,
-      model,
+      { riderWeightKg: attempt.riderWeightKg ?? input.riderWeightKg },
     );
     const factor = ridden === undefined ? undefined : calibrationFactor(attempt.durationMs, ridden.durationMs);
     if (factor !== undefined) factors.push(factor);
   }
 
   const combined = combineCalibrationFactors(factors);
-  if (combined === undefined) {
-    return { durationMs: base.durationMs, basis: "estimate", modelDurationMs: base.durationMs, attemptsUsed: 0 };
-  }
+  if (combined === undefined) return undefined;
   return {
-    durationMs: Math.round(base.durationMs * combined.factor),
-    basis: "calibrated",
-    modelDurationMs: base.durationMs,
-    attemptsUsed: factors.filter((value) => value >= 0.8 && value <= 1.3).length,
+    factor: combined.factor,
     spreadPct: combined.spreadPct,
+    attemptsUsed: factors.filter((value) => value >= MIN_CALIBRATION_FACTOR && value <= MAX_CALIBRATION_FACTOR).length,
   };
 }

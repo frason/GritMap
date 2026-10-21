@@ -13,7 +13,6 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useDatabase } from "../db/DatabaseProvider";
 import { getAthleteProfile } from "../db/getAthleteProfile";
-import { confirmFtp } from "../db/ftpConfirmation";
 import { setAthleteProfile } from "../db/setAthleteProfile";
 import { Icon } from "../theme/Icon";
 import { MIN_TOUCH_TARGET, SCREEN_PADDING } from "../theme/layout";
@@ -115,7 +114,6 @@ export function OnboardingFlow({ onFinished }: { onFinished: () => void }) {
         ...(weight?.ok ? { weightKg: weight.value } : existing.weightKg === undefined ? {} : { weightKg: existing.weightKg }),
         nowMs: Date.now(),
       });
-      if (ftp?.ok) confirmFtp(database, Date.now());
     }
     return true;
   }

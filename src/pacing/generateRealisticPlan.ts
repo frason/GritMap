@@ -5,13 +5,14 @@ import { computeAdaptiveZoneGrades } from "./computeZoneGrades.ts";
 import { summarizeEfforts, summarizeZoneHistory, type EffortSummary } from "./planCeilings.ts";
 import { computeAnchorPowerWatts } from "./powerDurationAnchor.ts";
 import { predictFinishTime } from "./predictFinishTime.ts";
-import { predictPlanFinish, type PlanFinishPrediction } from "./predictPlanFinish.ts";
+import { calibrateModel, predictPlanFinish, type PlanFinishPrediction } from "./predictPlanFinish.ts";
+import { solveAnchorForGoal } from "./solveAnchorForGoal.ts";
 import { buildRealisticPlan, type RealisticPlanConfig, type RealisticPlanResult } from "./realisticPlan.ts";
 
 /** What the planner may learn from the rider's own past efforts on this segment. */
 export interface PlanHistoryInput {
   /** Past efforts, newest first, each a track re-based to its own start (getAttemptTrack) and, when known, its elapsed time. */
-  attempts: readonly { track: readonly ActualTrackPoint[]; durationMs?: number }[];
+  attempts: readonly { track: readonly ActualTrackPoint[]; durationMs?: number; riderWeightKg?: number }[];
   /** Rider weight, used only to estimate how long each zone takes for the energy-budget guard. */
   riderWeightKg?: number;
 }
@@ -22,6 +23,10 @@ export interface GeneratedPlan {
   /** The plan as the old generator would have built it, before any of that. */
   rawZones: PacingZone[];
   anchorPowerWatts: number;
+  /** Where the anchor came from: solved from the goal time with the physics model (needs weight and elevation), or the power-duration table. */
+  anchorSource: "goal-time" | "power-duration-table";
+  /** Set when the goal time needs more (`high`) or less (`low`) average power than the allowed band, so the anchor was held at its limit. */
+  anchorLimited?: "low" | "high";
   realistic: RealisticPlanResult;
   /** How many past efforts had usable power in at least one zone. */
   effortsWithPower: number;
@@ -51,8 +56,38 @@ export function generateRealisticPlan(input: {
   history?: PlanHistoryInput;
   config?: Partial<RealisticPlanConfig>;
 }): GeneratedPlan {
-  const anchorPowerWatts = computeAnchorPowerWatts(input.ftpWatts, input.goalDurationMs);
-  const rawZones = buildTargetPowerZones(computeAdaptiveZoneGrades(input.referencePolyline), anchorPowerWatts, input.ftpWatts);
+  const windows = computeAdaptiveZoneGrades(input.referencePolyline);
+  const tableAnchor = computeAnchorPowerWatts(input.ftpWatts, input.goalDurationMs);
+  const calibrationAttempts = (input.history?.attempts ?? [])
+    .filter((attempt): attempt is { track: readonly ActualTrackPoint[]; durationMs: number; riderWeightKg?: number } => attempt.durationMs !== undefined)
+    .slice(0, 3);
+  // The average power the goal needs comes from the physics model calibrated on the rider's own efforts; the table is the fallback.
+  let anchorPowerWatts = tableAnchor;
+  let anchorSource: GeneratedPlan["anchorSource"] = "power-duration-table";
+  let anchorLimited: GeneratedPlan["anchorLimited"];
+  const weight = input.history?.riderWeightKg;
+  if (weight !== undefined) {
+    const calibration = calibrateModel({
+      zones: buildTargetPowerZones(windows, tableAnchor, input.ftpWatts),
+      referencePolyline: input.referencePolyline,
+      riderWeightKg: weight,
+      attempts: calibrationAttempts,
+    });
+    const solved = solveAnchorForGoal({
+      windows,
+      ftpWatts: input.ftpWatts,
+      goalDurationMs: input.goalDurationMs,
+      referencePolyline: input.referencePolyline,
+      riderWeightKg: weight,
+      calibrationFactor: calibration?.factor ?? 1,
+    });
+    if (solved !== undefined) {
+      anchorPowerWatts = solved.anchorPowerWatts;
+      anchorSource = "goal-time";
+      anchorLimited = solved.limited;
+    }
+  }
+  const rawZones = buildTargetPowerZones(windows, anchorPowerWatts, input.ftpWatts);
   const segmentLengthMeters = rawZones.length === 0 ? 0 : rawZones[rawZones.length - 1]!.endDistanceMeters;
   const history =
     input.history === undefined || input.history.attempts.length === 0
@@ -81,12 +116,8 @@ export function generateRealisticPlan(input: {
       ...(input.config === undefined ? {} : { config: input.config }),
     });
   const predict = (zones: readonly PacingZone[]): PlanFinishPrediction | undefined => {
-    const weight = input.history?.riderWeightKg;
     if (weight === undefined) return undefined;
-    const attempts = (input.history?.attempts ?? [])
-      .filter((attempt): attempt is { track: readonly ActualTrackPoint[]; durationMs: number } => attempt.durationMs !== undefined)
-      .slice(0, 3);
-    return predictPlanFinish({ zones, referencePolyline: input.referencePolyline, riderWeightKg: weight, attempts });
+    return predictPlanFinish({ zones, referencePolyline: input.referencePolyline, riderWeightKg: weight, attempts: calibrationAttempts });
   };
 
   let realistic = build();
@@ -113,6 +144,8 @@ export function generateRealisticPlan(input: {
     zones: realistic.zones,
     rawZones,
     anchorPowerWatts,
+    anchorSource,
+    ...(anchorLimited === undefined ? {} : { anchorLimited }),
     realistic,
     effortsWithPower: history === undefined ? 0 : Math.max(0, ...history.map((entry) => entry.attemptsWithData)),
     ...(referenceEffort === undefined ? {} : { referenceEffort }),

@@ -6,6 +6,7 @@ import { buildBaselinePacingPlan } from "./buildBaselinePacingPlan.ts";
 import { buildTargetPowerZones } from "./buildTargetPowerZones.ts";
 import { computeAdaptiveZoneGrades } from "./computeZoneGrades.ts";
 import { predictFinishTime } from "./predictFinishTime.ts";
+import { computeAnchorPowerWatts } from "./powerDurationAnchor.ts";
 
 // A synthetic 6 km climb: steady, with a steep pitch in the second half. No real ride data.
 const POLYLINE = (() => {
@@ -84,5 +85,33 @@ describe("an effort the rider has already ridden sets a floor under the plan", (
     assert.ok(withWeight.finish !== undefined);
     const without = generateRealisticPlan({ referencePolyline: POLYLINE, ftpWatts: 250, goalDurationMs: 25 * 60_000, history: { attempts: [] } });
     assert.equal(without.finish, undefined);
+  });
+});
+
+describe("the plan's average power comes from the goal time", () => {
+  const WEIGHT = 70;
+
+  it("without a weight keeps the power-duration table, exactly as before", () => {
+    const plan = generateRealisticPlan({ referencePolyline: POLYLINE, ftpWatts: 250, goalDurationMs: 30 * 60_000 });
+    assert.equal(plan.anchorSource, "power-duration-table");
+    assert.equal(plan.anchorLimited, undefined);
+    assert.ok(Math.abs(plan.anchorPowerWatts - computeAnchorPowerWatts(250, 30 * 60_000)) < 1e-9);
+  });
+
+  it("with a weight solves it from the goal: a faster goal gives a genuinely different, harder plan", () => {
+    const history = { attempts: [], riderWeightKg: WEIGHT };
+    const slower = generateRealisticPlan({ referencePolyline: POLYLINE, ftpWatts: 250, goalDurationMs: 21 * 60_000, history });
+    const faster = generateRealisticPlan({ referencePolyline: POLYLINE, ftpWatts: 250, goalDurationMs: 18 * 60_000, history });
+    assert.equal(slower.anchorSource, "goal-time");
+    assert.equal(faster.anchorSource, "goal-time");
+    assert.ok(faster.anchorPowerWatts - slower.anchorPowerWatts > 15, `${slower.anchorPowerWatts} vs ${faster.anchorPowerWatts}`);
+    const mean = (zones: readonly { targetPowerWatts: number }[]) => zones.reduce((sum, zone) => sum + zone.targetPowerWatts, 0) / zones.length;
+    assert.ok(mean(faster.rawZones) - mean(slower.rawZones) > 15, "the raw plans differ in level");
+  });
+
+  it("an out-of-band goal is flagged as limited and the plan still comes back", () => {
+    const plan = generateRealisticPlan({ referencePolyline: POLYLINE, ftpWatts: 250, goalDurationMs: 4 * 60_000, history: { attempts: [], riderWeightKg: WEIGHT } });
+    assert.equal(plan.anchorLimited, "high");
+    assert.ok(plan.zones.length > 0);
   });
 });

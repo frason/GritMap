@@ -3,7 +3,6 @@ import { ScrollView, StyleSheet, View } from "react-native";
 import { useFocusEffect } from "@react-navigation/native";
 import { useDatabase } from "../db/DatabaseProvider";
 import { getAthleteProfile } from "../db/getAthleteProfile";
-import { confirmFtp } from "../db/ftpConfirmation";
 import { setAthleteProfile } from "../db/setAthleteProfile";
 import {
   defaultWeightUnit,
@@ -70,8 +69,6 @@ export function ZonesSettingsScreen() {
       ...(weight?.ok ? { weightKg: weight.value } : {}),
       nowMs: Date.now(),
     });
-    // The rider saved their own FTP: pacing-plan notices that depend on it may now be shown.
-    if (ftp?.ok) confirmFtp(database, Date.now());
     setSaved(true);
   }
 

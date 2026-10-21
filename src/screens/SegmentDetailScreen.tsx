@@ -27,8 +27,8 @@ import { loadCalibrationAttempts } from "../pacing/loadCalibrationAttempts";
 import { generateRealisticPlan } from "../pacing/generateRealisticPlan";
 import { loadPlanHistory, PLAN_HISTORY_EFFORTS } from "../pacing/loadPlanHistory";
 import type { CalibrationAttempt } from "../pacing/predictPlanFinish";
-import { isFtpConfirmed } from "../db/ftpConfirmation";
 import { describePlanFeasibility } from "./describePlanFeasibility";
+import { describeStagedGoal, suggestNextGoalMs } from "./describeStagedGoal";
 import { predictPlanFinish, type PlanFinishPrediction } from "../pacing/predictPlanFinish";
 import { PredictedFinish } from "./PredictedFinish";
 import { parseTargetDurationInput } from "./parseTargetDuration";
@@ -114,12 +114,15 @@ export function SegmentDetailScreen() {
   const [planPrediction, setPlanPrediction] = useState<PlanFinishPrediction | undefined>(undefined);
   // The rider's past efforts on this segment, newest first: ceilings for the generated plan (realisticPlan.ts).
   const [historyAttempts, setHistoryAttempts] = useState<CalibrationAttempt[]>([]);
-  const [ftpConfirmed, setFtpConfirmed] = useState(false);
   const [otherGoalSegmentName, setOtherGoalSegmentName] = useState<string | undefined>(undefined);
   const [analyzeEffortSummary, setAnalyzeEffortSummary] = useState<AnalyzeEffortSummary | undefined>(undefined);
   const [goalMinutesInput, setGoalMinutesInput] = useState("");
   const [goalSecondsInput, setGoalSecondsInput] = useState("");
   const [goalSaveError, setGoalSaveError] = useState<string | undefined>(undefined);
+  // A staged goal: the long-term goal is an optional second time next to the goal the plan is built for (the "next" goal).
+  const [longTermMinutesInput, setLongTermMinutesInput] = useState("");
+  const [longTermSecondsInput, setLongTermSecondsInput] = useState("");
+  const [removeLongTerm, setRemoveLongTerm] = useState(false);
   const [editingGoal, setEditingGoal] = useState(false);
   const [karooAddress, setKarooAddress] = useState("");
   const [pacingSending, setPacingSending] = useState(false);
@@ -156,7 +159,6 @@ export function SegmentDetailScreen() {
       const currentPlan = getActiveSegmentPlan(database, route.params.segmentId);
       setActivePlan(currentPlan);
       setHistoryAttempts(loadCalibrationAttempts(database, route.params.segmentId, PLAN_HISTORY_EFFORTS));
-      setFtpConfirmed(isFtpConfirmed(database));
       setPlanPrediction(
         currentPlan !== undefined && currentProfile.weightKg !== undefined
           ? predictPlanFinish({
@@ -248,13 +250,38 @@ export function SegmentDetailScreen() {
       setGoalSaveError("Enter a target time, for example 40 minutes and 0 seconds.");
       return;
     }
-    saveActiveGoal(database, { segmentId: segment.segmentId, targetDurationMs, nowMs: Date.now() });
-    setActiveGoal({ segmentId: segment.segmentId, targetDurationMs });
+    const longTermTyped = longTermMinutesInput.trim().length > 0 || longTermSecondsInput.trim().length > 0;
+    const longTermDurationMs = longTermTyped ? parseTargetDurationInput(longTermMinutesInput, longTermSecondsInput) : undefined;
+    if (longTermTyped && longTermDurationMs === undefined) {
+      setGoalSaveError("Enter your long-term goal as minutes and seconds, or clear both boxes.");
+      return;
+    }
+    if (longTermDurationMs !== undefined && longTermDurationMs >= targetDurationMs) {
+      setGoalSaveError("Your long-term goal should be faster than the goal you are working towards now.");
+      return;
+    }
+    saveActiveGoal(database, {
+      segmentId: segment.segmentId,
+      targetDurationMs,
+      nowMs: Date.now(),
+      ...(removeLongTerm && !longTermTyped ? { longTermDurationMs: null } : longTermDurationMs !== undefined ? { longTermDurationMs } : {}),
+    });
+    setActiveGoal(getActiveGoal(database));
     setOtherGoalSegmentName(undefined);
     setGoalMinutesInput("");
     setGoalSecondsInput("");
+    setLongTermMinutesInput("");
+    setLongTermSecondsInput("");
+    setRemoveLongTerm(false);
     setGoalSaveError(undefined);
     setEditingGoal(false);
+  }
+
+  /** One tap: make the next goal the suggested one (after reaching the previous one). */
+  function handleSetNextGoal(targetDurationMs: number) {
+    if (!segment) return;
+    saveActiveGoal(database, { segmentId: segment.segmentId, targetDurationMs, nowMs: Date.now() });
+    setActiveGoal(getActiveGoal(database));
   }
 
   function handleStartEditingGoal() {
@@ -262,8 +289,18 @@ export function SegmentDetailScreen() {
       setGoalMinutesInput(String(Math.floor(activeGoal.targetDurationMs / 60_000)));
       setGoalSecondsInput(String(Math.round((activeGoal.targetDurationMs % 60_000) / 1_000)));
     }
+    if (activeGoal?.longTermDurationMs !== undefined && segment !== undefined && activeGoal.segmentId === segment.segmentId) {
+      setLongTermMinutesInput(String(Math.floor(activeGoal.longTermDurationMs / 60_000)));
+      setLongTermSecondsInput(String(Math.round((activeGoal.longTermDurationMs % 60_000) / 1_000)));
+    }
+    setRemoveLongTerm(false);
     setGoalSaveError(undefined);
     setEditingGoal(true);
+  }
+
+  function fillGoalInputs(durationMs: number) {
+    setGoalMinutesInput(String(Math.floor(durationMs / 60_000)));
+    setGoalSecondsInput(String(Math.round((durationMs % 60_000) / 1_000)));
   }
 
   if (loadState === "loading") {
@@ -361,6 +398,9 @@ export function SegmentDetailScreen() {
   let pacingPlanBody: ReactNode;
   let pacingZones: readonly ChartPlanZone[] | undefined;
   const goalIsForThisSegment = activeGoal !== undefined && activeGoal.segmentId === segment.segmentId;
+  // The rider's fastest accepted effort here: it words the notice, suggests the next goal and measures progress to a long-term goal.
+  const fastestEffortMs = historyAttempts.length === 0 ? undefined : Math.min(...historyAttempts.map((attempt) => attempt.durationMs));
+  const stagedGoalAvailable = fastestEffortMs !== undefined || (goalIsForThisSegment && activeGoal?.longTermDurationMs !== undefined);
 
   if (athleteProfile.ftpWatts === undefined) {
     pacingPlanBody = (
@@ -437,6 +477,14 @@ export function SegmentDetailScreen() {
             {`Your current goal is on ${otherGoalSegmentName ?? "another segment"}: ${formatDurationMinutesSeconds(activeGoal.targetDurationMs)}. Saving a goal here switches it to this segment.`}
           </Notice>
         ) : null}
+        {fastestEffortMs === undefined ? null : (
+          <Button
+            label={`Beat my best of ${formatDurationMinutesSeconds(fastestEffortMs)} (${formatDurationMinutesSeconds(suggestNextGoalMs(fastestEffortMs))})`}
+            variant="secondary"
+            onPress={() => fillGoalInputs(suggestNextGoalMs(fastestEffortMs))}
+            accessibilityHint="Fills in a time about one percent faster than your best effort on this segment"
+          />
+        )}
         <View style={styles.goalInputRow}>
           <View style={styles.goalInput}>
             <TextField label="Minutes" value={goalMinutesInput} onChangeText={setGoalMinutesInput} keyboardType="number-pad" placeholder="40" />
@@ -445,6 +493,33 @@ export function SegmentDetailScreen() {
             <TextField label="Seconds" value={goalSecondsInput} onChangeText={setGoalSecondsInput} keyboardType="number-pad" placeholder="00" />
           </View>
         </View>
+        {stagedGoalAvailable ? (
+          <>
+            <AppText variant="subheadline" color="textSecondary">
+              Long-term goal (optional): a faster time to keep working towards. Your plan is built for the goal above; this one only shows how far you have left to go.
+            </AppText>
+            <View style={styles.goalInputRow}>
+              <View style={styles.goalInput}>
+                <TextField label="Long-term minutes" value={longTermMinutesInput} onChangeText={(text) => { setLongTermMinutesInput(text); setRemoveLongTerm(false); }} keyboardType="number-pad" placeholder="39" />
+              </View>
+              <View style={styles.goalInput}>
+                <TextField label="Long-term seconds" value={longTermSecondsInput} onChangeText={(text) => { setLongTermSecondsInput(text); setRemoveLongTerm(false); }} keyboardType="number-pad" placeholder="00" />
+              </View>
+            </View>
+            {activeGoal?.longTermDurationMs !== undefined && goalIsForThisSegment ? (
+              <Button
+                label="Remove long-term goal"
+                variant="tertiary"
+                fullWidth={false}
+                onPress={() => {
+                  setLongTermMinutesInput("");
+                  setLongTermSecondsInput("");
+                  setRemoveLongTerm(true);
+                }}
+              />
+            ) : null}
+          </>
+        ) : null}
         {goalSaveError === undefined ? null : <Notice tone="error" live>{goalSaveError}</Notice>}
         <Button label="Save goal" onPress={handleSaveGoal} />
         {goalIsForThisSegment ? <Button label="Cancel" variant="tertiary" fullWidth={false} onPress={() => setEditingGoal(false)} /> : null}
@@ -461,15 +536,22 @@ export function SegmentDetailScreen() {
     const anchorPowerWatts = generated.anchorPowerWatts;
     pacingZones = generated.zones;
     const pctFtp = Math.round((anchorPowerWatts / ftpWatts) * 100);
-    // The "out of reach" wording appears only once the rider has confirmed their own FTP in the profile (a placeholder FTP would
-    // make it wrong), and uses the plan's predicted finish when the rider's weight is known. It is worded against their best effort.
-    const fastestEffortMs = historyAttempts.length === 0 ? undefined : Math.min(...historyAttempts.map((attempt) => attempt.durationMs));
-    const feasibility = ftpConfirmed
-      ? describePlanFeasibility({
-          realistic: generated.realistic,
-          goalDurationMs: activeGoal.targetDurationMs,
-          ...(generated.finish === undefined ? {} : { predictedFinishMs: generated.finish.durationMs }),
-          ...(fastestEffortMs === undefined ? {} : { bestEffortMs: fastestEffortMs }),
+    // The notice uses the plan's predicted finish when the rider's weight is known, and is worded against their best effort. It
+    // sits inside the branch that needs a saved FTP, so a rider who never entered one is asked for it instead (never twice).
+    const feasibility = describePlanFeasibility({
+      realistic: generated.realistic,
+      goalDurationMs: activeGoal.targetDurationMs,
+      ...(generated.finish === undefined ? {} : { predictedFinishMs: generated.finish.durationMs }),
+      ...(fastestEffortMs === undefined ? {} : { bestEffortMs: fastestEffortMs }),
+    });
+
+    // A staged goal (a long-term goal as well as the one the plan is built for) adds a progress line and a note when the next goal is reached.
+    const staged = activeGoal.longTermDurationMs !== undefined;
+    const stagedLines = staged
+      ? describeStagedGoal({
+          ...(fastestEffortMs === undefined ? {} : { bestMs: fastestEffortMs }),
+          nextGoalMs: activeGoal.targetDurationMs,
+          longTermMs: activeGoal.longTermDurationMs!,
         })
       : undefined;
 
@@ -477,10 +559,23 @@ export function SegmentDetailScreen() {
       <Card>
         <View style={styles.summaryRow}>
           <AppText variant="headline" style={styles.summaryTitle}>
-            Goal {formatDurationMinutesSeconds(activeGoal.targetDurationMs)}
+            {staged ? "Next goal" : "Goal"} {formatDurationMinutesSeconds(activeGoal.targetDurationMs)}
           </AppText>
           <Button label="Change" variant="tertiary" fullWidth={false} accessibilityHint="Edit your goal time" onPress={handleStartEditingGoal} />
         </View>
+        {stagedLines?.progress === undefined ? null : (
+          <AppText variant="subheadline" color="textSecondary">
+            {stagedLines.progress}
+          </AppText>
+        )}
+        {stagedLines?.reached === undefined ? null : <Notice tone="success">{stagedLines.reached}</Notice>}
+        {stagedLines?.suggestedNextGoalMs === undefined ? null : (
+          <Button
+            label={`Set my next goal to ${formatDurationMinutesSeconds(stagedLines.suggestedNextGoalMs)}`}
+            variant="secondary"
+            onPress={() => handleSetNextGoal(stagedLines.suggestedNextGoalMs!)}
+          />
+        )}
         <AppText variant="subheadline" color="textSecondary">
           GritMap's plan: about {Math.round(anchorPowerWatts)} W on average ({pctFtp}% of your FTP), adjusted for each section's gradient.
         </AppText>

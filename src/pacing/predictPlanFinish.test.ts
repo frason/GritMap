@@ -104,3 +104,19 @@ describe("predictPlanFinish", () => {
     assert.equal(predictPlanFinish({ zones: ZONES, referencePolyline: flat, riderWeightKg: WEIGHT }), undefined);
   });
 });
+
+describe("calibration with the weight at the time of each effort", () => {
+  it("uses an effort's own weight for its model time, so a heavier past self does not distort today's prediction", () => {
+    // The effort was ridden by a heavier rider (92 kg) holding the plan's watts: the model, run at that weight, is the fair comparison.
+    const heavyModel = predictFinishTime(ZONES, POLYLINE, { riderWeightKg: 92 })!;
+    const heavy = effort(1);
+    const asHeavyRider = { ...heavy, durationMs: heavyModel.durationMs, riderWeightKg: 92 };
+    const withKnownWeight = predictPlanFinish({ zones: ZONES, referencePolyline: POLYLINE, riderWeightKg: WEIGHT, attempts: [asHeavyRider] })!;
+    const withoutWeight = predictPlanFinish({ zones: ZONES, referencePolyline: POLYLINE, riderWeightKg: WEIGHT, attempts: [{ track: heavy.track, durationMs: heavyModel.durationMs }] })!;
+    assert.equal(withKnownWeight.basis, "calibrated");
+    // With the right weight the calibration factor is about 1 (the model explains the effort); without it the rider looks ~slower than the model.
+    assert.ok(Math.abs(withKnownWeight.durationMs / withKnownWeight.modelDurationMs - 1) < 0.02);
+    assert.ok(withoutWeight.durationMs / withoutWeight.modelDurationMs > 1.05);
+  });
+});
+

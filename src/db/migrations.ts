@@ -470,6 +470,17 @@ export const migrations: readonly Migration[] = [
       CREATE INDEX idx_plan_sends_segment_time ON plan_sends(segment_id, sent_at_ms);
     `,
   },
+  {
+    version: 14,
+    name: "active_goal_long_term",
+    sql: `
+      -- A staged goal: the singleton row's target_duration_ms is the NEXT goal (what plans, the Karoo
+      -- send and the segment notices use); this optional second time is the rider's long-term goal on the
+      -- same segment, used only for a progress line. NULL means a single goal, exactly as before.
+      ALTER TABLE active_goal ADD COLUMN long_term_duration_ms INTEGER
+        CHECK (long_term_duration_ms IS NULL OR long_term_duration_ms > 0);
+    `,
+  },
 ];
 
 export function configureDatabaseConnection(database: MigrationDatabase): void {
