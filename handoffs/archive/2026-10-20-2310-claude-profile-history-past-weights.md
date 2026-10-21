@@ -1,6 +1,6 @@
 # Handoff: profile history (migration 15), past weights, weight at each effort, plain "why" copy
 
-- Updated: `2026-10-20 23:30 PDT`
+- Updated: `2026-10-20 23:10 PDT`
 - Agent: `Claude`
 - Branch: `main`
 - Head: `1c0bd47 feat: profile history (migration 15), past weights, weight at each effort, plain 'why' copy`

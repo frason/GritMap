@@ -241,9 +241,9 @@ rider-facing "section" strings to match on the Karoo are in
 **Task:** write `docs/PRIVACY.md`, the privacy policy for the TestFlight Privacy Policy URL (an external
 testing gate), with every claim checked against the code, plus the App Store Connect "App Privacy" answers.
 
-# Handoff: profile history (migration 15), past weights, weight at each effort, plain "why" copy (2026-10-20 23:30 PDT, committed locally, not pushed)
+# Handoff: profile history (migration 15), past weights, weight at each effort, plain "why" copy (2026-10-20 23:10 PDT, committed locally, not pushed)
 
-New `athlete_profile_history` table (backfilled from the current profile; `setAthleteProfile` appends on change); the Profile screen has "Past weights (optional)" (date + weight; never changes the current profile); each past effort is now calibrated at the weight the rider had that day when known (latest row at or before it, earliest row for older efforts). The goal-card notices say plainly that GritMap plans no more power than the rider has held on the climb and that it grows as new bests are set. Ceiling margin and CP/W' unchanged. 746/746 tests, migration tested on a populated database, typecheck and web:smoke clean. Details: `handoffs/archive/2026-10-20-2330-claude-profile-history-past-weights.md`.
+New `athlete_profile_history` table (backfilled from the current profile; `setAthleteProfile` appends on change); the Profile screen has "Past weights (optional)" (date + weight; never changes the current profile); each past effort is now calibrated at the weight the rider had that day when known (latest row at or before it, earliest row for older efforts). The goal-card notices say plainly that GritMap plans no more power than the rider has held on the climb and that it grows as new bests are set. Ceiling margin and CP/W' unchanged. 746/746 tests, migration tested on a populated database, typecheck and web:smoke clean. Details: `handoffs/archive/2026-10-20-2310-claude-profile-history-past-weights.md`.
 
 # Handoff: staged goal (next + long-term) and goal-time-derived plan power (2026-10-20 22:55 PDT, committed locally, not pushed)
 
