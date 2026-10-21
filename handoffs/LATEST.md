@@ -241,9 +241,9 @@ rider-facing "section" strings to match on the Karoo are in
 **Task:** write `docs/PRIVACY.md`, the privacy policy for the TestFlight Privacy Policy URL (an external
 testing gate), with every claim checked against the code, plus the App Store Connect "App Privacy" answers.
 
-# Handoff: staged goal (next + long-term) and goal-time-derived plan power (2026-10-21 11:00 PDT, committed locally, not pushed)
+# Handoff: staged goal (next + long-term) and goal-time-derived plan power (2026-10-20 22:55 PDT, committed locally, not pushed)
 
-The goal editor now offers "Beat my best of X (Y)" and an optional long-term goal (migration 14, one nullable column); plans, sends and notices use the NEXT goal, the long-term goal only drives a progress line and a one-tap "Set my next goal to ..." note when the next goal is reached; a fresh install sees the single goal as before. The plan's average power is now solved from the goal time with the physics model calibrated on the rider's efforts (power-duration table kept as fallback). The FTP-confirmed flag is gone: an existing profile FTP is always used. Per-effort weight plumbing is in; weight history storage needs a migration (proposed). 730/730 tests, typecheck and web:smoke clean; simulator check on demo data. Details: `handoffs/archive/2026-10-21-1100-claude-staged-goal-physics-anchor.md`.
+The goal editor now offers "Beat my best of X (Y)" and an optional long-term goal (migration 14, one nullable column); plans, sends and notices use the NEXT goal, the long-term goal only drives a progress line and a one-tap "Set my next goal to ..." note when the next goal is reached; a fresh install sees the single goal as before. The plan's average power is now solved from the goal time with the physics model calibrated on the rider's efforts (power-duration table kept as fallback). The FTP-confirmed flag is gone: an existing profile FTP is always used. Per-effort weight plumbing is in; weight history storage needs a migration (proposed). 730/730 tests, typecheck and web:smoke clean; simulator check on demo data. Details: `handoffs/archive/2026-10-20-2255-claude-staged-goal-physics-anchor.md`.
 
 # Handoff: realistic plan follow-up: evidenced floors, history critical power, PR-relative notice (2026-10-20 22:25 PDT, committed locally, not pushed)
 

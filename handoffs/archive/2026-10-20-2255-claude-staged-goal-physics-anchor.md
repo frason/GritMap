@@ -1,6 +1,6 @@
 # Handoff: staged goal (next + long-term) and a goal-time-derived plan power
 
-- Updated: `2026-10-21 11:00 PDT`
+- Updated: `2026-10-20 22:55 PDT`
 - Agent: `Claude`
 - Branch: `main`
 - Head: `e3d12ff feat: loadCalibrationAttempts can supply the weight at each effort; staged goal screenshot`
