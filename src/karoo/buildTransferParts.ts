@@ -1,11 +1,15 @@
 import type { SegmentDetail } from "../db/getSegmentDetail.ts";
 import type { SavedSegmentPlan } from "../db/segmentPlans.ts";
 import { buildBaselinePacingPlan, toBaselinePlanWire } from "../pacing/buildBaselinePacingPlan.ts";
+import { generateRealisticPlan, type PlanHistoryInput } from "../pacing/generateRealisticPlan.ts";
 import { toPortableSegmentJson } from "../segments/toPortableSegmentJson.ts";
 
 export interface TransferRiderInput {
   ftpWatts: number;
 }
+
+/** Sent as `generator.modelVersion` for a plan that went through the realistic planner (ceilings, energy budget). */
+export const REALISTIC_PLAN_MODEL_VERSION = "pacing-anchor-grade-realistic-v1";
 
 export type BaselinePlanResult = { ok: true; baselinePacingPlan: object } | { ok: false; message: string };
 
@@ -38,8 +42,14 @@ export function buildTransferBaselinePlan(input: {
   importedPlan?: SavedSegmentPlan | undefined;
   packageId: string;
   nowMs: number;
+  /**
+   * The rider's past efforts on this segment. When given (even with no efforts), a generated plan is made
+   * realistic: no target above what the rider has held, an energy-budget guard, trimmed effort moved to later
+   * zones. Imported plans are never changed. Omit it to get the plain grade-shaped plan.
+   */
+  planHistory?: PlanHistoryInput | undefined;
 }): BaselinePlanResult {
-  const { segment, rider, targetDurationMs, importedPlan, packageId, nowMs } = input;
+  const { segment, rider, targetDurationMs, importedPlan, packageId, nowMs, planHistory } = input;
   if (importedPlan !== undefined) {
     if (importedPlan.ftpWatts !== Math.round(rider.ftpWatts)) {
       return {
@@ -61,6 +71,26 @@ export function buildTransferBaselinePlan(input: {
     };
   }
   if (targetDurationMs === undefined) return { ok: false, message: "Set a goal time first." };
+  if (planHistory !== undefined) {
+    const generated = generateRealisticPlan({
+      referencePolyline: segment.referencePolyline,
+      ftpWatts: rider.ftpWatts,
+      goalDurationMs: targetDurationMs,
+      history: planHistory,
+    });
+    return {
+      ok: true,
+      baselinePacingPlan: toBaselinePlanWire({
+        id: packageId,
+        segmentFingerprint: segment.fingerprint,
+        createdAtMs: nowMs,
+        generator: { type: "phone-ai", modelVersion: REALISTIC_PLAN_MODEL_VERSION },
+        ftpWatts: rider.ftpWatts,
+        targetFinishTimeSeconds: Math.round(targetDurationMs / 1000),
+        zones: generated.zones,
+      }),
+    };
+  }
   return {
     ok: true,
     baselinePacingPlan: buildBaselinePacingPlan({

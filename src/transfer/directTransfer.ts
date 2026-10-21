@@ -1,6 +1,7 @@
 import type { SegmentDetail } from "../db/getSegmentDetail.ts";
 import type { SavedSegmentPlan } from "../db/segmentPlans.ts";
 import { buildTransferBaselinePlan, buildTransferSegmentJson } from "../karoo/buildTransferParts.ts";
+import type { PlanHistoryInput } from "../pacing/generateRealisticPlan.ts";
 import { buildRiderHistoryPackage } from "../pacing/buildRiderHistoryPackage.ts";
 import { isTransferId } from "./transferId.ts";
 
@@ -80,6 +81,8 @@ export async function buildDirectTransfer(input: {
   sha256Hex: (bytes: Uint8Array) => Promise<string>;
   /** Only when the phone knows this exact segment is published in Open Segments. */
   segmentIsPublic?: boolean | undefined;
+  /** The rider's past efforts on this segment, so a generated plan is made realistic (see buildTransferBaselinePlan). */
+  planHistory?: PlanHistoryInput | undefined;
 }): Promise<BuildDirectTransferResult> {
   if (!isTransferId(input.transferId)) return { ok: false, message: "Invalid transfer id" };
   const plan = buildTransferBaselinePlan({
@@ -89,6 +92,7 @@ export async function buildDirectTransfer(input: {
     importedPlan: input.importedPlan,
     packageId: input.transferId,
     nowMs: input.nowMs,
+    planHistory: input.planHistory,
   });
   if (!plan.ok) return { ok: false, message: plan.message };
 

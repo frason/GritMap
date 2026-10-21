@@ -2,6 +2,7 @@ import type { SegmentDetail } from "../db/getSegmentDetail.ts";
 import { buildTransferBaselinePlan, buildTransferSegmentJson } from "./buildTransferParts.ts";
 import type { SentBaselinePlan } from "../db/planSends.ts";
 import type { SavedSegmentPlan } from "../db/segmentPlans.ts";
+import type { PlanHistoryInput } from "../pacing/generateRealisticPlan.ts";
 import { buildRiderHistoryPackage } from "../pacing/buildRiderHistoryPackage.ts";
 import type { SendSegmentResult } from "./sendSegmentToKaroo.ts";
 import { karooTransferEndpoint } from "./karooTransferEndpoint.ts";
@@ -46,8 +47,9 @@ export async function sendGuidancePackageToKaroo(
   packageId: string,
   nowMs: number,
   importedPlan?: SavedSegmentPlan,
+  planHistory?: PlanHistoryInput,
 ): Promise<SendGuidanceResult> {
-  const planResult = buildTransferBaselinePlan({ segment, rider, targetDurationMs, importedPlan, packageId, nowMs });
+  const planResult = buildTransferBaselinePlan({ segment, rider, targetDurationMs, importedPlan, packageId, nowMs, planHistory });
   if (!planResult.ok) return { ok: false, message: planResult.message };
   const baselinePacingPlan = planResult.baselinePacingPlan;
 

@@ -1,0 +1,302 @@
+{
+  "description": "Synthetic input and the phone planner's output. Invented numbers; not ride data.",
+  "input": {
+    "ftpWatts": 250,
+    "goalDurationSeconds": 2400,
+    "zoneLengthMeters": 402.336,
+    "gradesPct": [
+      2.5,
+      2.1,
+      -1.7,
+      4.3,
+      2.8,
+      3.2,
+      6.9,
+      6.9,
+      5.8,
+      5.1,
+      4.4,
+      7,
+      8.5,
+      5.9,
+      3.6,
+      4.3,
+      5.7,
+      6.3,
+      7.6,
+      5.8,
+      6.5,
+      5.8,
+      6.8,
+      5.6,
+      6.7,
+      6.5
+    ],
+    "bestHeldWatts": [
+      235,
+      232,
+      null,
+      248,
+      238,
+      240,
+      262,
+      262,
+      255,
+      250,
+      244,
+      262,
+      268,
+      252,
+      238,
+      244,
+      254,
+      258,
+      262,
+      250,
+      256,
+      250,
+      258,
+      248,
+      256,
+      254
+    ]
+  },
+  "config": {
+    "historyMarginPct": 0.04,
+    "minHeldFractionOfFtp": 0.7,
+    "fallbackStartPctOfAnchor": 1.1,
+    "fallbackEndPctOfAnchor": 1.04,
+    "minPctFtp": 0.7,
+    "maxPctFtp": 1.5,
+    "minPowerCoverage": 0.8,
+    "maxStepWatts": 20,
+    "stepLimitMinGradePct": 1.5,
+    "hardMaxStepWatts": 80,
+    "easierGradeBias": 0.1,
+    "criticalPowerFractionOfFtp": 1,
+    "wPrimeJoulesPerFtpWatt": 80,
+    "wPrimeReserveFraction": 0.15,
+    "feasibleToleranceFraction": 0.02,
+    "maxOuterIterations": 40
+  },
+  "anchorPowerWatts": 253,
+  "result": {
+    "feasible": true,
+    "requiredMeanWatts": 252.9,
+    "achievedMeanWatts": 249.1,
+    "assumptions": {
+      "criticalPowerWatts": 250,
+      "wPrimeJoules": 20000
+    },
+    "zones": [
+      {
+        "index": 0,
+        "gradePct": 2.5,
+        "rawTargetPowerWatts": 219,
+        "targetPowerWatts": 219,
+        "ceilingPowerWatts": 244,
+        "ceilingSource": "history"
+      },
+      {
+        "index": 1,
+        "gradePct": 2.1,
+        "rawTargetPowerWatts": 214,
+        "targetPowerWatts": 214,
+        "ceilingPowerWatts": 241,
+        "ceilingSource": "history"
+      },
+      {
+        "index": 2,
+        "gradePct": -1.7,
+        "rawTargetPowerWatts": 175,
+        "targetPowerWatts": 175,
+        "ceilingPowerWatts": 276,
+        "ceilingSource": "fallback"
+      },
+      {
+        "index": 3,
+        "gradePct": 4.3,
+        "rawTargetPowerWatts": 241,
+        "targetPowerWatts": 241,
+        "ceilingPowerWatts": 257,
+        "ceilingSource": "history"
+      },
+      {
+        "index": 4,
+        "gradePct": 2.8,
+        "rawTargetPowerWatts": 222,
+        "targetPowerWatts": 222,
+        "ceilingPowerWatts": 247,
+        "ceilingSource": "history"
+      },
+      {
+        "index": 5,
+        "gradePct": 3.2,
+        "rawTargetPowerWatts": 227,
+        "targetPowerWatts": 227,
+        "ceilingPowerWatts": 249,
+        "ceilingSource": "history"
+      },
+      {
+        "index": 6,
+        "gradePct": 6.9,
+        "rawTargetPowerWatts": 274,
+        "targetPowerWatts": 247,
+        "ceilingPowerWatts": 272,
+        "ceilingSource": "history"
+      },
+      {
+        "index": 7,
+        "gradePct": 6.9,
+        "rawTargetPowerWatts": 274,
+        "targetPowerWatts": 267,
+        "ceilingPowerWatts": 272,
+        "ceilingSource": "history"
+      },
+      {
+        "index": 8,
+        "gradePct": 5.8,
+        "rawTargetPowerWatts": 260,
+        "targetPowerWatts": 265,
+        "ceilingPowerWatts": 265,
+        "ceilingSource": "history"
+      },
+      {
+        "index": 9,
+        "gradePct": 5.1,
+        "rawTargetPowerWatts": 251,
+        "targetPowerWatts": 260,
+        "ceilingPowerWatts": 260,
+        "ceilingSource": "history"
+      },
+      {
+        "index": 10,
+        "gradePct": 4.4,
+        "rawTargetPowerWatts": 243,
+        "targetPowerWatts": 253,
+        "ceilingPowerWatts": 253,
+        "ceilingSource": "history"
+      },
+      {
+        "index": 11,
+        "gradePct": 7,
+        "rawTargetPowerWatts": 275,
+        "targetPowerWatts": 272,
+        "ceilingPowerWatts": 272,
+        "ceilingSource": "history"
+      },
+      {
+        "index": 12,
+        "gradePct": 8.5,
+        "rawTargetPowerWatts": 294,
+        "targetPowerWatts": 278,
+        "ceilingPowerWatts": 278,
+        "ceilingSource": "history"
+      },
+      {
+        "index": 13,
+        "gradePct": 5.9,
+        "rawTargetPowerWatts": 262,
+        "targetPowerWatts": 262,
+        "ceilingPowerWatts": 262,
+        "ceilingSource": "history"
+      },
+      {
+        "index": 14,
+        "gradePct": 3.6,
+        "rawTargetPowerWatts": 233,
+        "targetPowerWatts": 247,
+        "ceilingPowerWatts": 247,
+        "ceilingSource": "history"
+      },
+      {
+        "index": 15,
+        "gradePct": 4.3,
+        "rawTargetPowerWatts": 241,
+        "targetPowerWatts": 253,
+        "ceilingPowerWatts": 253,
+        "ceilingSource": "history"
+      },
+      {
+        "index": 16,
+        "gradePct": 5.7,
+        "rawTargetPowerWatts": 259,
+        "targetPowerWatts": 264,
+        "ceilingPowerWatts": 264,
+        "ceilingSource": "history"
+      },
+      {
+        "index": 17,
+        "gradePct": 6.3,
+        "rawTargetPowerWatts": 267,
+        "targetPowerWatts": 268,
+        "ceilingPowerWatts": 268,
+        "ceilingSource": "history"
+      },
+      {
+        "index": 18,
+        "gradePct": 7.6,
+        "rawTargetPowerWatts": 283,
+        "targetPowerWatts": 272,
+        "ceilingPowerWatts": 272,
+        "ceilingSource": "history"
+      },
+      {
+        "index": 19,
+        "gradePct": 5.8,
+        "rawTargetPowerWatts": 260,
+        "targetPowerWatts": 260,
+        "ceilingPowerWatts": 260,
+        "ceilingSource": "history"
+      },
+      {
+        "index": 20,
+        "gradePct": 6.5,
+        "rawTargetPowerWatts": 269,
+        "targetPowerWatts": 261,
+        "ceilingPowerWatts": 266,
+        "ceilingSource": "history"
+      },
+      {
+        "index": 21,
+        "gradePct": 5.8,
+        "rawTargetPowerWatts": 260,
+        "targetPowerWatts": 250,
+        "ceilingPowerWatts": 260,
+        "ceilingSource": "history"
+      },
+      {
+        "index": 22,
+        "gradePct": 6.8,
+        "rawTargetPowerWatts": 273,
+        "targetPowerWatts": 250,
+        "ceilingPowerWatts": 268,
+        "ceilingSource": "history"
+      },
+      {
+        "index": 23,
+        "gradePct": 5.6,
+        "rawTargetPowerWatts": 258,
+        "targetPowerWatts": 250,
+        "ceilingPowerWatts": 257,
+        "ceilingSource": "history"
+      },
+      {
+        "index": 24,
+        "gradePct": 6.7,
+        "rawTargetPowerWatts": 272,
+        "targetPowerWatts": 250,
+        "ceilingPowerWatts": 266,
+        "ceilingSource": "history"
+      },
+      {
+        "index": 25,
+        "gradePct": 6.5,
+        "rawTargetPowerWatts": 269,
+        "targetPowerWatts": 250,
+        "ceilingPowerWatts": 264,
+        "ceilingSource": "history"
+      }
+    ]
+  }
+}

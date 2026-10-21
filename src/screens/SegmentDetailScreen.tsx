@@ -22,11 +22,12 @@ import {
 import type { RideTrackPoint } from "../db/getRideTrack";
 import { runMatcherForSegment, type MatchRunSummary } from "../matcher/runMatcher";
 import { computeSegmentElevationStats } from "../segments/computeSegmentElevationStats";
-import { computeAnchorPowerWatts } from "../pacing/powerDurationAnchor";
-import { computeAdaptiveZoneGrades } from "../pacing/computeZoneGrades";
-import { buildTargetPowerZones } from "../pacing/buildTargetPowerZones";
 import { summarizeCoachPlan } from "../pacing/coachPlan";
 import { loadCalibrationAttempts } from "../pacing/loadCalibrationAttempts";
+import { generateRealisticPlan } from "../pacing/generateRealisticPlan";
+import { loadPlanHistory, PLAN_HISTORY_EFFORTS } from "../pacing/loadPlanHistory";
+import type { CalibrationAttempt } from "../pacing/predictPlanFinish";
+import { describePlanFeasibility } from "./describePlanFeasibility";
 import { predictPlanFinish, type PlanFinishPrediction } from "../pacing/predictPlanFinish";
 import { PredictedFinish } from "./PredictedFinish";
 import { parseTargetDurationInput } from "./parseTargetDuration";
@@ -110,6 +111,8 @@ export function SegmentDetailScreen() {
   const [activeGoal, setActiveGoal] = useState<ActiveGoal | undefined>(undefined);
   const [activePlan, setActivePlan] = useState<SavedSegmentPlan | undefined>(undefined);
   const [planPrediction, setPlanPrediction] = useState<PlanFinishPrediction | undefined>(undefined);
+  // The rider's past efforts on this segment, newest first: ceilings for the generated plan (realisticPlan.ts).
+  const [historyAttempts, setHistoryAttempts] = useState<CalibrationAttempt[]>([]);
   const [otherGoalSegmentName, setOtherGoalSegmentName] = useState<string | undefined>(undefined);
   const [analyzeEffortSummary, setAnalyzeEffortSummary] = useState<AnalyzeEffortSummary | undefined>(undefined);
   const [goalMinutesInput, setGoalMinutesInput] = useState("");
@@ -150,6 +153,7 @@ export function SegmentDetailScreen() {
       setActiveGoal(currentGoal);
       const currentPlan = getActiveSegmentPlan(database, route.params.segmentId);
       setActivePlan(currentPlan);
+      setHistoryAttempts(loadCalibrationAttempts(database, route.params.segmentId, PLAN_HISTORY_EFFORTS));
       setPlanPrediction(
         currentPlan !== undefined && currentProfile.weightKg !== undefined
           ? predictPlanFinish({
@@ -312,6 +316,8 @@ export function SegmentDetailScreen() {
       activePlan !== undefined && activePlan.targetFinishSeconds === undefined && planPrediction !== undefined
         ? { ...activePlan, targetFinishSeconds: Math.round(planPrediction.durationMs / 1_000) }
         : activePlan,
+      // GritMap's own plan is made realistic from the rider's past efforts here; an imported plan is sent as written.
+      loadPlanHistory(database, segment.segmentId, weightKg),
     );
     setPacingSending(false);
     // Keep what the Karoo was handed, so a later ride is judged against this plan and not against
@@ -443,10 +449,30 @@ export function SegmentDetailScreen() {
     );
   } else {
     const ftpWatts = athleteProfile.ftpWatts;
-    const anchorPowerWatts = computeAnchorPowerWatts(ftpWatts, activeGoal.targetDurationMs);
-    const zoneWindows = computeAdaptiveZoneGrades(segment.referencePolyline);
-    pacingZones = buildTargetPowerZones(zoneWindows, anchorPowerWatts, ftpWatts);
+    const generated = generateRealisticPlan({
+      referencePolyline: segment.referencePolyline,
+      ftpWatts,
+      goalDurationMs: activeGoal.targetDurationMs,
+      history: { attempts: historyAttempts, ...(athleteProfile.weightKg === undefined ? {} : { riderWeightKg: athleteProfile.weightKg }) },
+    });
+    const anchorPowerWatts = generated.anchorPowerWatts;
+    pacingZones = generated.zones;
     const pctFtp = Math.round((anchorPowerWatts / ftpWatts) * 100);
+    // When the goal is out of reach, say what the best plan finishes in (the rider's weight is needed for a time).
+    const bestPrediction =
+      !generated.realistic.feasible && athleteProfile.weightKg !== undefined
+        ? predictPlanFinish({
+            zones: generated.zones,
+            referencePolyline: segment.referencePolyline,
+            riderWeightKg: athleteProfile.weightKg,
+            attempts: historyAttempts.slice(0, 3),
+          })
+        : undefined;
+    const feasibility = describePlanFeasibility({
+      realistic: generated.realistic,
+      goalDurationMs: activeGoal.targetDurationMs,
+      ...(bestPrediction === undefined ? {} : { predictedFinishMs: bestPrediction.durationMs }),
+    });
 
     pacingPlanBody = (
       <Card>
@@ -459,6 +485,9 @@ export function SegmentDetailScreen() {
         <AppText variant="subheadline" color="textSecondary">
           GritMap's plan: about {Math.round(anchorPowerWatts)} W on average ({pctFtp}% of your FTP), adjusted for each section's gradient.
         </AppText>
+        {feasibility === undefined ? null : (
+          <Notice tone={feasibility.tone}>{`${feasibility.headline} ${feasibility.detail}`}</Notice>
+        )}
         {sendBlock(false)}
       </Card>
     );

@@ -46,6 +46,9 @@ function assertValid(result: RealisticPlanResult, config: RealisticPlanConfig = 
     assert.ok(zone.targetPowerWatts <= result.ceilings[i]!.ceilingWatts, `zone ${i} target ${zone.targetPowerWatts} is within its ceiling ${result.ceilings[i]!.ceilingWatts}`);
     assert.equal(zone.classification, classifyAgainstAnchor(zone.targetPowerWatts, ANCHOR));
     assert.equal(zone.startDistanceMeters, zones[i]!.startDistanceMeters);
+    if (i > 0) {
+      assert.ok(Math.abs(zone.targetPowerWatts - result.zones[i - 1]!.targetPowerWatts) <= config.hardMaxStepWatts, `step into zone ${i} is within the hard ${config.hardMaxStepWatts} W cap`);
+    }
     if (i > 0 && zones[i - 1]!.gradePct >= config.stepLimitMinGradePct && zone.gradePct >= config.stepLimitMinGradePct) {
       assert.ok(Math.abs(zone.targetPowerWatts - result.zones[i - 1]!.targetPowerWatts) <= config.maxStepWatts, `step into zone ${i} is within ${config.maxStepWatts} W`);
     }
@@ -127,6 +130,17 @@ describe("buildRealisticPlan", () => {
     // zones 2 -> 3 -> 4 sit around the 1.7% descent, which is exempt from the step limit
     const stepAroundDescent = Math.abs(result.zones[3]!.targetPowerWatts - result.zones[2]!.targetPowerWatts);
     assert.ok(stepAroundDescent > DEFAULT_REALISTIC_PLAN_CONFIG.maxStepWatts, `descent step ${stepAroundDescent}`);
+  });
+
+  it("never lets adjacent targets differ by more than the hard cap, even beside a steep descent with high ceilings", () => {
+    const grades = [5, 5, 5, -8, 5, 8.5, 8.5, 5, 5, 5, 5, 5];
+    const zones = buildTargetPowerZones(windows(grades), ANCHOR, FTP);
+    const history: ZoneHistory[] = zones.map(() => ({ bestHeldWatts: 245, attemptsWithData: 2 }));
+    const result = plan({ zones, history });
+    assertValid(result, DEFAULT_REALISTIC_PLAN_CONFIG, zones);
+    for (let i = 1; i < result.zones.length; i += 1) {
+      assert.ok(Math.abs(result.zones[i]!.targetPowerWatts - result.zones[i - 1]!.targetPowerWatts) <= DEFAULT_REALISTIC_PLAN_CONFIG.hardMaxStepWatts);
+    }
   });
 
   it("is deterministic and does not modify its input", () => {

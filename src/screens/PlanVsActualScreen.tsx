@@ -16,6 +16,7 @@ import {
   type PlanVsActualZone,
   type PlanVsActualSummary,
 } from "../pacing/computePlanVsActual";
+import { loadPlanHistory } from "../pacing/loadPlanHistory";
 import { resolvePlanForEffort, type PlanForEffort } from "../pacing/resolveSegmentPlan";
 import type { SegmentsStackParamList } from "../navigation/types";
 import type { ColorToken } from "../theme/colors";
@@ -84,6 +85,7 @@ export function PlanVsActualScreen() {
         ...(profile.ftpWatts === undefined ? {} : { ftpWatts: profile.ftpWatts }),
         ...(goal !== undefined && goal.segmentId === segment.segmentId ? { goalDurationMs: goal.targetDurationMs } : {}),
         referencePolyline: segment.referencePolyline,
+        planHistory: loadPlanHistory(database, segment.segmentId, profile.weightKg),
       });
       if (plan.kind === "none") {
         setNoPlanReason(plan.reason);

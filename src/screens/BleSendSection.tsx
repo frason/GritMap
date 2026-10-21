@@ -7,6 +7,7 @@ import { getActiveGoal } from "../db/getActiveGoal";
 import { getAthleteProfile } from "../db/getAthleteProfile";
 import type { SegmentDetail } from "../db/getSegmentDetail";
 import { getActiveSegmentPlan } from "../db/segmentPlans";
+import { loadPlanHistory } from "../pacing/loadPlanHistory";
 import { computeFileHash } from "../import/computeFileHash";
 import { addStateListener, bleAdvertiserAvailable, startTransfer, stopTransfer } from "../../modules/gritmap-ble-peripheral";
 import { describeBleSend, reduceBleEvent, type BleSendState } from "../transfer/bleSendStatus";
@@ -69,6 +70,7 @@ export function BleSendSection({ segment }: { segment: SegmentDetail }) {
       rider: { ftpWatts: profile.ftpWatts, weightKg: profile.weightKg, maxHeartRateBpm: profile.maxHeartRateBpm },
       targetDurationMs: activePlan === undefined ? goalMs : undefined,
       importedPlan: activePlan,
+      planHistory: loadPlanHistory(database, segment.segmentId, profile.weightKg),
       nowMs: Date.now(),
       // 128 random bits from the platform CSPRNG (SecRandomCopyBytes through expo-crypto).
       transferId: encodeTransferId(Crypto.getRandomBytes(16)),

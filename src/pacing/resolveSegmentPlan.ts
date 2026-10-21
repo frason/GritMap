@@ -3,6 +3,7 @@ import type { SavedSegmentPlan } from "../db/segmentPlans.ts";
 import type { SegmentReferencePoint } from "../segments/resamplePolyline.ts";
 import { buildTargetPowerZones } from "./buildTargetPowerZones.ts";
 import { computeAdaptiveZoneGrades } from "./computeZoneGrades.ts";
+import { generateRealisticPlan, type PlanHistoryInput } from "./generateRealisticPlan.ts";
 import { computeAnchorPowerWatts } from "./powerDurationAnchor.ts";
 import type { PlanZoneLike } from "./computePlanVsActual.ts";
 
@@ -22,14 +23,27 @@ export function resolveSegmentPlan(input: {
   /** The active goal's target time, only when that goal is for this segment. */
   goalDurationMs?: number;
   referencePolyline: readonly SegmentReferencePoint[];
+  /** The rider's past efforts; when given, GritMap's own plan is the realistic one the segment screen shows and sends. */
+  planHistory?: PlanHistoryInput;
 }): ResolvedSegmentPlan {
   if (input.activePlan !== undefined) {
     return { kind: "imported", plan: input.activePlan, zones: input.activePlan.zones };
   }
   if (input.ftpWatts === undefined) return { kind: "none", reason: "no-ftp" };
   if (input.goalDurationMs === undefined) return { kind: "none", reason: "no-goal" };
-  const anchor = computeAnchorPowerWatts(input.ftpWatts, input.goalDurationMs);
-  const zones = buildTargetPowerZones(computeAdaptiveZoneGrades(input.referencePolyline), anchor, input.ftpWatts);
+  const zones =
+    input.planHistory === undefined
+      ? buildTargetPowerZones(
+          computeAdaptiveZoneGrades(input.referencePolyline),
+          computeAnchorPowerWatts(input.ftpWatts, input.goalDurationMs),
+          input.ftpWatts,
+        )
+      : generateRealisticPlan({
+          referencePolyline: input.referencePolyline,
+          ftpWatts: input.ftpWatts,
+          goalDurationMs: input.goalDurationMs,
+          history: input.planHistory,
+        }).zones;
   return { kind: "generated", ftpWatts: input.ftpWatts, goalDurationMs: input.goalDurationMs, zones };
 }
 
@@ -46,6 +60,7 @@ export function resolvePlanForEffort(input: {
   ftpWatts?: number;
   goalDurationMs?: number;
   referencePolyline: readonly SegmentReferencePoint[];
+  planHistory?: PlanHistoryInput;
 }): PlanForEffort {
   if (input.sentPlan !== undefined) return { kind: "sent", sent: input.sentPlan, zones: input.sentPlan.zones };
   const { sentPlan: _unused, ...rest } = input;

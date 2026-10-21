@@ -20,6 +20,11 @@ export interface RealisticPlanConfig extends PlanCeilingConfig {
   maxStepWatts: number;
   /** The step limit applies only between zones at least this steep (%). Flats and descents are recovery and exempt. */
   stepLimitMinGradePct: number;
+  /**
+   * The largest change allowed between ANY two adjacent zones (W), recoveries included. The Karoo rejects a
+   * whole plan when adjacent targets differ by more than 100 W (AiPlanValidator), so this keeps a margin under it.
+   */
+  hardMaxStepWatts: number;
   /** How strongly redistribution prefers easier grades: weight = room / (1 + grade% * bias). */
   easierGradeBias: number;
   /** Critical power as a fraction of FTP. ASSUMPTION: 1.0, the conservative end (CP is usually a little higher). */
@@ -38,6 +43,7 @@ export const DEFAULT_REALISTIC_PLAN_CONFIG: RealisticPlanConfig = {
   ...DEFAULT_PLAN_CEILING_CONFIG,
   maxStepWatts: 20,
   stepLimitMinGradePct: 1.5,
+  hardMaxStepWatts: 80,
   easierGradeBias: 0.1,
   criticalPowerFractionOfFtp: 1.0,
   wPrimeJoulesPerFtpWatt: 80,
@@ -113,7 +119,12 @@ export function buildRealisticPlan(input: RealisticPlanInput): RealisticPlanResu
       : lengths.map((length) => (totalLength > 0 ? (input.goalDurationMs / 1000) * (length / totalLength) : 0));
   const minWatts = Math.floor(input.ftpWatts * config.minPctFtp);
 
-  const stepPairs = raw.map((zone, i) => i + 1 < count && zone.gradePct >= config.stepLimitMinGradePct && raw[i + 1]!.gradePct >= config.stepLimitMinGradePct);
+  /** The largest allowed change between zone i and zone i + 1: tight between climbing zones, the hard cap elsewhere. */
+  const pairLimit = raw.map((zone, i) =>
+    i + 1 < count && zone.gradePct >= config.stepLimitMinGradePct && raw[i + 1]!.gradePct >= config.stepLimitMinGradePct
+      ? config.maxStepWatts
+      : config.hardMaxStepWatts,
+  );
 
   // Limits start at the ceilings and are tightened wherever the W' guard finds an overspend; the trimmed
   // effort is then redistributed again under the tighter limits, until the plan settles.
@@ -190,16 +201,16 @@ export function buildRealisticPlan(input: RealisticPlanInput): RealisticPlanResu
     return t;
   }
 
-  /** Two passes lower peaks until no two adjacent climbing zones differ by more than the step limit. */
+  /** Two passes lower peaks until no two adjacent zones differ by more than their step limit. */
   function lowerToStepLimit(t: number[]): void {
-    for (let i = 1; i < count; i += 1) if (stepPairs[i - 1]) t[i] = Math.min(t[i]!, t[i - 1]! + config.maxStepWatts);
-    for (let i = count - 2; i >= 0; i -= 1) if (stepPairs[i]) t[i] = Math.min(t[i]!, t[i + 1]! + config.maxStepWatts);
+    for (let i = 1; i < count; i += 1) t[i] = Math.min(t[i]!, t[i - 1]! + pairLimit[i - 1]!);
+    for (let i = count - 2; i >= 0; i -= 1) t[i] = Math.min(t[i]!, t[i + 1]! + pairLimit[i]!);
   }
 
   function roomAt(t: readonly number[], j: number): number {
     let limit = limits[j]!;
-    if (j > 0 && stepPairs[j - 1]) limit = Math.min(limit, t[j - 1]! + config.maxStepWatts);
-    if (j + 1 < count && stepPairs[j]) limit = Math.min(limit, t[j + 1]! + config.maxStepWatts);
+    if (j > 0) limit = Math.min(limit, t[j - 1]! + pairLimit[j - 1]!);
+    if (j + 1 < count) limit = Math.min(limit, t[j + 1]! + pairLimit[j]!);
     return Math.max(0, limit - t[j]!);
   }
 

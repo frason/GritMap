@@ -30,6 +30,19 @@ describe("resolveSegmentPlan", () => {
     assert.equal(resolved.kind === "imported" && resolved.zones[0]!.targetPowerWatts, 250);
   });
 
+  it("with history, the generated plan is the realistic one (within the rider's ceilings)", () => {
+    const track = Array.from({ length: 10_001 }, (_, d) => ({ distanceMeters: d, timestampMs: d * 1000, power: 215 }));
+    const resolved = resolveSegmentPlan({
+      ftpWatts: 280,
+      goalDurationMs: 39 * 60_000,
+      referencePolyline: polyline(10_000),
+      planHistory: { attempts: [{ track }] },
+    });
+    assert.equal(resolved.kind, "generated");
+    if (resolved.kind !== "generated") return;
+    assert.ok(resolved.zones.every((zone) => zone.targetPowerWatts <= Math.floor(215 * 1.04)));
+  });
+
   it("generates a plan from FTP and the goal when nothing is imported", () => {
     const resolved = resolveSegmentPlan({ ftpWatts: 280, goalDurationMs: 39 * 60_000, referencePolyline: polyline(10_000) });
     assert.equal(resolved.kind, "generated");
