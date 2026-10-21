@@ -481,6 +481,33 @@ export const migrations: readonly Migration[] = [
         CHECK (long_term_duration_ms IS NULL OR long_term_duration_ms > 0);
     `,
   },
+  {
+    version: 15,
+    name: "athlete_profile_history",
+    sql: `
+      -- What the rider's FTP, weight and max heart rate were, and from when. setAthleteProfile.ts appends a row
+      -- whenever one of them changes ('profile'); the rider can add a weight for a past date ('backdated', e.g. the
+      -- weight on the day of a personal best). Used to calibrate each past effort at the weight the rider had that
+      -- day (weightAt = the latest row at or before the effort, the earliest row for older efforts). The profile
+      -- itself stays the single athlete_profile row. Never synced or published.
+      CREATE TABLE athlete_profile_history (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        effective_from_ms INTEGER NOT NULL,
+        ftp_watts INTEGER CHECK (ftp_watts IS NULL OR ftp_watts > 0),
+        weight_kg REAL CHECK (weight_kg IS NULL OR weight_kg > 0),
+        max_heart_rate_bpm INTEGER CHECK (max_heart_rate_bpm IS NULL OR max_heart_rate_bpm > 0),
+        source TEXT NOT NULL CHECK (source IN ('profile', 'backdated', 'backfill')),
+        recorded_at_ms INTEGER NOT NULL
+      ) STRICT;
+
+      CREATE INDEX idx_athlete_profile_history_effective ON athlete_profile_history(effective_from_ms, id);
+
+      -- A first row from the profile as it stands now, so an existing rider has a starting point.
+      INSERT INTO athlete_profile_history (effective_from_ms, ftp_watts, weight_kg, max_heart_rate_bpm, source, recorded_at_ms)
+        SELECT updated_at_ms, ftp_watts, weight_kg, max_heart_rate_bpm, 'backfill', updated_at_ms
+        FROM athlete_profile WHERE id = 'singleton';
+    `,
+  },
 ];
 
 export function configureDatabaseConnection(database: MigrationDatabase): void {

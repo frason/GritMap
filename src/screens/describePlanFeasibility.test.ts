@@ -14,7 +14,7 @@ describe("describePlanFeasibility", () => {
     const lines = describePlanFeasibility({ realistic: { ...base, feasible: true, trimmedZoneIndices: [12, 18] }, goalDurationMs: 2_400_000 })!;
     assert.equal(lines.tone, "info");
     assert.match(lines.detail, /2 sections were kept within what you have held/);
-    assert.match(lines.detail, /40:00 goal still holds/);
+    assert.match(lines.detail, /40:00 goal still holds\. GritMap plans no more power than you have held on this climb; it grows as you set new bests\./);
     const one = describePlanFeasibility({ realistic: { ...base, feasible: true, trimmedZoneIndices: [12] }, goalDurationMs: 2_400_000 })!;
     assert.match(one.detail, /One section was kept/);
   });
@@ -28,7 +28,7 @@ describe("describePlanFeasibility", () => {
     assert.equal(lines.tone, "warning");
     assert.equal(lines.headline, "Your 40:00 goal looks out of reach for now.");
     assert.match(lines.detail, /about 41:35, 1:35 slower than your goal/);
-    assert.match(lines.detail, /never asks for more power than you have held/);
+    assert.match(lines.detail, /plans no more power than you have held on this climb, or than your effort budget allows\. That grows as you set new bests\./);
   });
 
   it("says the goal is out of reach when the power adds up but the predicted time is well over the goal", () => {

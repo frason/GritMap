@@ -40,7 +40,7 @@ export function describePlanFeasibility(input: {
       return {
         tone: "info",
         headline: `Your ${goal} goal is a stretch for now, but your best is within reach.`,
-        detail: `The best plan GritMap can build finishes in about ${formatDurationMinutesSeconds(predictedFinishMs)}, ${formatTimeDelta(bestEffortMs - predictedFinishMs).replace("-", "").replace("+", "")} faster than your best of ${best}. It never asks for more power than you have held on this climb, or more than your effort budget allows.`,
+        detail: `The best plan GritMap can build finishes in about ${formatDurationMinutesSeconds(predictedFinishMs)}, ${formatTimeDelta(bestEffortMs - predictedFinishMs).replace("-", "").replace("+", "")} faster than your best of ${best}. GritMap plans no more power than you have held on this climb, or than your effort budget allows. That grows as you set new bests.`,
       };
     }
     const sentence =
@@ -50,14 +50,14 @@ export function describePlanFeasibility(input: {
     return {
       tone: "warning",
       headline: `Your ${goal} goal looks out of reach for now.`,
-      detail: `${sentence}${best === undefined ? "" : ` Your best so far is ${best}.`} GritMap never asks for more power than you have held on this climb, or more than your effort budget allows. It gets closer as you ride this segment.`,
+      detail: `${sentence}${best === undefined ? "" : ` Your best so far is ${best}.`} GritMap plans no more power than you have held on this climb, or than your effort budget allows. That grows as you set new bests.`,
     };
   }
   if (realistic.trimmedZoneIndices.length > 0) {
     return {
       tone: "info",
       headline: "Some targets were held back.",
-      detail: `${realistic.trimmedZoneIndices.length === 1 ? "One section was" : `${realistic.trimmedZoneIndices.length} sections were`} kept within what you have held on this climb, and the easier sections after ${realistic.trimmedZoneIndices.length === 1 ? "it make" : "them make"} up the difference. Your ${goal} goal still holds.`,
+      detail: `${realistic.trimmedZoneIndices.length === 1 ? "One section was" : `${realistic.trimmedZoneIndices.length} sections were`} kept within what you have held on this climb, and the easier sections after ${realistic.trimmedZoneIndices.length === 1 ? "it make" : "them make"} up the difference. Your ${goal} goal still holds. GritMap plans no more power than you have held on this climb; it grows as you set new bests.`,
     };
   }
   return undefined;

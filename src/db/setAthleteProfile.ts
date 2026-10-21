@@ -58,4 +58,29 @@ export function setAthleteProfile(
          updated_at_ms = excluded.updated_at_ms`,
     )
     .run(params.ftpWatts ?? null, params.maxHeartRateBpm ?? null, params.weightKg ?? null, params.nowMs);
+
+  // Keep a dated history of what the profile was, so a past effort can be judged at the weight the rider had then.
+  // A row is added only when FTP, weight or max HR differs from the latest saved one (a back-dated entry never counts).
+  database
+    .prepare(
+      `INSERT INTO athlete_profile_history (effective_from_ms, ftp_watts, weight_kg, max_heart_rate_bpm, source, recorded_at_ms)
+       SELECT ?, ?, ?, ?, 'profile', ?
+       WHERE NOT EXISTS (
+         SELECT 1 FROM (
+           SELECT ftp_watts, weight_kg, max_heart_rate_bpm FROM athlete_profile_history
+           WHERE source <> 'backdated' ORDER BY effective_from_ms DESC, id DESC LIMIT 1
+         ) AS latest
+         WHERE latest.ftp_watts IS ? AND latest.weight_kg IS ? AND latest.max_heart_rate_bpm IS ?
+       )`,
+    )
+    .run(
+      params.nowMs,
+      params.ftpWatts ?? null,
+      params.weightKg ?? null,
+      params.maxHeartRateBpm ?? null,
+      params.nowMs,
+      params.ftpWatts ?? null,
+      params.weightKg ?? null,
+      params.maxHeartRateBpm ?? null,
+    );
 }

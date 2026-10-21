@@ -9,6 +9,7 @@ import { getAthleteProfile, type AthleteProfile } from "../db/getAthleteProfile"
 import { getSegmentDetail, type SegmentDetail } from "../db/getSegmentDetail";
 import { saveSegmentPlan } from "../db/segmentPlans";
 import { buildCoachPlanRequest } from "../pacing/buildCoachPlanRequest";
+import { createWeightAt } from "../db/profileHistory";
 import { loadCalibrationAttempts } from "../pacing/loadCalibrationAttempts";
 import { predictPlanFinish, type PlanFinishPrediction } from "../pacing/predictPlanFinish";
 import { parseCoachPlan, summarizeCoachPlan, type CoachPlanParseResult } from "../pacing/coachPlan";
@@ -118,7 +119,7 @@ export function ImportCoachPlanScreen() {
             zones: parsed.plan.zones,
             referencePolyline: segment.referencePolyline,
             riderWeightKg: profile.weightKg,
-            attempts: loadCalibrationAttempts(database, segment.segmentId),
+            attempts: loadCalibrationAttempts(database, segment.segmentId, 3, createWeightAt(database)),
           })
         : undefined,
     );

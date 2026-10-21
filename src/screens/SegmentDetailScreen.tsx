@@ -25,6 +25,7 @@ import { computeSegmentElevationStats } from "../segments/computeSegmentElevatio
 import { summarizeCoachPlan } from "../pacing/coachPlan";
 import { loadCalibrationAttempts } from "../pacing/loadCalibrationAttempts";
 import { generateRealisticPlan } from "../pacing/generateRealisticPlan";
+import { createWeightAt } from "../db/profileHistory";
 import { loadPlanHistory, PLAN_HISTORY_EFFORTS } from "../pacing/loadPlanHistory";
 import type { CalibrationAttempt } from "../pacing/predictPlanFinish";
 import { describePlanFeasibility } from "./describePlanFeasibility";
@@ -158,14 +159,15 @@ export function SegmentDetailScreen() {
       setActiveGoal(currentGoal);
       const currentPlan = getActiveSegmentPlan(database, route.params.segmentId);
       setActivePlan(currentPlan);
-      setHistoryAttempts(loadCalibrationAttempts(database, route.params.segmentId, PLAN_HISTORY_EFFORTS));
+      const weightAt = createWeightAt(database);
+      setHistoryAttempts(loadCalibrationAttempts(database, route.params.segmentId, PLAN_HISTORY_EFFORTS, weightAt));
       setPlanPrediction(
         currentPlan !== undefined && currentProfile.weightKg !== undefined
           ? predictPlanFinish({
               zones: currentPlan.zones,
               referencePolyline: currentSegment.referencePolyline,
               riderWeightKg: currentProfile.weightKg,
-              attempts: loadCalibrationAttempts(database, route.params.segmentId),
+              attempts: loadCalibrationAttempts(database, route.params.segmentId, 3, weightAt),
             })
           : undefined,
       );

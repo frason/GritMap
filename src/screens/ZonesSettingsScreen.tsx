@@ -3,6 +3,7 @@ import { ScrollView, StyleSheet, View } from "react-native";
 import { useFocusEffect } from "@react-navigation/native";
 import { useDatabase } from "../db/DatabaseProvider";
 import { getAthleteProfile } from "../db/getAthleteProfile";
+import { addBackdatedWeight, listProfileHistory, removeBackdatedWeight, type ProfileHistoryEntry } from "../db/profileHistory";
 import { setAthleteProfile } from "../db/setAthleteProfile";
 import {
   defaultWeightUnit,
@@ -17,6 +18,8 @@ import { AppText, Button, SegmentedControl, TextField } from "../theme/component
 import { SCREEN_PADDING } from "../theme/layout";
 import { spacing } from "../theme/spacing";
 import { FTP_HELP } from "../onboarding/onboardingCopy";
+import { parsePastDateInput } from "./parsePastDate";
+import { formatRideDate } from "./formatRideStats";
 
 /**
  * "Your Profile": the numbers GritMap uses to build pacing plans, predict finish times and show
@@ -30,6 +33,11 @@ export function ZonesSettingsScreen() {
   const [weightUnit, setWeightUnit] = useState<WeightUnit>(() => defaultWeightUnit(deviceLocale()));
   const [errors, setErrors] = useState<{ ftp?: string; maxHr?: string; weight?: string }>({});
   const [saved, setSaved] = useState(false);
+  // Past weights the rider entered for a date (for example the weight on the day of a personal best).
+  const [pastDateInput, setPastDateInput] = useState("");
+  const [pastWeightInput, setPastWeightInput] = useState("");
+  const [pastError, setPastError] = useState<string | undefined>(undefined);
+  const [pastWeights, setPastWeights] = useState<ProfileHistoryEntry[]>([]);
 
   useFocusEffect(
     useCallback(() => {
@@ -38,10 +46,35 @@ export function ZonesSettingsScreen() {
       setMaxHrInput(profile.maxHeartRateBpm === undefined ? "" : String(profile.maxHeartRateBpm));
       setWeightInput(profile.weightKg === undefined ? "" : kilogramsToDisplay(profile.weightKg, weightUnit));
       setSaved(false);
+      setPastWeights(listProfileHistory(database).filter((entry) => entry.source === "backdated"));
       // The unit is deliberately not a dependency: switching it converts in place (below), not by reloading.
       // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [database]),
   );
+
+  function handleAddPastWeight() {
+    const date = parsePastDateInput(pastDateInput, Date.now());
+    if (!date.ok) {
+      setPastError(date.error);
+      return;
+    }
+    const weight = parseWeightInput(pastWeightInput, weightUnit);
+    if (!weight.ok) {
+      setPastError(weight.error);
+      return;
+    }
+    const nowMs = Date.now();
+    addBackdatedWeight(database, { effectiveFromMs: Math.min(date.value, nowMs), weightKg: weight.value, nowMs });
+    setPastWeights(listProfileHistory(database).filter((entry) => entry.source === "backdated"));
+    setPastDateInput("");
+    setPastWeightInput("");
+    setPastError(undefined);
+  }
+
+  function handleRemovePastWeight(id: number) {
+    removeBackdatedWeight(database, id);
+    setPastWeights(listProfileHistory(database).filter((entry) => entry.source === "backdated"));
+  }
 
   function changeUnit(unit: WeightUnit) {
     if (unit === weightUnit) return;
@@ -140,6 +173,53 @@ export function ZonesSettingsScreen() {
           Saved
         </AppText>
       ) : null}
+
+      <View style={styles.pastGroup}>
+        <AppText variant="headline" accessibilityRole="header">
+          Past weights (optional)
+        </AppText>
+        <AppText variant="subheadline" color="textSecondary">
+          If you weighed something different when you rode a personal best, add it here with the date of the ride. GritMap then judges that ride at the weight you had that day. Your current weight above is not changed.
+        </AppText>
+        {pastWeights.map((entry) => (
+          <View key={entry.id} style={styles.pastRow}>
+            <AppText variant="body" style={styles.pastText}>
+              {`${formatRideDate(entry.effectiveFromMs)}: ${kilogramsToDisplay(entry.weightKg ?? 0, weightUnit)} ${weightUnit}`}
+            </AppText>
+            <Button
+              label="Remove"
+              variant="tertiary"
+              fullWidth={false}
+              accessibilityHint={`Removes the weight you entered for ${formatRideDate(entry.effectiveFromMs)}`}
+              onPress={() => handleRemovePastWeight(entry.id)}
+            />
+          </View>
+        ))}
+        <TextField
+          label="Date of the ride"
+          value={pastDateInput}
+          onChangeText={(text) => {
+            setPastDateInput(text);
+            setPastError(undefined);
+          }}
+          placeholder="e.g. 2025-05-10"
+          hint="Year-month-day."
+          keyboardType="numbers-and-punctuation"
+        />
+        <TextField
+          label="Your weight that day"
+          unit={weightUnit}
+          value={pastWeightInput}
+          onChangeText={(text) => {
+            setPastWeightInput(text);
+            setPastError(undefined);
+          }}
+          placeholder={weightUnit === "lb" ? "e.g. 200" : "e.g. 90"}
+          keyboardType="decimal-pad"
+          {...(pastError === undefined ? {} : { error: pastError })}
+        />
+        <Button label="Add past weight" variant="secondary" onPress={handleAddPastWeight} />
+      </View>
     </ScrollView>
   );
 }
@@ -156,4 +236,7 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.background },
   content: { paddingHorizontal: SCREEN_PADDING, paddingTop: spacing.space16, paddingBottom: spacing.space32, gap: spacing.space20 },
   weightGroup: { gap: spacing.space12 },
+  pastGroup: { gap: spacing.space12 },
+  pastRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: spacing.space12 },
+  pastText: { flex: 1 },
 });
