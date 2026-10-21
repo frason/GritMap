@@ -100,6 +100,12 @@ export function classifyAgainstAnchor(
   return "HOLD";
 }
 
+/** The same zone with a different target power (classification and instruction follow it), e.g. after a ceiling trims it. */
+export function retargetZone(zone: PacingZone, targetPowerWatts: number, anchorPowerWatts: number): PacingZone {
+  const classification = classifyAgainstAnchor(targetPowerWatts, anchorPowerWatts);
+  return { ...zone, targetPowerWatts, classification, instruction: instructionFor(classification, zone.gradePct) };
+}
+
 function instructionFor(classification: PacingClassification, gradePct: number): string {
   const steep = Math.abs(gradePct) >= STEEP_GRADE_PCT;
   const roundedAbs = Math.round(Math.abs(gradePct));
