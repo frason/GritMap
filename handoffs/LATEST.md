@@ -241,6 +241,10 @@ rider-facing "section" strings to match on the Karoo are in
 **Task:** write `docs/PRIVACY.md`, the privacy policy for the TestFlight Privacy Policy URL (an external
 testing gate), with every claim checked against the code, plus the App Store Connect "App Privacy" answers.
 
+# Handoff: staged goal (next + long-term) and goal-time-derived plan power (2026-10-21 11:00 PDT, committed locally, not pushed)
+
+The goal editor now offers "Beat my best of X (Y)" and an optional long-term goal (migration 14, one nullable column); plans, sends and notices use the NEXT goal, the long-term goal only drives a progress line and a one-tap "Set my next goal to ..." note when the next goal is reached; a fresh install sees the single goal as before. The plan's average power is now solved from the goal time with the physics model calibrated on the rider's efforts (power-duration table kept as fallback). The FTP-confirmed flag is gone: an existing profile FTP is always used. Per-effort weight plumbing is in; weight history storage needs a migration (proposed). 730/730 tests, typecheck and web:smoke clean; simulator check on demo data. Details: `handoffs/archive/2026-10-21-1100-claude-staged-goal-physics-anchor.md`.
+
 # Handoff: realistic plan follow-up: evidenced floors, history critical power, PR-relative notice (2026-10-20 22:25 PDT, committed locally, not pushed)
 
 A plan that would be slower than an effort the rider already rode (for a goal at least as ambitious) now never targets below that effort's held power (whole profile by default; late-only gave a plan slower than the PR); past 20 to 90 minute efforts can raise the critical power used by the energy-budget guard; redistribution is forward-only (fixed a flaw that pushed late effort into early zones); the out-of-reach notice waits for a rider-saved FTP, is decided by the predicted finish and is worded against the rider's best. With the real FTP (local only) the realistic plan predicts 41:17 vs a 41:27 PR and W' does not bind. 707/707 tests. Pending: floors scope, staged-goal build, physics-derived anchor. Details: `handoffs/archive/2026-10-20-2225-claude-realistic-plan-floors-history-cp.md`.
