@@ -2,15 +2,16 @@ import type { SegmentReferencePoint } from "../segments/resamplePolyline.ts";
 import { buildTargetPowerZones, type PacingZone } from "./buildTargetPowerZones.ts";
 import type { ActualTrackPoint } from "./computePlanVsActual.ts";
 import { computeAdaptiveZoneGrades } from "./computeZoneGrades.ts";
-import { summarizeZoneHistory } from "./planCeilings.ts";
+import { summarizeEfforts, summarizeZoneHistory, type EffortSummary } from "./planCeilings.ts";
 import { computeAnchorPowerWatts } from "./powerDurationAnchor.ts";
 import { predictFinishTime } from "./predictFinishTime.ts";
+import { predictPlanFinish, type PlanFinishPrediction } from "./predictPlanFinish.ts";
 import { buildRealisticPlan, type RealisticPlanConfig, type RealisticPlanResult } from "./realisticPlan.ts";
 
 /** What the planner may learn from the rider's own past efforts on this segment. */
 export interface PlanHistoryInput {
-  /** Past efforts, each a track re-based to its own start (getAttemptTrack). */
-  attempts: readonly { track: readonly ActualTrackPoint[] }[];
+  /** Past efforts, newest first, each a track re-based to its own start (getAttemptTrack) and, when known, its elapsed time. */
+  attempts: readonly { track: readonly ActualTrackPoint[]; durationMs?: number }[];
   /** Rider weight, used only to estimate how long each zone takes for the energy-budget guard. */
   riderWeightKg?: number;
 }
@@ -24,7 +25,19 @@ export interface GeneratedPlan {
   realistic: RealisticPlanResult;
   /** How many past efforts had usable power in at least one zone. */
   effortsWithPower: number;
+  /**
+   * The past effort whose late-segment power set a floor under the plan, when the plan would otherwise be slower than an
+   * effort the rider has already ridden and the goal is at least as ambitious as it. `zones` counts the floors applied.
+   */
+  referenceEffort?: { durationSeconds: number; zones: number };
+  /** The predicted finish of the final plan (needs the rider's weight and the route's elevation). */
+  finish?: PlanFinishPrediction;
 }
+
+/** An effort counts as faster than the plan only when it beats the plan's predicted finish by at least this much. */
+const REFERENCE_MARGIN_MS = 5_000;
+/** The goal must be at least this close to the effort's time (or faster) for the effort to be "within reach". */
+const REFERENCE_GOAL_TOLERANCE = 1.02;
 
 /**
  * The one place a generated pacing plan is made for display and for sending: the grade-shaped baseline
@@ -51,21 +64,59 @@ export function generateRealisticPlan(input: {
           ...(input.config === undefined ? {} : { config: input.config }),
         });
   const zoneSeconds = estimateZoneSeconds(rawZones, input.referencePolyline, input.goalDurationMs, input.history?.riderWeightKg);
-  const realistic = buildRealisticPlan({
-    zones: rawZones,
-    ftpWatts: input.ftpWatts,
-    anchorPowerWatts,
-    goalDurationMs: input.goalDurationMs,
-    ...(history === undefined ? {} : { history }),
-    ...(zoneSeconds === undefined ? {} : { zoneSeconds }),
-    ...(input.config === undefined ? {} : { config: input.config }),
-  });
+  const efforts =
+    input.history === undefined || input.history.attempts.length === 0
+      ? []
+      : summarizeEfforts({ attempts: input.history.attempts, zones: rawZones, segmentLengthMeters, ...(input.config === undefined ? {} : { config: input.config }) });
+  const build = (evidencedFloorWatts?: readonly (number | null)[]) =>
+    buildRealisticPlan({
+      zones: rawZones,
+      ftpWatts: input.ftpWatts,
+      anchorPowerWatts,
+      goalDurationMs: input.goalDurationMs,
+      ...(history === undefined ? {} : { history }),
+      ...(zoneSeconds === undefined ? {} : { zoneSeconds }),
+      ...(efforts.length === 0 ? {} : { efforts }),
+      ...(evidencedFloorWatts === undefined ? {} : { evidencedFloorWatts }),
+      ...(input.config === undefined ? {} : { config: input.config }),
+    });
+  const predict = (zones: readonly PacingZone[]): PlanFinishPrediction | undefined => {
+    const weight = input.history?.riderWeightKg;
+    if (weight === undefined) return undefined;
+    const attempts = (input.history?.attempts ?? [])
+      .filter((attempt): attempt is { track: readonly ActualTrackPoint[]; durationMs: number } => attempt.durationMs !== undefined)
+      .slice(0, 3);
+    return predictPlanFinish({ zones, referencePolyline: input.referencePolyline, riderWeightKg: weight, attempts });
+  };
+
+  let realistic = build();
+  let finish = predict(realistic.zones);
+
+  // If the plan would be slower than an effort the rider has already ridden, and the goal asks for at least that, the plan
+  // must not ask for less than that effort held late in the segment: evidence beats the energy-budget assumption.
+  const slowerThanPlan = finish?.durationMs ?? input.goalDurationMs;
+  const reference = efforts
+    .filter((effort) => effort.meanWatts !== null && effort.durationSeconds * 1_000 < slowerThanPlan - REFERENCE_MARGIN_MS)
+    .filter((effort) => input.goalDurationMs <= effort.durationSeconds * 1_000 * REFERENCE_GOAL_TOLERANCE)
+    .reduce<EffortSummary | undefined>((fastest, effort) => (fastest === undefined || effort.durationSeconds < fastest.durationSeconds ? effort : fastest), undefined);
+  let referenceEffort: GeneratedPlan["referenceEffort"];
+  if (reference !== undefined) {
+    const withFloors = build(reference.zoneWatts);
+    if (withFloors.floorZoneIndices.length > 0) {
+      realistic = withFloors;
+      finish = predict(realistic.zones);
+      referenceEffort = { durationSeconds: reference.durationSeconds, zones: withFloors.floorZoneIndices.length };
+    }
+  }
+
   return {
     zones: realistic.zones,
     rawZones,
     anchorPowerWatts,
     realistic,
     effortsWithPower: history === undefined ? 0 : Math.max(0, ...history.map((entry) => entry.attemptsWithData)),
+    ...(referenceEffort === undefined ? {} : { referenceEffort }),
+    ...(finish === undefined ? {} : { finish }),
   };
 }
 

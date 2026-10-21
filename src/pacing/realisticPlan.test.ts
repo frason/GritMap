@@ -4,6 +4,7 @@ import { describe, it } from "node:test";
 import { buildTargetPowerZones, classifyAgainstAnchor, type PacingZone } from "./buildTargetPowerZones.ts";
 import { computeAnchorPowerWatts } from "./powerDurationAnchor.ts";
 import type { ZoneHistory } from "./planCeilings.ts";
+import type { EffortSummary } from "./planCeilings.ts";
 import { buildRealisticPlan, DEFAULT_REALISTIC_PLAN_CONFIG, type RealisticPlanConfig, type RealisticPlanResult } from "./realisticPlan.ts";
 
 // Synthetic fixture shaped like a long steady climb with a descent early and steep pitches late.
@@ -27,6 +28,8 @@ function plan(overrides: {
   ftp?: number;
   anchor?: number;
   zoneSeconds?: number[];
+  efforts?: readonly EffortSummary[];
+  evidencedFloorWatts?: readonly (number | null)[];
 } = {}): RealisticPlanResult {
   return buildRealisticPlan({
     zones: overrides.zones ?? RAW,
@@ -35,6 +38,8 @@ function plan(overrides: {
     goalDurationMs: overrides.goalMs ?? GOAL_MS,
     ...(overrides.history === undefined ? {} : { history: overrides.history }),
     ...(overrides.zoneSeconds === undefined ? {} : { zoneSeconds: overrides.zoneSeconds }),
+    ...(overrides.efforts === undefined ? {} : { efforts: overrides.efforts }),
+    ...(overrides.evidencedFloorWatts === undefined ? {} : { evidencedFloorWatts: overrides.evidencedFloorWatts }),
     ...(overrides.config === undefined ? {} : { config: overrides.config }),
   });
 }
@@ -185,5 +190,73 @@ describe("buildRealisticPlan", () => {
     const result = plan({ zones, anchor: shortAnchor, goalMs: 10 * 60_000, config: { wPrimeJoulesPerFtpWatt: 200 } });
     assert.ok(result.achievedMeanWatts > FTP, "still above FTP for a 10-minute effort");
     assert.ok(result.feasible);
+  });
+});
+
+describe("redistribution only moves effort forward", () => {
+  it("never raises a zone that comes before every trimmed zone", () => {
+    // Plenty of room early, one pitch near the end trimmed by its ceiling: the early zones must stay as the raw plan had them.
+    const grades = [3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 8.5, 3, 3];
+    const zones = buildTargetPowerZones(windows(grades), ANCHOR, FTP);
+    const history: ZoneHistory[] = zones.map(() => ({ bestHeldWatts: 300, attemptsWithData: 3 }));
+    history[12] = { bestHeldWatts: 230, attemptsWithData: 3 };
+    const result = plan({ zones, history });
+    assertValid(result, DEFAULT_REALISTIC_PLAN_CONFIG, zones);
+    assert.ok(result.trimmedZoneIndices.includes(12));
+    for (let i = 0; i < 12; i += 1) assert.equal(result.zones[i]!.targetPowerWatts, zones[i]!.targetPowerWatts, `zone ${i} is unchanged`);
+    assert.ok(result.raisedZoneIndices.every((index) => index > 12));
+  });
+});
+
+describe("critical power from history", () => {
+  const effort = (minutes: number, meanWatts: number | null): EffortSummary => ({ durationSeconds: minutes * 60, meanWatts, zoneWatts: RAW.map(() => meanWatts) });
+
+  it("uses FTP when there is no usable effort", () => {
+    assert.equal(plan().assumptions.criticalPowerSource, "ftp");
+    assert.equal(plan({ efforts: [effort(5, 400), effort(200, 300), effort(40, null)] }).assumptions.criticalPowerSource, "ftp");
+  });
+
+  it("lets a 30 to 60 minute effort raise critical power: CP >= average power - W'/duration", () => {
+    const result = plan({ efforts: [effort(45, 275)] });
+    // W' is 20 kJ at 250 W FTP: 275 - 20000/2700 = 267.6
+    assert.equal(result.assumptions.criticalPowerSource, "history");
+    assert.equal(result.assumptions.criticalPowerWatts, 268);
+  });
+
+  it("never lowers critical power below the FTP-based value, and caps the lift", () => {
+    assert.equal(plan({ efforts: [effort(45, 200)] }).assumptions.criticalPowerWatts, 250);
+    assert.equal(plan({ efforts: [effort(45, 600)] }).assumptions.criticalPowerWatts, Math.round(250 * DEFAULT_REALISTIC_PLAN_CONFIG.historyCpMaxFractionOfFtp));
+  });
+
+  it("a higher critical power lets the plan keep more of its late power", () => {
+    const lowCp = plan();
+    const highCp = plan({ efforts: [effort(45, 290)] });
+    assert.ok(highCp.achievedMeanWatts >= lowCp.achievedMeanWatts);
+    assert.ok(highCp.budgetLimitedZoneIndices.length <= lowCp.budgetLimitedZoneIndices.length);
+  });
+});
+
+describe("evidenced floors", () => {
+  it("never plan below the power a past effort held, even where the energy budget would cut it", () => {
+    const tight = { wPrimeJoulesPerFtpWatt: 8 };
+    const floorWatts = RAW.map((_, i) => (i >= 14 ? 262 : null));
+    const without = plan({ config: tight });
+    const withFloor = plan({ config: tight, evidencedFloorWatts: floorWatts });
+    assert.ok(without.zones.slice(14).some((zone) => zone.targetPowerWatts < 262), "the budget alone cuts these zones");
+    assert.ok(withFloor.zones.slice(14).every((zone) => zone.targetPowerWatts >= 262));
+    assert.deepEqual(withFloor.floorZoneIndices.length > 0, true);
+    withFloor.zones.forEach((zone, i) => {
+      if (i > 0) assert.ok(Math.abs(zone.targetPowerWatts - withFloor.zones[i - 1]!.targetPowerWatts) <= DEFAULT_REALISTIC_PLAN_CONFIG.hardMaxStepWatts);
+    });
+  });
+
+  it("ignores null floors and applies only from the configured fraction of the segment", () => {
+    const floors = RAW.map(() => 270);
+    const late = plan({ evidencedFloorWatts: floors, config: { evidencedFloorFromFraction: 0.5 } });
+    assert.ok(late.zones.slice(13).every((zone) => zone.targetPowerWatts >= 270));
+    assert.ok(late.zones.slice(0, 13).some((zone) => zone.targetPowerWatts < 270), "early zones are not floored");
+    const none = plan({ evidencedFloorWatts: RAW.map(() => null) });
+    assert.deepEqual(none.zones.map((zone) => zone.targetPowerWatts), plan().zones.map((zone) => zone.targetPowerWatts));
+    assert.deepEqual(none.floorZoneIndices, []);
   });
 });

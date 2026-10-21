@@ -74,6 +74,10 @@
     "hardMaxStepWatts": 80,
     "easierGradeBias": 0.1,
     "criticalPowerFractionOfFtp": 1,
+    "historyCpMinEffortMinutes": 20,
+    "historyCpMaxEffortMinutes": 90,
+    "historyCpMaxFractionOfFtp": 1.15,
+    "evidencedFloorFromFraction": 0,
     "wPrimeJoulesPerFtpWatt": 80,
     "wPrimeReserveFraction": 0.15,
     "feasibleToleranceFraction": 0.02,
@@ -86,7 +90,8 @@
     "achievedMeanWatts": 249.1,
     "assumptions": {
       "criticalPowerWatts": 250,
-      "wPrimeJoules": 20000
+      "wPrimeJoules": 20000,
+      "criticalPowerSource": "ftp"
     },
     "zones": [
       {
@@ -157,7 +162,7 @@
         "index": 8,
         "gradePct": 5.8,
         "rawTargetPowerWatts": 260,
-        "targetPowerWatts": 265,
+        "targetPowerWatts": 263,
         "ceilingPowerWatts": 265,
         "ceilingSource": "history"
       },
@@ -165,7 +170,7 @@
         "index": 9,
         "gradePct": 5.1,
         "rawTargetPowerWatts": 251,
-        "targetPowerWatts": 260,
+        "targetPowerWatts": 256,
         "ceilingPowerWatts": 260,
         "ceilingSource": "history"
       },
@@ -173,7 +178,7 @@
         "index": 10,
         "gradePct": 4.4,
         "rawTargetPowerWatts": 243,
-        "targetPowerWatts": 253,
+        "targetPowerWatts": 249,
         "ceilingPowerWatts": 253,
         "ceilingSource": "history"
       },
@@ -181,7 +186,7 @@
         "index": 11,
         "gradePct": 7,
         "rawTargetPowerWatts": 275,
-        "targetPowerWatts": 272,
+        "targetPowerWatts": 264,
         "ceilingPowerWatts": 272,
         "ceilingSource": "history"
       },
@@ -189,7 +194,7 @@
         "index": 12,
         "gradePct": 8.5,
         "rawTargetPowerWatts": 294,
-        "targetPowerWatts": 278,
+        "targetPowerWatts": 274,
         "ceilingPowerWatts": 278,
         "ceilingSource": "history"
       },
@@ -253,7 +258,7 @@
         "index": 20,
         "gradePct": 6.5,
         "rawTargetPowerWatts": 269,
-        "targetPowerWatts": 261,
+        "targetPowerWatts": 266,
         "ceilingPowerWatts": 266,
         "ceilingSource": "history"
       },
@@ -261,7 +266,7 @@
         "index": 21,
         "gradePct": 5.8,
         "rawTargetPowerWatts": 260,
-        "targetPowerWatts": 250,
+        "targetPowerWatts": 260,
         "ceilingPowerWatts": 260,
         "ceilingSource": "history"
       },
@@ -269,7 +274,7 @@
         "index": 22,
         "gradePct": 6.8,
         "rawTargetPowerWatts": 273,
-        "targetPowerWatts": 250,
+        "targetPowerWatts": 256,
         "ceilingPowerWatts": 268,
         "ceilingSource": "history"
       },

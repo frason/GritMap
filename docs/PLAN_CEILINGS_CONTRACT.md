@@ -18,12 +18,16 @@ For a generated plan (never for an imported coach/rider plan) the phone starts f
 1. **Ceiling per zone.** Where the rider has held at least 70% of FTP in that zone in a past accepted effort: best average power ever
    held there x 1.04, source `history`. Everywhere else: a fallback that slides from 1.10 x the plan's anchor power (the average the
    goal needs) at the start to 1.04 x at the end, source `fallback`. Always within 0.7 x to 1.5 x FTP.
-2. **Energy budget (primary guard).** W' = 80 J per FTP watt (20 kJ at 250 W) with critical power = FTP, a 15% reserve kept, Skiba's
-   recovery below CP. Zone times come from the physics model, shared out to the goal time. **These are assumptions, not
-   measurements.** Any zone that would spend the budget is cut to what the budget allows.
+2. **Energy budget (primary guard).** W' = 80 J per FTP watt (20 kJ at 250 W), a 15% reserve kept, Skiba's recovery below CP.
+   Critical power starts at FTP and past efforts of 20 to 90 minutes can raise it (an effort of D seconds at average power P implies
+   CP >= P - W'/D), by at most 15% of FTP; it is never lowered below FTP. Zone times come from the physics model, shared out to the
+   goal time. **These are assumptions, not measurements.** Any zone that would spend the budget is cut to what the budget allows.
 3. **Step limit.** Adjacent *climbing* zones (both at least 1.5% grade) differ by at most 20 W; any adjacent zones by at most 80 W
    (the Karoo rejects 100 W: `AiPlanValidator`).
-4. **Redistribution.** Effort trimmed by 1 to 3 moves to the following zones with room, easier grades first, within every limit.
+4. **Redistribution.** Effort trimmed from a zone moves only to the zones AFTER it that have room, easier grades first, within every limit;
+   it never moves backwards, and whatever finds no room is lost (reported as a shortfall).
+4b. **Evidenced floor.** If a past effort is faster than the plan's predicted finish and the goal asks for at least as much as that effort,
+   the plan never targets below the power that effort held in a zone (whole profile by default): evidence beats the W' assumption.
 5. **Infeasible goal.** If the plan still averages less than the goal needs (more than 2% short), the plan is the best achievable one;
    the phone shows the predicted finish and the gap and never raises a target above a ceiling. The sent `targetFinishTimeSeconds` is
    still the rider's goal.

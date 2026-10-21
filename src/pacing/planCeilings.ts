@@ -85,6 +85,41 @@ export function summarizeZoneHistory(input: {
   return summary;
 }
 
+/** One past effort boiled down for planning: how long it took, its average power, and the power it held in each zone. */
+export interface EffortSummary {
+  durationSeconds: number;
+  /** Average power over the effort (W), or null with no usable power. */
+  meanWatts: number | null;
+  /** Average power held in each zone (W); null where the effort has too little power data. */
+  zoneWatts: (number | null)[];
+}
+
+/** Per-effort summaries, in the order given (loadCalibrationAttempts returns newest first). */
+export function summarizeEfforts(input: {
+  attempts: readonly { track: readonly ActualTrackPoint[]; durationMs?: number }[];
+  zones: readonly CeilingZone[];
+  segmentLengthMeters: number;
+  config?: Partial<PlanCeilingConfig>;
+}): EffortSummary[] {
+  const config = { ...DEFAULT_PLAN_CEILING_CONFIG, ...input.config };
+  const zoneLike = input.zones.map((zone) => ({ ...zone, targetPowerWatts: 0 }));
+  const efforts: EffortSummary[] = [];
+  for (const attempt of input.attempts) {
+    if (attempt.track.length < 2) continue;
+    const first = attempt.track[0]!.timestampMs;
+    const last = attempt.track[attempt.track.length - 1]!.timestampMs;
+    const durationSeconds = (attempt.durationMs ?? last - first) / 1_000;
+    if (!(durationSeconds > 0)) continue;
+    const { zones, summary } = computePlanVsActual({ track: attempt.track, zones: zoneLike, segmentLengthMeters: input.segmentLengthMeters });
+    efforts.push({
+      durationSeconds,
+      meanWatts: summary.averageActualWatts,
+      zoneWatts: zones.map((zone) => (zone.actualPowerWatts === null || zone.powerCoverage < config.minPowerCoverage ? null : zone.actualPowerWatts)),
+    });
+  }
+  return efforts;
+}
+
 /**
  * The ceiling for every zone. Where the rider has held at least `minHeldFractionOfFtp` of FTP, it is
  * the best they held plus the margin ("history"). Everywhere else it slides linearly from

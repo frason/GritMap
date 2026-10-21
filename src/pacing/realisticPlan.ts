@@ -2,6 +2,7 @@ import { retargetZone, type PacingZone } from "./buildTargetPowerZones.ts";
 import {
   computeZoneCeilings,
   DEFAULT_PLAN_CEILING_CONFIG,
+  type EffortSummary,
   type PlanCeilingConfig,
   type ZoneCeiling,
   type ZoneHistory,
@@ -29,6 +30,20 @@ export interface RealisticPlanConfig extends PlanCeilingConfig {
   easierGradeBias: number;
   /** Critical power as a fraction of FTP. ASSUMPTION: 1.0, the conservative end (CP is usually a little higher). */
   criticalPowerFractionOfFtp: number;
+  /**
+   * Past efforts may raise critical power above the FTP-based value: an effort of D minutes at average power P
+   * implies CP >= P - W'/D. Only efforts between these durations count (a 30 to 60 minute climb is the useful range).
+   */
+  historyCpMinEffortMinutes: number;
+  historyCpMaxEffortMinutes: number;
+  /** History can lift CP at most this far above FTP (as a fraction of FTP): the evidence is a lower bound, not a measurement. */
+  historyCpMaxFractionOfFtp: number;
+  /**
+   * An evidenced floor applies only from this fraction of the segment onwards. 0 (default) floors the whole profile of the
+   * reference effort, which is what keeps the plan from being slower than that effort: with 0.5 (late half only) the
+   * plan can still be slower, because early power below that effort's hot start costs time the late floors do not win back.
+   */
+  evidencedFloorFromFraction: number;
   /** W' (work above critical power) in joules per watt of FTP. ASSUMPTION: 80, i.e. 20 kJ at 250 W FTP. */
   wPrimeJoulesPerFtpWatt: number;
   /** Share of W' that must stay unspent at every point, so the plan never empties the tank before the finish. */
@@ -46,6 +61,10 @@ export const DEFAULT_REALISTIC_PLAN_CONFIG: RealisticPlanConfig = {
   hardMaxStepWatts: 80,
   easierGradeBias: 0.1,
   criticalPowerFractionOfFtp: 1.0,
+  historyCpMinEffortMinutes: 20,
+  historyCpMaxEffortMinutes: 90,
+  historyCpMaxFractionOfFtp: 1.15,
+  evidencedFloorFromFraction: 0,
   wPrimeJoulesPerFtpWatt: 80,
   wPrimeReserveFraction: 0.15,
   feasibleToleranceFraction: 0.02,
@@ -63,6 +82,14 @@ export interface RealisticPlanInput {
   history?: readonly (ZoneHistory | undefined)[];
   /** Estimated seconds spent in each zone, for the W' guard; defaults to the goal time shared out by distance. */
   zoneSeconds?: readonly number[];
+  /** Past efforts: they may raise the critical power the W' guard uses (see `historyCpMinEffortMinutes`). */
+  efforts?: readonly EffortSummary[];
+  /**
+   * Power a past effort proved the rider can hold in a zone (W), or null: the plan never goes below it in that zone,
+   * even where the W' guard would cut it. Evidence beats the W' assumption. Used when the plan would otherwise be
+   * slower than an effort the rider has already ridden.
+   */
+  evidencedFloorWatts?: readonly (number | null)[];
   config?: Partial<RealisticPlanConfig>;
 }
 
@@ -84,22 +111,33 @@ export interface RealisticPlanResult {
   budgetLimitedZoneIndices: number[];
   /** The lowest W' balance reached along the final plan (J). */
   minWPrimeBalanceJoules: number;
-  /** The assumed critical power (W) and W' (J) that produced it. */
-  assumptions: { criticalPowerWatts: number; wPrimeJoules: number };
+  /** The assumed critical power (W) and W' (J) that produced it, and whether history raised CP above the FTP-based value. */
+  assumptions: { criticalPowerWatts: number; wPrimeJoules: number; criticalPowerSource: "ftp" | "history" };
+  /** Zones where an evidenced floor set the target. */
+  floorZoneIndices: number[];
 }
 
 export function buildRealisticPlan(input: RealisticPlanInput): RealisticPlanResult {
   const config = { ...DEFAULT_REALISTIC_PLAN_CONFIG, ...input.config };
   const raw = input.zones;
   const count = raw.length;
-  const criticalPowerWatts = input.ftpWatts * config.criticalPowerFractionOfFtp;
   const wPrimeJoules = input.ftpWatts * config.wPrimeJoulesPerFtpWatt;
   const reserveJoules = wPrimeJoules * config.wPrimeReserveFraction;
+  const ftpCriticalPower = input.ftpWatts * config.criticalPowerFractionOfFtp;
+  const historyCriticalPower = criticalPowerFromEfforts(input.efforts ?? [], wPrimeJoules, config);
+  const criticalPowerWatts =
+    historyCriticalPower !== undefined && historyCriticalPower > ftpCriticalPower
+      ? Math.min(historyCriticalPower, input.ftpWatts * config.historyCpMaxFractionOfFtp)
+      : ftpCriticalPower;
   const base = {
-    assumptions: { criticalPowerWatts: Math.round(criticalPowerWatts), wPrimeJoules: Math.round(wPrimeJoules) },
+    assumptions: {
+      criticalPowerWatts: Math.round(criticalPowerWatts),
+      wPrimeJoules: Math.round(wPrimeJoules),
+      criticalPowerSource: criticalPowerWatts > ftpCriticalPower ? ("history" as const) : ("ftp" as const),
+    },
   };
   if (count === 0) {
-    return { ...base, zones: [], ceilings: [], requiredMeanWatts: 0, achievedMeanWatts: 0, shortfallWatts: 0, feasible: true, trimmedZoneIndices: [], raisedZoneIndices: [], budgetLimitedZoneIndices: [], minWPrimeBalanceJoules: wPrimeJoules };
+    return { ...base, zones: [], ceilings: [], requiredMeanWatts: 0, achievedMeanWatts: 0, shortfallWatts: 0, feasible: true, trimmedZoneIndices: [], raisedZoneIndices: [], budgetLimitedZoneIndices: [], floorZoneIndices: [], minWPrimeBalanceJoules: wPrimeJoules };
   }
 
   const lengths = raw.map((zone) => zone.endDistanceMeters - zone.startDistanceMeters);
@@ -118,6 +156,13 @@ export function buildRealisticPlan(input: RealisticPlanInput): RealisticPlanResu
       ? [...input.zoneSeconds]
       : lengths.map((length) => (totalLength > 0 ? (input.goalDurationMs / 1000) * (length / totalLength) : 0));
   const minWatts = Math.floor(input.ftpWatts * config.minPctFtp);
+  // Evidenced floors: what a past effort held late in the segment. They never exceed the zone's own hard maximum.
+  const maxWatts = Math.floor(input.ftpWatts * config.maxPctFtp);
+  const floors = raw.map((zone, i) => {
+    const evidence = input.evidencedFloorWatts?.[i];
+    const late = totalLength > 0 && (zone.startDistanceMeters + zone.endDistanceMeters) / 2 >= config.evidencedFloorFromFraction * totalLength;
+    return late && evidence !== undefined && evidence !== null ? Math.min(maxWatts, Math.max(minWatts, Math.floor(evidence))) : 0;
+  });
 
   /** The largest allowed change between zone i and zone i + 1: tight between climbing zones, the hard cap elsewhere. */
   const pairLimit = raw.map((zone, i) =>
@@ -128,7 +173,7 @@ export function buildRealisticPlan(input: RealisticPlanInput): RealisticPlanResu
 
   // Limits start at the ceilings and are tightened wherever the W' guard finds an overspend; the trimmed
   // effort is then redistributed again under the tighter limits, until the plan settles.
-  const limits = ceilings.map((ceiling) => ceiling.ceilingWatts);
+  const limits = ceilings.map((ceiling, i) => Math.max(ceiling.ceilingWatts, floors[i]!));
   const budgetLimited = new Set<number>();
   let changed = false;
   let targets = fill();
@@ -157,12 +202,13 @@ export function buildRealisticPlan(input: RealisticPlanInput): RealisticPlanResu
     trimmedZoneIndices: targets.flatMap((value, i) => (value < rawTargets[i]! ? [i] : [])),
     raisedZoneIndices: targets.flatMap((value, i) => (value > rawTargets[i]! ? [i] : [])),
     budgetLimitedZoneIndices: [...budgetLimited].sort((a, b) => a - b),
+    floorZoneIndices: floors.flatMap((floor, i) => (floor > 0 && targets[i] === floor ? [i] : [])),
     minWPrimeBalanceJoules: balance.minimum,
   };
 
   /** The most power zone `i` can take given the W' left on entering it, ignoring any recovery inside the zone. */
   function allowedAt(balanceBefore: number, i: number): number {
-    return Math.max(minWatts, Math.floor(criticalPowerWatts + (balanceBefore - reserveJoules) / Math.max(seconds[i]!, 1)));
+    return Math.max(minWatts, floors[i]!, Math.floor(criticalPowerWatts + (balanceBefore - reserveJoules) / Math.max(seconds[i]!, 1)));
   }
 
   /** Forward pass: lowers any zone that would spend more W' than is left. With `record`, also tightens that zone's limit. */
@@ -192,19 +238,19 @@ export function buildRealisticPlan(input: RealisticPlanInput): RealisticPlanResu
 
   /** Cap at the limits, smooth the climbing steps, then move the trimmed effort to following zones with room. */
   function fill(): number[] {
-    const t = rawTargets.map((value, i) => Math.min(value, limits[i]!));
+    const t = rawTargets.map((value, i) => Math.max(floors[i]!, Math.min(value, limits[i]!)));
     lowerToStepLimit(t);
     const firstLowered = t.findIndex((value, i) => value < rawTargets[i]!);
     if (firstLowered !== -1) redistribute(t, firstLowered);
-    for (let i = 0; i < count; i += 1) t[i] = Math.min(Math.round(t[i]!), limits[i]!);
+    for (let i = 0; i < count; i += 1) t[i] = Math.max(floors[i]!, Math.min(Math.round(t[i]!), limits[i]!));
     lowerToStepLimit(t);
     return t;
   }
 
   /** Two passes lower peaks until no two adjacent zones differ by more than their step limit. */
   function lowerToStepLimit(t: number[]): void {
-    for (let i = 1; i < count; i += 1) t[i] = Math.min(t[i]!, t[i - 1]! + pairLimit[i - 1]!);
-    for (let i = count - 2; i >= 0; i -= 1) t[i] = Math.min(t[i]!, t[i + 1]! + pairLimit[i]!);
+    for (let i = 1; i < count; i += 1) t[i] = Math.max(floors[i]!, Math.min(t[i]!, t[i - 1]! + pairLimit[i - 1]!));
+    for (let i = count - 2; i >= 0; i -= 1) t[i] = Math.max(floors[i]!, Math.min(t[i]!, t[i + 1]! + pairLimit[i]!));
   }
 
   function roomAt(t: readonly number[], j: number): number {
@@ -214,27 +260,35 @@ export function buildRealisticPlan(input: RealisticPlanInput): RealisticPlanResu
     return Math.max(0, limit - t[j]!);
   }
 
-  /** Hands the energy lost to trimming (watt-metres) to the zones after the first trimmed one, easier grades first. */
-  function redistribute(t: number[], firstLowered: number): void {
-    let remaining = requiredEnergy - weightedSum(t, lengths);
+  /**
+   * Hands the energy lost to trimming (watt-metres) to the zones AFTER the zone it was trimmed from, easier grades first,
+   * within every limit. Each trimmed zone is handled in order, so effort never moves backwards (early in the segment);
+   * whatever finds no room is lost, and the plan reports the shortfall.
+   */
+  function redistribute(t: number[], _firstLowered: number): void {
+    const lowered = rawTargets.flatMap((value, k) => (t[k]! < value ? [k] : []));
+    const lost = new Map<number, number>(lowered.map((k) => [k, (rawTargets[k]! - t[k]!) * lengths[k]!]));
     const tolerance = totalLength * 0.05;
-    for (let pass = 0; pass < 200 && remaining > tolerance; pass += 1) {
-      const weights: number[] = [];
-      let totalWeight = 0;
-      for (let j = 0; j < count; j += 1) {
-        const room = j > firstLowered ? roomAt(t, j) : 0;
-        const weight = room / (1 + Math.max(0, raw[j]!.gradePct) * config.easierGradeBias);
-        weights.push(weight);
-        totalWeight += weight;
-      }
-      if (totalWeight <= 1e-9) return;
-      const budget = remaining;
-      for (let j = firstLowered + 1; j < count; j += 1) {
-        if (weights[j]! <= 0) continue;
-        const raise = Math.min(roomAt(t, j), (budget * (weights[j]! / totalWeight)) / lengths[j]!);
-        if (raise <= 0) continue;
-        t[j] = t[j]! + raise;
-        remaining -= raise * lengths[j]!;
+    for (const k of lowered) {
+      let remaining = lost.get(k)!;
+      for (let pass = 0; pass < 200 && remaining > tolerance; pass += 1) {
+        const weights: number[] = [];
+        let totalWeight = 0;
+        for (let j = 0; j < count; j += 1) {
+          const room = j > k ? roomAt(t, j) : 0;
+          const weight = room / (1 + Math.max(0, raw[j]!.gradePct) * config.easierGradeBias);
+          weights.push(weight);
+          totalWeight += weight;
+        }
+        if (totalWeight <= 1e-9) break;
+        const budget = remaining;
+        for (let j = k + 1; j < count; j += 1) {
+          if (weights[j]! <= 0) continue;
+          const raise = Math.min(roomAt(t, j), (budget * (weights[j]! / totalWeight)) / lengths[j]!);
+          if (raise <= 0) continue;
+          t[j] = t[j]! + raise;
+          remaining -= raise * lengths[j]!;
+        }
       }
     }
   }
@@ -265,6 +319,22 @@ export function buildRealisticPlan(input: RealisticPlanInput): RealisticPlanResu
     }
     return { minimum };
   }
+}
+
+/**
+ * Critical power implied by past efforts: an effort of D seconds at average power P could not have been above
+ * CP + W'/D, so CP >= P - W'/D. The highest such bound among efforts of a useful length, or undefined.
+ */
+function criticalPowerFromEfforts(efforts: readonly EffortSummary[], wPrimeJoules: number, config: RealisticPlanConfig): number | undefined {
+  let best: number | undefined;
+  for (const effort of efforts) {
+    if (effort.meanWatts === null) continue;
+    const minutes = effort.durationSeconds / 60;
+    if (minutes < config.historyCpMinEffortMinutes || minutes > config.historyCpMaxEffortMinutes) continue;
+    const bound = effort.meanWatts - wPrimeJoules / effort.durationSeconds;
+    if (best === undefined || bound > best) best = bound;
+  }
+  return best;
 }
 
 function weightedSum(values: readonly number[], weights: readonly number[]): number {

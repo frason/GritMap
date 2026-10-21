@@ -3,6 +3,9 @@ import { describe, it } from "node:test";
 
 import { generateRealisticPlan } from "./generateRealisticPlan.ts";
 import { buildBaselinePacingPlan } from "./buildBaselinePacingPlan.ts";
+import { buildTargetPowerZones } from "./buildTargetPowerZones.ts";
+import { computeAdaptiveZoneGrades } from "./computeZoneGrades.ts";
+import { predictFinishTime } from "./predictFinishTime.ts";
 
 // A synthetic 6 km climb: steady, with a steep pitch in the second half. No real ride data.
 const POLYLINE = (() => {
@@ -48,5 +51,38 @@ describe("generateRealisticPlan", () => {
     const wire: any = buildBaselinePacingPlan({ id: "x", segmentFingerprint: "f", referencePolyline: POLYLINE, ftpWatts: 250, targetDurationMs: 30 * 60_000, createdAtMs: 0 });
     const plan = generateRealisticPlan({ referencePolyline: POLYLINE, ftpWatts: 250, goalDurationMs: 30 * 60_000 });
     assert.deepEqual(wire.zones.map((zone: any) => zone.targetPowerWatts), plan.rawZones.map((zone) => zone.targetPowerWatts));
+  });
+});
+
+describe("an effort the rider has already ridden sets a floor under the plan", () => {
+  const WEIGHT = 70;
+  // An effort at a steady 285 W, with the finish time the model gives for it (calibration factor 1), so the history is self-consistent.
+  const zones285 = buildTargetPowerZones(computeAdaptiveZoneGrades(POLYLINE), 285, 250).map((zone) => ({ ...zone, targetPowerWatts: 285 }));
+  const effortMs = predictFinishTime(zones285, POLYLINE, { riderWeightKg: WEIGHT })!.durationMs;
+  const effort = { track: trackAt(285), durationMs: effortMs };
+
+  it("never plans below that effort when the goal asks for at least as much", () => {
+    const plan = generateRealisticPlan({ referencePolyline: POLYLINE, ftpWatts: 250, goalDurationMs: effortMs, history: { attempts: [effort], riderWeightKg: WEIGHT } });
+    assert.ok(plan.referenceEffort !== undefined, "the effort is within reach and faster than the plan's own prediction");
+    assert.equal(plan.referenceEffort!.durationSeconds, effortMs / 1000);
+    assert.ok(plan.zones.every((zone) => zone.targetPowerWatts >= 285), "every zone is at least what the effort held");
+    assert.ok(plan.finish !== undefined && plan.finish.durationMs <= effortMs * 1.01, "so the plan is not slower than the effort");
+  });
+
+  it("does not apply when the goal is much slower than the effort", () => {
+    const plan = generateRealisticPlan({ referencePolyline: POLYLINE, ftpWatts: 250, goalDurationMs: effortMs * 1.5, history: { attempts: [effort], riderWeightKg: WEIGHT } });
+    assert.equal(plan.referenceEffort, undefined);
+  });
+
+  it("does not apply without any effort", () => {
+    const plan = generateRealisticPlan({ referencePolyline: POLYLINE, ftpWatts: 250, goalDurationMs: effortMs, history: { attempts: [], riderWeightKg: WEIGHT } });
+    assert.equal(plan.referenceEffort, undefined);
+  });
+
+  it("reports the predicted finish of the final plan when the weight is known, and none otherwise", () => {
+    const withWeight = generateRealisticPlan({ referencePolyline: POLYLINE, ftpWatts: 250, goalDurationMs: 25 * 60_000, history: { attempts: [], riderWeightKg: WEIGHT } });
+    assert.ok(withWeight.finish !== undefined);
+    const without = generateRealisticPlan({ referencePolyline: POLYLINE, ftpWatts: 250, goalDurationMs: 25 * 60_000, history: { attempts: [] } });
+    assert.equal(without.finish, undefined);
   });
 });

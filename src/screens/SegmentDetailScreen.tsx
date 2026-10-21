@@ -27,6 +27,7 @@ import { loadCalibrationAttempts } from "../pacing/loadCalibrationAttempts";
 import { generateRealisticPlan } from "../pacing/generateRealisticPlan";
 import { loadPlanHistory, PLAN_HISTORY_EFFORTS } from "../pacing/loadPlanHistory";
 import type { CalibrationAttempt } from "../pacing/predictPlanFinish";
+import { isFtpConfirmed } from "../db/ftpConfirmation";
 import { describePlanFeasibility } from "./describePlanFeasibility";
 import { predictPlanFinish, type PlanFinishPrediction } from "../pacing/predictPlanFinish";
 import { PredictedFinish } from "./PredictedFinish";
@@ -113,6 +114,7 @@ export function SegmentDetailScreen() {
   const [planPrediction, setPlanPrediction] = useState<PlanFinishPrediction | undefined>(undefined);
   // The rider's past efforts on this segment, newest first: ceilings for the generated plan (realisticPlan.ts).
   const [historyAttempts, setHistoryAttempts] = useState<CalibrationAttempt[]>([]);
+  const [ftpConfirmed, setFtpConfirmed] = useState(false);
   const [otherGoalSegmentName, setOtherGoalSegmentName] = useState<string | undefined>(undefined);
   const [analyzeEffortSummary, setAnalyzeEffortSummary] = useState<AnalyzeEffortSummary | undefined>(undefined);
   const [goalMinutesInput, setGoalMinutesInput] = useState("");
@@ -154,6 +156,7 @@ export function SegmentDetailScreen() {
       const currentPlan = getActiveSegmentPlan(database, route.params.segmentId);
       setActivePlan(currentPlan);
       setHistoryAttempts(loadCalibrationAttempts(database, route.params.segmentId, PLAN_HISTORY_EFFORTS));
+      setFtpConfirmed(isFtpConfirmed(database));
       setPlanPrediction(
         currentPlan !== undefined && currentProfile.weightKg !== undefined
           ? predictPlanFinish({
@@ -458,21 +461,17 @@ export function SegmentDetailScreen() {
     const anchorPowerWatts = generated.anchorPowerWatts;
     pacingZones = generated.zones;
     const pctFtp = Math.round((anchorPowerWatts / ftpWatts) * 100);
-    // Say what the best plan finishes in when that is well over the goal (the rider's weight is needed for a time).
-    const bestPrediction =
-      athleteProfile.weightKg !== undefined
-        ? predictPlanFinish({
-            zones: generated.zones,
-            referencePolyline: segment.referencePolyline,
-            riderWeightKg: athleteProfile.weightKg,
-            attempts: historyAttempts.slice(0, 3),
-          })
-        : undefined;
-    const feasibility = describePlanFeasibility({
-      realistic: generated.realistic,
-      goalDurationMs: activeGoal.targetDurationMs,
-      ...(bestPrediction === undefined ? {} : { predictedFinishMs: bestPrediction.durationMs }),
-    });
+    // The "out of reach" wording appears only once the rider has confirmed their own FTP in the profile (a placeholder FTP would
+    // make it wrong), and uses the plan's predicted finish when the rider's weight is known. It is worded against their best effort.
+    const fastestEffortMs = historyAttempts.length === 0 ? undefined : Math.min(...historyAttempts.map((attempt) => attempt.durationMs));
+    const feasibility = ftpConfirmed
+      ? describePlanFeasibility({
+          realistic: generated.realistic,
+          goalDurationMs: activeGoal.targetDurationMs,
+          ...(generated.finish === undefined ? {} : { predictedFinishMs: generated.finish.durationMs }),
+          ...(fastestEffortMs === undefined ? {} : { bestEffortMs: fastestEffortMs }),
+        })
+      : undefined;
 
     pacingPlanBody = (
       <Card>
