@@ -241,6 +241,10 @@ rider-facing "section" strings to match on the Karoo are in
 **Task:** write `docs/PRIVACY.md`, the privacy policy for the TestFlight Privacy Policy URL (an external
 testing gate), with every claim checked against the code, plus the App Store Connect "App Privacy" answers.
 
+# Handoff: realistic quarter-mile targets, phone side done (Steps 1 to 3; committed locally, not pushed) (2026-10-20 19:45 PDT)
+
+Generated plans now respect per-quarter-mile ceilings (best power held +4%, else a fallback), an energy-budget (W') guard, a 20 W climbing-step limit and an 80 W hard cap, with trimmed effort moved to later easier sections; the segment screen says when a goal looks out of reach ("best plan finishes about X, Y slower"). One generator feeds the segment screen, the Wi-Fi send and the Bluetooth send; imported plans are never rewritten; **nothing about ceilings is on the wire** (draft `docs/PLAN_CEILINGS_CONTRACT.md` + synthetic fixture for Codex). Step 1 on the only two real Diablo attempts available (45:19, 45:45): 10 of 26 quarter-miles planned above anything held (worst +21 W at qm19); calibrated, even the raw plan predicts 45:06 vs a 40:00 goal. FTP 250/goal 40:00 are assumed; the 41:40 PR ride is not in `fixtures/fit`. 691/691 tests, typecheck clean. Details: `handoffs/archive/2026-10-20-1945-claude-realistic-plan-steps-1-3.md`.
+
 # Handoff: build every GritMap screen as editable Figma frames (task for a fresh session) (2026-10-20 14:40 PDT)
 
 Jason wants to redesign the app and cut unnecessary screens, with every screen placed in Figma (file `cyaMDDfLBKFc4NNK1SUUnb`, GritMap-Screens). The previous session had no Figma tools because Figma was authorized after it started, so nothing is built yet. A new session in this project should read `docs/GOALS.md`, load the `figma-use` skill, and build the 17 routed screens plus onboarding and the duplicate modal as editable frames with tokens from `src/theme`, using simulator screenshots for maps. No phone-app or Karoo change. Details and the full screen/file table: `handoffs/archive/2026-10-20-1440-claude-figma-screens-handoff.md`.
