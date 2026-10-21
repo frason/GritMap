@@ -2,8 +2,9 @@ import type { RealisticPlanResult } from "../pacing/realisticPlan.ts";
 import { formatDurationMinutesSeconds } from "./formatRideStats.ts";
 import { formatTimeDelta } from "./formatTimeDelta.ts";
 
-/** A gap this small is not worth telling the rider about. */
+/** A gap this small is not worth telling the rider about: 15 s or 2% of the goal, whichever is larger. */
 const NEGLIGIBLE_GAP_MS = 15_000;
+const NEGLIGIBLE_GAP_FRACTION = 0.02;
 
 export interface PlanFeasibilityLines {
   tone: "info" | "warning";
@@ -24,8 +25,11 @@ export function describePlanFeasibility(input: {
 }): PlanFeasibilityLines | undefined {
   const { realistic, goalDurationMs, predictedFinishMs } = input;
   const goal = formatDurationMinutesSeconds(goalDurationMs);
-  if (!realistic.feasible) {
-    const gapMs = predictedFinishMs === undefined ? undefined : predictedFinishMs - goalDurationMs;
+  const gapMs = predictedFinishMs === undefined ? undefined : predictedFinishMs - goalDurationMs;
+  const negligibleMs = Math.max(NEGLIGIBLE_GAP_MS, goalDurationMs * NEGLIGIBLE_GAP_FRACTION);
+  // The power can add up and the goal still be out of reach: the time the plan produces for this rider is what counts.
+  const tooSlow = gapMs !== undefined && gapMs > negligibleMs;
+  if (!realistic.feasible || tooSlow) {
     const best =
       predictedFinishMs !== undefined && gapMs !== undefined && gapMs > NEGLIGIBLE_GAP_MS
         ? `The best plan GritMap can build finishes in about ${formatDurationMinutesSeconds(predictedFinishMs)}, ${formatTimeDelta(gapMs).slice(1)} slower than your goal.`

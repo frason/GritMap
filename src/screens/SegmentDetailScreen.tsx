@@ -458,9 +458,9 @@ export function SegmentDetailScreen() {
     const anchorPowerWatts = generated.anchorPowerWatts;
     pacingZones = generated.zones;
     const pctFtp = Math.round((anchorPowerWatts / ftpWatts) * 100);
-    // When the goal is out of reach, say what the best plan finishes in (the rider's weight is needed for a time).
+    // Say what the best plan finishes in when that is well over the goal (the rider's weight is needed for a time).
     const bestPrediction =
-      !generated.realistic.feasible && athleteProfile.weightKg !== undefined
+      athleteProfile.weightKg !== undefined
         ? predictPlanFinish({
             zones: generated.zones,
             referencePolyline: segment.referencePolyline,

@@ -31,6 +31,16 @@ describe("describePlanFeasibility", () => {
     assert.match(lines.detail, /never asks for more power than you have held/);
   });
 
+  it("says the goal is out of reach when the power adds up but the predicted time is well over the goal", () => {
+    const lines = describePlanFeasibility({ realistic: { ...base, feasible: true }, goalDurationMs: 2_400_000, predictedFinishMs: 2_706_000 })!;
+    assert.equal(lines.tone, "warning");
+    assert.match(lines.detail, /about 45:06, 5:06 slower than your goal/);
+  });
+
+  it("stays quiet when the predicted time is within 2% of the goal", () => {
+    assert.equal(describePlanFeasibility({ realistic: { ...base, feasible: true }, goalDurationMs: 2_400_000, predictedFinishMs: 2_440_000 }), undefined);
+  });
+
   it("falls back to watts when no finish time can be predicted", () => {
     const lines = describePlanFeasibility({ realistic: { ...base, achievedMeanWatts: 244.4, feasible: false }, goalDurationMs: 2_400_000 })!;
     assert.match(lines.detail, /averages about 244 W, and your goal needs about 253 W/);
