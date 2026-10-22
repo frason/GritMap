@@ -10,6 +10,8 @@ import com.gritmap.karoo.domain.RiderHistoryPackage
 import com.gritmap.karoo.domain.SegmentDefinition
 import com.gritmap.karoo.pacing.PacingPlan
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonArray
+import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.intOrNull
 import kotlinx.serialization.json.jsonObject
@@ -33,6 +35,7 @@ data class ImportedBaselinePlan(
     val ftpWatts: Int,
     val targetFinishTimeSeconds: Int?,
     val plan: PacingPlan,
+    val replanMetadata: ReplanMetadata? = null,
 )
 
 data class TransferImportResult(
@@ -84,7 +87,7 @@ class TransferPackageParser(
     private fun parseBaseline(value: JsonObject): ImportedBaselinePlan {
         val allowed = setOf(
             "schemaVersion", "id", "segmentFingerprint", "createdAtMs", "generator",
-            "ftpWatts", "targetFinishTimeSeconds", "zones",
+            "ftpWatts", "targetFinishTimeSeconds", "zones", "replan",
         )
         if (!value.keys.all(allowed::contains)) fail("Unknown baseline-plan property")
         if (value.requiredInt("schemaVersion") != 1) fail("Unsupported baseline plan schemaVersion")
@@ -111,7 +114,9 @@ class TransferPackageParser(
         val planJson = JsonObject(
             mapOf(
                 "schemaVersion" to requireNotNull(value["schemaVersion"]),
-                "zones" to (value["zones"] ?: fail("missing zones")),
+                "zones" to JsonArray((value["zones"] ?: fail("missing zones")).jsonArray.map {
+                    JsonObject(it.jsonObject.filterKeys { key -> key != "ceilingPowerWatts" })
+                }),
             ),
         ).toString()
         val plan = try {
@@ -123,8 +128,10 @@ class TransferPackageParser(
         planValidator.validate(plan, segmentLength, ftp).getOrElse {
             fail("Unsafe baseline plan: ${it.message}")
         }
+        val metadata = try { ReplanMetadata.fromWire(value, plan.zones.map { it.targetPowerWatts }, ftp) }
+            catch (error: Exception) { fail("Invalid replan metadata: ${error.message}") }
         return ImportedBaselinePlan(
-            id, fingerprint, createdAtMs, source, modelVersion, ftp, target, plan,
+            id, fingerprint, createdAtMs, source, modelVersion, ftp, target, plan, metadata,
         )
     }
 
@@ -178,6 +185,7 @@ class TransferPackageRepository(
                         ftpWatts = plan.ftpWatts,
                         targetFinishTimeSeconds = plan.targetFinishTimeSeconds,
                         isBaseline = true,
+                        replanMetadataJson = plan.replanMetadata?.encode(),
                     ),
                     plan.plan.zones.map {
                         PacingZoneEntity(

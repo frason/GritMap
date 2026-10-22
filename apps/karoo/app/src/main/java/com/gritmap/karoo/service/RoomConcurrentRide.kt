@@ -32,6 +32,7 @@ internal class RoomConcurrentDiscovery(
                 ftp, plan?.id, plan?.targetFinishTimeSeconds,
                 zones.map { PacingZone(it.startDistanceMeters, it.endDistanceMeters, it.targetPowerWatts, Effort.valueOf(it.classification.uppercase())) },
                 zones.map { Recommendation(it.targetPowerWatts, it.instruction, GuidanceIcon.valueOf(it.icon.uppercase())) },
+                com.gritmap.karoo.importing.ReplanMetadata.decode(plan?.replanMetadataJson, zones.map { it.targetPowerWatts }, plan?.ftpWatts),
             )
         }
     }

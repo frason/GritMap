@@ -32,7 +32,7 @@ class SegmentPerformanceBitmapRenderer(
         text(canvas, performanceDistance(state), w - margin, h * 0.042f, w * 0.050f, palette.secondaryText, Paint.Align.RIGHT)
 
         val plan = state.plannedFinishSeconds
-        val predicted = state.predictedFinishSeconds
+        val predicted = state.replanEstimate?.estimatedFinishSeconds?.toInt() ?: state.predictedFinishSeconds
         val timeBank = if (plan != null && predicted != null) plan - predicted else null
         val improving = timeBank != null && timeBank >= 0
         val bannerTop = h * 0.075f
@@ -40,10 +40,11 @@ class SegmentPerformanceBitmapRenderer(
         canvas.drawRoundRect(margin, bannerTop, w - margin, bannerBottom, 18f, 18f, Paint(Paint.ANTI_ALIAS_FLAG).apply {
             color = if (improving) Color.rgb(38, 135, 232) else Color.rgb(231, 91, 64)
         })
-        centered(canvas, "${actionLabel(state.recommendation?.icon)} • ${resultHeadline(timeBank)}", w / 2f, (bannerTop + bannerBottom) / 2f, w * 0.068f, Color.WHITE)
+        centered(canvas, if (state.replanEstimate?.constraintConflict == true) "REPLAN LIMITED" else "${actionLabel(state.recommendation?.icon)} • ${resultHeadline(timeBank)}", w / 2f, (bannerTop + bannerBottom) / 2f, w * 0.068f, Color.WHITE)
 
         val resultColor = if (improving) Color.rgb(32, 190, 105) else Color.rgb(239, 91, 69)
-        centered(canvas, predicted?.let(::clock) ?: "--:--", w / 2f, h * 0.235f, w * 0.120f, palette.primaryText)
+        centered(canvas, state.replanEstimate?.let { "EST ${clock(it.estimatedFinishSeconds.toInt())}" }
+            ?: predicted?.let(::clock) ?: "--:--", w / 2f, h * 0.235f, w * (if (state.replanEstimate == null) 0.120f else 0.095f), palette.primaryText)
         centered(canvas, "GOAL ${plan?.let(::clock) ?: "--:--"}  •  ${resultHeadline(timeBank)}", w / 2f, h * 0.300f, w * 0.044f, resultColor)
 
         drawTimeBank(canvas, timeBank, w, h * 0.365f)
@@ -231,21 +232,22 @@ class SegmentPerformanceBitmapRenderer(
             return bitmap
         }
         val plan = state.plannedFinishSeconds
-        val predicted = state.predictedFinishSeconds
+        val predicted = state.replanEstimate?.estimatedFinishSeconds?.toInt() ?: state.predictedFinishSeconds
         val bank = if (plan != null && predicted != null) plan - predicted else null
         val color = if ((bank ?: 0) >= 0) Color.rgb(32, 190, 105) else Color.rgb(239, 91, 69)
 
         if (!showSupportingMetrics || h < 150f) {
             text(canvas, if (state.headlineAttemptId != null) state.segmentName.take(20) else "GM PERFORMANCE", margin, h * 0.20f, min(w * 0.075f, h * 0.19f), palette.secondaryText, Paint.Align.LEFT)
             text(canvas, predicted?.let(::clock) ?: "--:--", margin, h * 0.52f, min(w * 0.14f, h * 0.34f), palette.primaryText, Paint.Align.LEFT)
-            val label = "EXPECTED • ${resultHeadline(bank)}"
+            val label = if (state.replanEstimate?.constraintConflict == true) "REPLAN LIMITED" else
+                "${if (state.replanEstimate != null) "ESTIMATE" else "EXPECTED"} • ${resultHeadline(bank)}"
             text(canvas, label, margin, h * 0.79f, min(w * 0.065f, h * 0.17f), palette.secondaryText, Paint.Align.LEFT)
             drawCompactBank(canvas, bank, w * 0.72f, w * 0.94f, h * 0.51f, h)
         } else {
             text(canvas, state.segmentName.ifBlank { "GM PERFORMANCE" }, margin, h * 0.11f, min(w * 0.057f, h * 0.13f), palette.primaryText, Paint.Align.LEFT)
             text(canvas, performanceDistance(state), w - margin, h * 0.11f, min(w * 0.047f, h * 0.11f), palette.secondaryText, Paint.Align.RIGHT)
             centered(canvas, predicted?.let(::clock) ?: "--:--", w / 2f, h * 0.35f, min(w * 0.13f, h * 0.25f), palette.primaryText)
-            centered(canvas, "EXPECTED • GOAL ${plan?.let(::clock) ?: "--:--"} • ${resultHeadline(bank)}", w / 2f, h * 0.55f, min(w * 0.048f, h * 0.095f), color)
+            centered(canvas, "${if (state.replanEstimate?.constraintConflict == true) "REPLAN LIMITED" else if (state.replanEstimate != null) "ESTIMATE" else "EXPECTED"} • GOAL ${plan?.let(::clock) ?: "--:--"} • ${resultHeadline(bank)}", w / 2f, h * 0.55f, min(w * 0.048f, h * 0.095f), color)
             drawCompactBank(canvas, bank, margin, w - margin, h * 0.74f, h)
         }
         drawSecondarySegments(canvas, state, w, h)

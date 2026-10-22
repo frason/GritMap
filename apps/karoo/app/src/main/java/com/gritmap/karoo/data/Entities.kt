@@ -53,6 +53,7 @@ data class PacingPlanEntity(
     val ftpWatts: Int? = null,
     val targetFinishTimeSeconds: Int? = null,
     @ColumnInfo(defaultValue = "0") val isBaseline: Boolean = false,
+    val replanMetadataJson: String? = null,
 )
 
 @Entity(tableName = "pacing_zones", foreignKeys = [ForeignKey(

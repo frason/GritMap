@@ -32,6 +32,9 @@ android {
             providers.gradleProperty("gritmapDirectBleV2").orNull ?: "false",
         )
 
+        buildConfigField("boolean", "LIVE_REPLANNER_ENABLED",
+            providers.gradleProperty("gritmapLiveReplanner").orNull ?: "false")
+
         buildConfigField("boolean", "CONCURRENT_SEGMENTS_ENABLED",
             providers.gradleProperty("gritmapConcurrentSegments").orNull ?: "false")
 

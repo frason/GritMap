@@ -93,6 +93,19 @@ class SegmentPerformanceBitmapRendererTest {
         writePreview("medium-wide.png", mediumWide)
     }
 
+    @Test fun `replan estimates and limited adjustment have readable dashboard compositions`() {
+        val renderer = SegmentPerformanceBitmapRenderer()
+        val result = com.gritmap.karoo.pacing.ReplanResult(listOf(250,250,250,270),802.58,true,2.58,true)
+        val state = KarooPreviewState.copy(plannedFinishSeconds=800,predictedFinishSeconds=820,replanEstimate=result)
+        for ((name, image) in listOf(
+            "estimate" to renderer.renderDashboard(state,480,624),
+            "limited" to renderer.renderDashboard(state.copy(replanEstimate=result.copy(constraintConflict=true,goalReachable=false)),480,624),
+            "compact" to renderer.renderCompactDashboard(state,480,160,true))) {
+            FileOutputStream(File("/tmp/gritmap-replan-$name.png")).use { image.compress(android.graphics.Bitmap.CompressFormat.PNG,100,it) }
+            assertEquals(480,image.width)
+        }
+    }
+
     private fun writePreview(name: String, bitmap: android.graphics.Bitmap) {
         val preview = File("build/reports/segment-performance-preview/$name")
         requireNotNull(preview.parentFile).mkdirs()

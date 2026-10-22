@@ -23,9 +23,10 @@ internal class SectionWorkTracker {
         if (end < start || dt <= 0.0) return snapshot()
         val p0 = last.first.powerWatts?.takeIf { last.second.sensorStatus.power && it.isFinite() && it >= 0 }
         val p1 = sample.powerWatts?.takeIf { state.sensorStatus.power && it.isFinite() && it >= 0 }
-        // A changed plan boundary/target must not silently mix incompatible work histories.
+        // Boundary changes invalidate history; future-target-only replanning preserves recorded work.
         val zones = last.second.pacingZones
-        if (zones != state.pacingZones) { work.clear(); return snapshot() }
+        if (zones.map { it.startDistanceMeters to it.endDistanceMeters } !=
+            state.pacingZones.map { it.startDistanceMeters to it.endDistanceMeters }) { work.clear(); return snapshot() }
         zones.forEach { zone ->
             val fractions = if (end > start) {
                 val a = ((zone.startDistanceMeters - start) / (end - start)).coerceIn(0.0, 1.0)
@@ -36,7 +37,19 @@ internal class SectionWorkTracker {
             val value = work.getOrPut(zone.startDistanceMeters) { Work(budget = budget(zone, last.second)) }
             val (a, b) = fractions
             val seconds = dt * (b - a)
-            value.planned += zone.targetPowerWatts * seconds
+            val nextZone = state.pacingZones.first { it.startDistanceMeters == zone.startDistanceMeters }
+            // A newly entered section uses its new target; a mid-section change takes effect now.
+            val intervalTarget = if (zone.startDistanceMeters >= start) nextZone.targetPowerWatts else zone.targetPowerWatts
+            value.planned += intervalTarget * seconds
+            if (nextZone.targetPowerWatts != zone.targetPowerWatts) {
+                val remaining = (zone.endDistanceMeters - maxOf(end, zone.startDistanceMeters)).coerceAtLeast(0.0)
+                val planSeconds = state.plannedFinishSeconds
+                if (planSeconds != null && state.totalDistanceMeters > 0) {
+                    val correctionDistance = if (zone.startDistanceMeters >= start) zone.endDistanceMeters - zone.startDistanceMeters else remaining
+                    value.budget = value.budget?.plus((nextZone.targetPowerWatts - zone.targetPowerWatts) *
+                        planSeconds * correctionDistance / state.totalDistanceMeters)
+                }
+            }
             if (dt > 5.0 || p0 == null || p1 == null) value.complete = false else {
                 val first = p0 + (p1 - p0) * a
                 val lastPower = p0 + (p1 - p0) * b

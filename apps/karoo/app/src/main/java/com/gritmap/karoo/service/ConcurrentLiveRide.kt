@@ -16,6 +16,7 @@ internal data class ConcurrentRideSegment(
     val targetSeconds: Int? = null,
     val zones: List<PacingZone> = emptyList(),
     val instructions: List<Recommendation> = emptyList(),
+    val replanMetadata: com.gritmap.karoo.importing.ReplanMetadata? = null,
 )
 
 /** Immutable macro-event payload: never enqueue a mutable ActiveAttemptSession. */
@@ -204,6 +205,8 @@ internal class ConcurrentLiveRide(
         val zoneIndex = meta.zones.indexOfFirst { progress >= it.startDistanceMeters && progress <= it.endDistanceMeters }
         return LiveUiState(segmentName = meta.definition.name, progressMeters = progress,
             totalDistanceMeters = points.last().distanceMeters, plannedFinishSeconds = meta.targetSeconds,
+            replanMetadata = meta.replanMetadata,
+            hasCompleteElevationProfile = points.all { it.elevationMeters?.isFinite() == true },
             pacingZones = meta.zones, recommendation = meta.instructions.getOrNull(zoneIndex), sensorStatus = sensors,
             elevationProfile = points.map { ElevationSample(it.distanceMeters, it.elevationMeters ?: 0.0) },
             routeProfile = points.map { RouteSample(it.distanceMeters, it.lat, it.lng) }, matchStatus = MatchStatus.ACTIVE)

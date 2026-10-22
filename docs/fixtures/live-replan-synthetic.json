@@ -1,0 +1,14 @@
+{
+  "description": "Invented four-section climb; first section held 230 W against 250 W. Normalized climbing response, not a personal ride or a physics-calibrated forecast.",
+  "sectionLengthMeters": 402.336,
+  "goalSeconds": 800,
+  "targets": [250, 250, 250, 250],
+  "ceilings": [270, 270, 270, 270],
+  "gradesPct": [8, 7, 3, 2],
+  "replan": {"schemaVersion": 1, "criticalPowerWatts": 250, "wPrimeJoules": 20000, "wPrimeReserveFraction": 0.15, "maxStepWatts": 20, "hardMaxStepWatts": 80, "stepLimitMinGradePct": 1.5},
+  "firstSectionActualWatts": 230,
+  "boundaryElapsedSeconds": 217.3913043478261,
+  "expectedTargets": [250, 250, 250, 270],
+  "expectedEstimatedFinishSeconds": 802.5764895330113,
+  "expectedGoalReachableWithinDeadband": true
+}

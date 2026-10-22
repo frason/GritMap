@@ -168,7 +168,7 @@ interface RiderHistoryDao {
     entities = [SegmentEntity::class, SegmentReferencePointEntity::class, PacingPlanEntity::class,
         PacingZoneEntity::class, SegmentAttemptEntity::class, AttemptCheckpointEntity::class,
         RiderProfileEntity::class, TrainingLoadEntity::class, HistoricalAttemptSampleEntity::class],
-    version = 2,
+    version = 3,
     exportSchema = true,
 )
 abstract class KarooDatabase : RoomDatabase() {

@@ -91,6 +91,7 @@ class ActiveAttemptSession(
     private var pacingSampleCount = 0L
     private var pacingSampleInRangeCount = 0L
     private val cardiacDriftTracker = CardiacDriftTracker()
+    internal val liveReplanner = AttemptReplanner()
     private val sectionWorkTracker = com.gritmap.karoo.pacing.SectionWorkTracker()
     internal fun recordSectionWork(sample: LiveTelemetry, state: LiveUiState) = sectionWorkTracker.add(sample, state)
     private val powerExecutionHistory = ArrayDeque<PowerExecutionSample>()

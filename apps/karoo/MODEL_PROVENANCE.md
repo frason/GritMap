@@ -1,5 +1,7 @@
 # Model and runtime provenance
 
+2026-10-22 readiness review: this records the **existing, unshipped Cactus bridge target**, not proof that current official Needle artifacts implement that ABI. The current Needle 2 Android package uses a different API. See [Needle readiness](../../docs/NEEDLE_READINESS.md) before selecting an artifact; deterministic replanning does not activate this runtime.
+
 The application integration targets the open-source Cactus Android runtime and Needle 2.
 Distribution is blocked until a concrete upstream model artifact is selected and these
 fields are replaced with verified values:

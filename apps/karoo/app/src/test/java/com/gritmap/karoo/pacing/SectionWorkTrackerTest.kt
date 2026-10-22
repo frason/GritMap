@@ -41,6 +41,16 @@ class SectionWorkTrackerTest {
         assertEquals(200.0, tracker.add(LiveTelemetry(1000, powerWatts = 500.0), state(2.0)).single().actualJoules!!, .001)
         assertNull(tracker.add(LiveTelemetry(10000, powerWatts = 200.0), state(10.0)).single().actualJoules)
     }
+    @Test fun `future target replanning retains completed work and uses the new section target`() {
+        val tracker = SectionWorkTracker()
+        tracker.add(LiveTelemetry(0, powerWatts = 200.0), state(98.0))
+        val revised = state(102.0).copy(pacingZones = listOf(zones[0], zones[1].copy(targetPowerWatts = 320)))
+        val work = tracker.add(LiveTelemetry(4000, powerWatts = 200.0), revised)
+        assertEquals(400.0, work[0].actualJoules!!, .001)
+        assertEquals(400.0, work[0].plannedJoules, .001)
+        assertEquals(640.0, work[1].plannedJoules, .001)
+        assertEquals(64000.0, work[1].estimatedBudgetJoules!!, .001)
+    }
     @Test fun `missing finish goal does not invent a work budget`() {
         val tracker = SectionWorkTracker()
         tracker.add(LiveTelemetry(0, powerWatts = 200.0), state(0.0).copy(plannedFinishSeconds = null))

@@ -1,7 +1,7 @@
 # Karoo field changes: accumulated work and legibility
 
 Requested by Jason 2026-10-20. He confirmed actual accumulated work versus planned work for Pacing Coach.
-Installed on the connected Karoo as `0.10.44-fields1` / versionCode 70 on 2026-10-22. No public release; source remains uncommitted.
+Installed on the connected Karoo as `0.10.44-fields1` / versionCode 70 on 2026-10-22. No public release; the installed field source is committed in `c9da364`.
 
 ## Pacing Coach
 

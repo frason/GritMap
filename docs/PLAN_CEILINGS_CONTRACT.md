@@ -1,5 +1,7 @@
 # Plan ceilings contract (DRAFT for Codex): realistic quarter-mile targets and live replanning
 
+Receiver update, 2026-10-22: Karoo source now accepts/persists the optional v1 fields, with a default-off live replanner and a non-destructive Room migration. `docs/fixtures/plan-ceilings-transfer-v1.json` matches the phone-generated fixture and is checked by both sides. **Not deployed: installed version70 still rejects the extension. Phone sender remains unchanged; do not send these fields to old receivers.** See `KAROO_LIVE_REPLANNER.md` for assumptions and rollout limits.
+
 Status: **draft, 2026-10-20**. The phone side (ceilings, W' guard, redistribution) is implemented and used when GritMap generates
 a plan for display and sending (`src/pacing/realisticPlan.ts`, `planCeilings.ts`, `generateRealisticPlan.ts`). **Nothing in this
 document is on the wire yet.** The phone must not send ceilings or constants to the Karoo until Codex's parser accepts the optional

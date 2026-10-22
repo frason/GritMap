@@ -257,7 +257,7 @@ class LiveSegmentService : Service() {
             "segment=${session.segmentId} sent=$alertSent",
         )
         scope.launch(Dispatchers.IO) { eventSink.onSegmentEntry(session) }
-        val engine = pacingEngine
+        val engine = pacingEngine.takeUnless { BuildConfig.LIVE_REPLANNER_ENABLED }
         if (engine != null && session.ftpWatts != null && inferenceInFlight.compareAndSet(false, true)) {
             scope.launch {
                 try {
@@ -489,7 +489,7 @@ class LiveSegmentService : Service() {
             lastCheckpointMs = sample.timestampMs
             scope.launch(Dispatchers.IO) { eventSink.onCheckpoint(session) }
         }
-        val engine = pacingEngine
+        val engine = pacingEngine.takeUnless { BuildConfig.LIVE_REPLANNER_ENABLED }
         if (engine != null && state.sensorStatus.adaptiveGuidanceAvailable &&
             sample.timestampMs - lastInferenceMs >= INFERENCE_INTERVAL_MS &&
             inferenceInFlight.compareAndSet(false, true)
@@ -757,11 +757,12 @@ private data class TelemetryUpdate(
 )
 
 internal fun enrichLiveMetrics(
-    state: LiveUiState,
+    baselineState: LiveUiState,
     session: ActiveAttemptSession,
     sample: LiveTelemetry,
 ): LiveUiState {
     val elapsedSeconds = ((sample.timestampMs - session.startedAtMs).coerceAtLeast(0L) / 1_000.0)
+    val state = session.liveReplanner.apply(baselineState, sample, elapsedSeconds)
     val predictedFinish = if (
         elapsedSeconds >= 5.0 && state.progressMeters >= 30.0 && state.progressFraction > 0f
     ) {

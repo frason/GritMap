@@ -43,6 +43,7 @@ class LiveSegmentCoordinator(
         val plannedFinishSeconds: Int?,
         val baselineZones: List<PacingZoneEntity>,
         val pacingPlanId: String?,
+        val replanMetadata: com.gritmap.karoo.importing.ReplanMetadata?,
     )
 
     private val mutex = Mutex()
@@ -170,6 +171,7 @@ class LiveSegmentCoordinator(
                     baselinePlan?.targetFinishTimeSeconds,
                     baselineZones,
                     baselinePlan?.id,
+                    com.gritmap.karoo.importing.ReplanMetadata.decode(baselinePlan?.replanMetadataJson, baselineZones.map { it.targetPowerWatts }, baselinePlan?.ftpWatts),
                 )
                 diagnostic("candidate_discovered", "segment=${entity.id} nearby=${nearby.size}")
             }
@@ -267,6 +269,8 @@ class LiveSegmentCoordinator(
             routeProfile = route,
             elevationProfile = profile,
             pacingZones = zones,
+            replanMetadata = candidate.replanMetadata,
+            hasCompleteElevationProfile = definition.referencePolyline.all { it.elevationMeters?.isFinite() == true },
             recommendation = baselineCurrent?.let {
                 Recommendation(
                     it.targetPowerWatts,

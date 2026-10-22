@@ -34,6 +34,34 @@ class TransferPackageParserTest {
         TransferPackageParser().parse(validPackage().replace("\"targetPowerWatts\":300", "\"targetPowerWatts\":400"))
     }
 
+    private fun withMetadata(version: Int = 1) = validPackage()
+        .replace("\"zones\":[{", "\"replan\":{\"schemaVersion\":$version,\"criticalPowerWatts\":250,\"wPrimeJoules\":20000,\"wPrimeReserveFraction\":0.15,\"maxStepWatts\":20,\"hardMaxStepWatts\":80,\"stepLimitMinGradePct\":1.5},\"zones\":[{")
+        .replace("\"targetPowerWatts\":300", "\"targetPowerWatts\":300,\"ceilingPowerWatts\":320")
+
+    @Test fun `optional metadata round trips without changing original targets`() {
+        val plan = TransferPackageParser().parse(withMetadata()).baselinePlan!!
+        assertEquals(300, plan.plan.zones.single().targetPowerWatts)
+        assertEquals(listOf(320), plan.replanMetadata!!.ceilings)
+        assertEquals(plan.replanMetadata, ReplanMetadata.decode(plan.replanMetadata.encode(),listOf(300),250))
+    }
+    @Test fun `unknown extension version keeps baseline and ignores ceilings`() {
+        val plan = TransferPackageParser().parse(withMetadata(99)).baselinePlan!!
+        assertEquals(300,plan.plan.zones.single().targetPowerWatts)
+        org.junit.Assert.assertNull(plan.replanMetadata)
+    }
+    @Test(expected = ImportValidationException::class)
+    fun `rejects ceiling below target`() {
+        TransferPackageParser().parse(withMetadata().replace("\"ceilingPowerWatts\":320","\"ceilingPowerWatts\":299"))
+    }
+    @Test(expected = ImportValidationException::class)
+    fun `rejects malformed reserve`() {
+        TransferPackageParser().parse(withMetadata().replace("0.15","1.1"))
+    }
+    @Test(expected = ImportValidationException::class)
+    fun `rejects ceilings without parameters`() {
+        TransferPackageParser().parse(validPackage().replace("\"targetPowerWatts\":300", "\"targetPowerWatts\":300,\"ceilingPowerWatts\":320"))
+    }
+
     private fun validPackage() = """
         {
           "schemaVersion":1,
