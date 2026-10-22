@@ -68,6 +68,7 @@ class ActiveAttemptSession(
     val ftpWatts: Int? = null,
     val pacingPlanId: String? = null,
     private val retentionMs: Long = 120_000L,
+    enableWPrime: Boolean = true,
 ) {
     private val samples = ArrayDeque<LiveTelemetry>()
     var uiState: LiveUiState = initialUiState
@@ -90,9 +91,11 @@ class ActiveAttemptSession(
     private var pacingSampleCount = 0L
     private var pacingSampleInRangeCount = 0L
     private val cardiacDriftTracker = CardiacDriftTracker()
+    private val sectionWorkTracker = com.gritmap.karoo.pacing.SectionWorkTracker()
+    internal fun recordSectionWork(sample: LiveTelemetry, state: LiveUiState) = sectionWorkTracker.add(sample, state)
     private val powerExecutionHistory = ArrayDeque<PowerExecutionSample>()
     private val wPrimeHistory = ArrayDeque<WPrimePoint>()
-    private val wPrimeEngine = ftpWatts?.takeIf { it > 0 }?.let {
+    private val wPrimeEngine = ftpWatts?.takeIf { it > 0 && enableWPrime }?.let {
         WPrimeEngine(WPrimeParameters.estimatedFromFtp(it))
     }
     private var lastRecordedTimestampMs: Long? = null

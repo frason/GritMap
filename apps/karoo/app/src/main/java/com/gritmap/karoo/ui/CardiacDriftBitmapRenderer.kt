@@ -140,8 +140,7 @@ class CardiacDriftBitmapRenderer(
         val chartLeft = w * 0.14f
         val chartRight = w * 0.96f
         val chartTop = h * 0.51f
-        val showH10Strip = state.h10ContextEligible &&
-            (state.h10ValidRrPct > 0 || state.h10DfaHistory.isNotEmpty() || state.h10DfaAlpha1 != null)
+        val showH10Strip = shouldShowH10Strip(state)
         val chartBottom = if (showH10Strip) h * 0.785f else h * 0.865f
         text(
             canvas,
@@ -196,12 +195,7 @@ class CardiacDriftBitmapRenderer(
                 })
             }
         }
-        val status = when {
-            state.h10ContextQualified ->
-                "H10 α1 ${state.h10DfaAlpha1?.let { "%.2f".format(it) } ?: "--"} • EXPERIMENTAL"
-            state.h10ValidRrPct < 95 -> "H10 • SIGNAL ${state.h10ValidRrPct}%"
-            else -> "H10 • COLLECTING 2 MIN"
-        }
+        val status = h10StripStatus(state)
         centered(canvas, status, (left + right) / 2f, (top + bottom) / 2f, 19f, Color.WHITE)
     }
 
@@ -448,4 +442,17 @@ class CardiacDriftBitmapRenderer(
         val fraction = ((driftPct.coerceIn(minimum, maximum) - minimum) / (maximum - minimum))
         return ((1.0 - fraction) * height).toFloat()
     }
+}
+
+internal fun shouldShowH10Strip(state: LiveUiState): Boolean = state.h10ValidRrPct > 0 ||
+    state.h10DfaHistory.isNotEmpty() || state.h10DfaAlpha1 != null ||
+    state.h10ConnectionState in setOf("CONNECTED", "CONNECTING", "DISCOVERING", "SUBSCRIBING")
+
+internal fun h10StripStatus(state: LiveUiState): String = when {
+    state.h10EnhancedAvailable && state.h10DfaAlpha1 != null && state.h10ValidRrPct >= 95 ->
+        "H10 α1 ${"%.2f".format(state.h10DfaAlpha1)} • EXPERIMENTAL"
+    state.h10ConnectionState in setOf("CONNECTING", "DISCOVERING", "SUBSCRIBING") -> "H10 • CONNECTING"
+    state.h10ValidRrPct == 0 -> "H10 • WAITING FOR RR"
+    state.h10ValidRrPct < 95 -> "H10 • SIGNAL ${state.h10ValidRrPct}%"
+    else -> "H10 • COLLECTING 2 MIN"
 }

@@ -267,14 +267,14 @@ internal fun pacingProfilePresentation(
             } ?: immediate,
             execution = execution,
             remaining = remaining,
-            showHeader = true,
-            showGuidance = true,
+            showHeader = false,
+            showGuidance = false,
             // The head-up bitmap owns its pacing gap, watt cards, and elevation overview.
             // Hiding the legacy footer prevents duplicate power text and gives the route room.
             showFooter = false,
             compactStrip = false,
             verticalPacer = true,
-            graphFraction = 0.78,
+            graphFraction = 1.0,
         )
     }
 }

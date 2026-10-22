@@ -92,7 +92,7 @@ class CardiacDriftTrackerTest {
         assertEquals(0.0, snapshot.driftPct!!, 0.001)
 
         for (second in 13..18) snapshot = tracker.add(sample(second, 0.0, 105.0), second / 30f)
-        assertEquals(0.0, snapshot.driftPct!!, 0.001)
+        assertNull(snapshot.driftPct)
     }
 
     @Test
@@ -109,6 +109,32 @@ class CardiacDriftTrackerTest {
         for (second in 1..35) snapshot = tracker.add(sample(second, 250.0, 150.0), second / 40f)
 
         assertEquals(3, snapshot.history.size)
+    }
+
+
+    @Test fun `power steps are not mistaken for negative drift`() {
+        val tracker = CardiacDriftTracker(baselineDurationMs = 10000, rollingWindowMs = 10000, minimumWindowSamples = 6)
+        for (second in 0..12) tracker.add(sample(second, 200.0, 140.0), 0f)
+        var result = tracker.add(sample(13, 300.0, 140.0), 0f)
+        for (second in 14..30) result = tracker.add(sample(second, 300.0, 140.0), 0f)
+        assertNull(result.driftPct)
+    }
+    @Test fun `long sensor interruption resets the old reference`() {
+        val tracker = CardiacDriftTracker(baselineDurationMs = 10000, rollingWindowMs = 10000, minimumWindowSamples = 6)
+        for (second in 0..12) tracker.add(sample(second, 200.0, 140.0), 0f)
+        val result = tracker.add(sample(30, 200.0, 160.0), 0f)
+        assertNull(result.driftPct)
+        assertEquals(0, result.validSeconds)
+    }
+    @Test fun `invalid samples do not advance valid time and old window expires`() {
+        val tracker = CardiacDriftTracker(baselineDurationMs = 10000, rollingWindowMs = 10000, minimumWindowSamples = 6)
+        for (second in 0..12) tracker.add(sample(second, 200.0, 140.0), 0f)
+        var result = tracker.add(sample(13, null, 140.0), 0f)
+        assertEquals(12, result.validSeconds)
+        for (second in 14..30) result = tracker.add(sample(second, null, 140.0), 0f)
+        assertNull(result.driftPct)
+        assertNull(result.efficiencyWattsPerBpm)
+        assertEquals(0, result.validSeconds)
     }
 
     private fun sample(second: Int, power: Double?, heartRate: Double?) = LiveTelemetry(

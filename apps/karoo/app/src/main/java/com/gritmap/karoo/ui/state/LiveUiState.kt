@@ -7,6 +7,8 @@ import kotlinx.coroutines.flow.asStateFlow
 /** Framework-neutral state shared by the overlay and Karoo graphical field. */
 data class LiveUiState(
     val segmentName: String = "",
+    val headlineAttemptId: String? = null,
+    val otherActiveSegments: List<SecondarySegmentState> = emptyList(),
     val progressMeters: Double = 0.0,
     val totalDistanceMeters: Double = 0.0,
     val distanceUnitSystem: UnitSystem = UnitSystem.IMPERIAL,
@@ -19,6 +21,7 @@ data class LiveUiState(
     val rollingPowerWatts3s: Int? = null,
     val currentHeartRateBpm: Int? = null,
     val powerExecutionHistory: List<PowerExecutionSample> = emptyList(),
+    val sectionWork: List<SectionWorkSample> = emptyList(),
     val wPrime: WPrimeState? = null,
     val cardiacDriftPct: Double? = null,
     val cardiacDriftHistory: List<CardiacDriftSample> = emptyList(),
@@ -28,6 +31,7 @@ data class LiveUiState(
     val cardiacDriftPairedPct: Int = 0,
     val cardiacDriftPowerSteady: Boolean = false,
     val h10EnhancedAvailable: Boolean = false,
+    val h10ConnectionState: String? = null,
     val h10DfaAlpha1: Double? = null,
     val h10RmssdMs: Double? = null,
     val h10ValidRrPct: Int = 0,
@@ -97,6 +101,11 @@ data class LiveUiState(
         val Idle = LiveUiState()
     }
 }
+
+data class SectionWorkSample(val startDistanceMeters: Double, val actualJoules: Double?,
+    val plannedJoules: Double, val estimatedBudgetJoules: Double?)
+
+data class SecondarySegmentState(val name: String, val remainingMeters: Double)
 
 enum class CardiacPresentationMode {
     WAITING_FOR_HR,

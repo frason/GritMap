@@ -80,6 +80,9 @@ interface AttemptDao {
     @Insert(onConflict = OnConflictStrategy.ABORT)
     suspend fun insertAttempt(attempt: SegmentAttemptEntity)
 
+    @Insert(onConflict = OnConflictStrategy.IGNORE)
+    suspend fun insertConcurrentAttemptIfAbsent(attempt: SegmentAttemptEntity)
+
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun saveCheckpoint(checkpoint: AttemptCheckpointEntity)
 

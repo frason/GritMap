@@ -1,7 +1,10 @@
 # Karoo: track every segment you start, and show your PR when there is no plan
 
-Status: **proposal, nothing built.** Written 2026-10-19 by the coordinator after Jason's direction. Post-beta work, queued behind
+Status: **development runtime integrated behind a default-off flag; PR import/display pending.** Written 2026-10-19 by the coordinator after Jason's direction. Post-beta work, queued behind
 the direct-Bluetooth fix. Needs Codex review (Karoo) and the phone session (contract fixtures) before any code.
+
+Karoo implementation design and contract review (2026-10-20): `KAROO_MULTI_SEGMENT_DESIGN.md`.
+The tracker is connected to a default-off service/UI path. PR storage/import and wire contract changes remain pending.
 
 ## Why
 
@@ -31,6 +34,18 @@ segment at a time, and a segment with no plan should show the rider's **PR** for
   50 m lock; a secondary-segment line in the fields; PR and ahead/behind rendering.
 - Missing as data: the Karoo only knows attempts recorded **on the Karoo**. The rider's PR usually comes from rides imported on the
   phone, so the phone must send each segment's best time.
+
+## Confirmed timing basis (phone code review, 2026-10-20)
+
+The phone selects the minimum `endTimestampMs - startTimestampMs` among attempts whose decision is
+`accept` or which are manually approved (`src/screens/SegmentDetailScreen.tsx`, `bestByDuration` and
+`validAttempts`). `src/db/persistMatchCandidate.ts` reads those timestamps directly from the selected
+start/end `ride_points` rows, identified by the matcher's source point indices. This is **sampled elapsed
+time, including pauses and gaps**, not moving/timer time and not interpolated crossing time.
+`segmentRecord.bestDurationSeconds` must be that exact duration divided by 1000, without integer rounding;
+split elapsed times must use the same start timestamp. Manual approvals follow the phone's eligibility
+rules, rather than an additional Karoo-only filter. Matching algorithms may still choose different boundary
+samples; matching the time basis does not by itself guarantee identical detected attempts.
 
 ## Contract proposal: `segmentRecord`
 

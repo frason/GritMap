@@ -24,7 +24,11 @@ class SegmentPerformanceBitmapRenderer(
         val canvas = Canvas(bitmap)
         canvas.drawColor(palette.background)
         val margin = w * 0.035f
-        text(canvas, "GM PERFORMANCE", margin, h * 0.042f, w * 0.061f, palette.primaryText, Paint.Align.LEFT)
+        if (state.headlineAttemptId != null && state.plannedFinishSeconds == null) {
+            drawUnplannedConcurrent(canvas, state, w, h)
+            return bitmap
+        }
+        text(canvas, if (state.headlineAttemptId != null) state.segmentName.take(20) else "GM PERFORMANCE", margin, h * 0.042f, w * 0.061f, palette.primaryText, Paint.Align.LEFT)
         text(canvas, performanceDistance(state), w - margin, h * 0.042f, w * 0.050f, palette.secondaryText, Paint.Align.RIGHT)
 
         val plan = state.plannedFinishSeconds
@@ -51,9 +55,29 @@ class SegmentPerformanceBitmapRenderer(
             drawSplitChart(canvas, state.segmentSplitDeltasSeconds, margin, h * 0.49f, w - margin, h * 0.79f)
         }
 
-        drawMetricCard(canvas, margin, h * 0.83f, w * 0.485f, h * 0.965f, "COMPLETE", "${(state.progressFraction * 100).toInt()}%", Color.rgb(38, 135, 232))
-        drawMetricCard(canvas, w * 0.515f, h * 0.83f, w - margin, h * 0.965f, "ADHERENCE", "${state.planAdherencePct ?: 0}%", adherenceColor(state.planAdherencePct))
+        drawMetricCard(canvas, margin, h * 0.83f, w * 0.485f, h * (if (state.otherActiveSegments.isEmpty()) 0.965f else 0.92f), "COMPLETE", "${(state.progressFraction * 100).toInt()}%", Color.rgb(38, 135, 232))
+        drawMetricCard(canvas, w * 0.515f, h * 0.83f, w - margin, h * (if (state.otherActiveSegments.isEmpty()) 0.965f else 0.92f), "ADHERENCE", "${state.planAdherencePct ?: 0}%", adherenceColor(state.planAdherencePct))
+        drawSecondarySegments(canvas, state, w, h)
         return bitmap
+    }
+
+    private fun drawSecondarySegments(canvas: Canvas, state: LiveUiState, w: Float, h: Float) {
+        val others = state.otherActiveSegments
+        if (others.isEmpty()) return
+        val label = if (h < 200) "ALSO: ${others.size}" else
+            "Also: ${others.first().name.take(22)}, ${others.first().remainingMeters.toInt()} m" +
+                if (others.size > 1) " +${others.size - 1}" else ""
+        text(canvas, label, w * 0.035f, h * 0.96f, min(w * 0.038f, h * 0.08f), palette.secondaryText, Paint.Align.LEFT)
+    }
+
+    private fun drawUnplannedConcurrent(canvas: Canvas, state: LiveUiState, w: Float, h: Float) {
+        text(canvas, state.segmentName.take(24), w * 0.04f, h * 0.13f, min(w * 0.065f, h * 0.13f), palette.primaryText, Paint.Align.LEFT)
+        centered(canvas, state.elapsedAttemptSeconds?.toInt()?.let(::clock) ?: "--:--", w / 2f, h * 0.42f,
+            min(w * 0.15f, h * 0.27f), palette.primaryText)
+        centered(canvas, "ELAPSED", w / 2f, h * 0.60f, min(w * 0.055f, h * 0.12f), palette.secondaryText)
+        centered(canvas, "${(state.progressFraction * 100).toInt()}% COMPLETE", w / 2f, h * 0.80f,
+            min(w * 0.065f, h * 0.13f), palette.primaryText)
+        drawSecondarySegments(canvas, state, w, h)
     }
 
     private fun drawTimeBank(canvas: Canvas, seconds: Int?, width: Float, centerY: Float) {
@@ -117,8 +141,9 @@ class SegmentPerformanceBitmapRenderer(
     private fun drawMetricCard(canvas: Canvas, left: Float, top: Float, right: Float, bottom: Float, label: String, value: String, color: Int) {
         canvas.drawRoundRect(left, top, right, bottom, 17f, 17f, Paint(Paint.ANTI_ALIAS_FLAG).apply { this.color = Color.rgb(20, 23, 27) })
         canvas.drawRoundRect(left, top, left + 8f, bottom, 6f, 6f, Paint(Paint.ANTI_ALIAS_FLAG).apply { this.color = color })
-        centered(canvas, value, (left + right) / 2f, top + (bottom - top) * 0.41f, 40f, palette.primaryText)
-        centered(canvas, label, (left + right) / 2f, top + (bottom - top) * 0.76f, 20f, palette.secondaryText)
+        val short = bottom - top < 70f
+        centered(canvas, value, (left + right) / 2f, top + (bottom - top) * 0.41f, if (short) (bottom - top) * 0.42f else 40f, palette.primaryText)
+        centered(canvas, label, (left + right) / 2f, top + (bottom - top) * 0.76f, if (short) (bottom - top) * 0.23f else 20f, palette.secondaryText)
     }
 
     private fun finishComparison(timeBank: Int?, plan: Int?): String {
@@ -201,13 +226,17 @@ class SegmentPerformanceBitmapRenderer(
         val canvas = Canvas(bitmap)
         canvas.drawColor(palette.background)
         val margin = w * 0.055f
+        if (state.headlineAttemptId != null && state.plannedFinishSeconds == null) {
+            drawUnplannedConcurrent(canvas, state, w, h)
+            return bitmap
+        }
         val plan = state.plannedFinishSeconds
         val predicted = state.predictedFinishSeconds
         val bank = if (plan != null && predicted != null) plan - predicted else null
         val color = if ((bank ?: 0) >= 0) Color.rgb(32, 190, 105) else Color.rgb(239, 91, 69)
 
         if (!showSupportingMetrics || h < 150f) {
-            text(canvas, "GM PERFORMANCE", margin, h * 0.20f, min(w * 0.075f, h * 0.19f), palette.secondaryText, Paint.Align.LEFT)
+            text(canvas, if (state.headlineAttemptId != null) state.segmentName.take(20) else "GM PERFORMANCE", margin, h * 0.20f, min(w * 0.075f, h * 0.19f), palette.secondaryText, Paint.Align.LEFT)
             text(canvas, predicted?.let(::clock) ?: "--:--", margin, h * 0.52f, min(w * 0.14f, h * 0.34f), palette.primaryText, Paint.Align.LEFT)
             val label = "EXPECTED • ${resultHeadline(bank)}"
             text(canvas, label, margin, h * 0.79f, min(w * 0.065f, h * 0.17f), palette.secondaryText, Paint.Align.LEFT)
@@ -219,6 +248,7 @@ class SegmentPerformanceBitmapRenderer(
             centered(canvas, "EXPECTED • GOAL ${plan?.let(::clock) ?: "--:--"} • ${resultHeadline(bank)}", w / 2f, h * 0.55f, min(w * 0.048f, h * 0.095f), color)
             drawCompactBank(canvas, bank, margin, w - margin, h * 0.74f, h)
         }
+        drawSecondarySegments(canvas, state, w, h)
         return bitmap
     }
 

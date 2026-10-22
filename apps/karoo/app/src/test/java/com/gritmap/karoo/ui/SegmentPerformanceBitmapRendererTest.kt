@@ -100,4 +100,24 @@ class SegmentPerformanceBitmapRendererTest {
             bitmap.compress(android.graphics.Bitmap.CompressFormat.PNG, 100, it)
         }
     }
+    @Test fun `concurrent headlines render no plan and secondary segments at both sizes`() {
+        val state = com.gritmap.karoo.ui.state.LiveUiState(
+            segmentName = "Northgate to Junction", headlineAttemptId = "a", progressMeters = 1250.0,
+            totalDistanceMeters = 5000.0, elapsedAttemptSeconds = 321.0,
+            otherActiveSegments = listOf(com.gritmap.karoo.ui.state.SecondarySegmentState("The Full Diablo", 6200.0)),
+        )
+        val renderer = SegmentPerformanceBitmapRenderer()
+        val images = mapOf(
+            "unplanned" to renderer.renderDashboard(state, 480, 624),
+            "planned" to renderer.renderDashboard(state.copy(plannedFinishSeconds = 1000, predictedFinishSeconds = 1100), 480, 624),
+            "compact" to renderer.renderCompactDashboard(state, 480, 160, true),
+        )
+        images.forEach { (name, bitmap) ->
+            FileOutputStream(File("/tmp/gritmap-concurrent-$name.png")).use {
+                bitmap.compress(android.graphics.Bitmap.CompressFormat.PNG, 100, it)
+            }
+            assertEquals(480, bitmap.width)
+        }
+    }
+
 }

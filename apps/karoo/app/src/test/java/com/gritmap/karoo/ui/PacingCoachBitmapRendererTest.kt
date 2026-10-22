@@ -113,4 +113,32 @@ class PacingCoachBitmapRendererTest {
         assertTrue(current.second > adjacent.second && adjacent.second > far.second)
         assertTrue(far.second < 80)
     }
+    @Test fun `work coach previews show actual work above and below target`() {
+        val base = KarooPreviewState.copy(progressMeters = 145.0, totalDistanceMeters = 300.0,
+            pacingZones = zones, plannedFinishSeconds = 300)
+        listOf("ahead" to 15000.0, "behind" to 8000.0).forEach { (name, actual) ->
+            val state = base.copy(sectionWork = listOf(com.gritmap.karoo.ui.state.SectionWorkSample(100.0, actual, 12000.0, 26000.0)))
+            FileOutputStream(File("/tmp/gritmap-coach-$name.png")).use {
+                PacingCoachBitmapRenderer().render(state, 480, 624).compress(android.graphics.Bitmap.CompressFormat.PNG, 100, it)
+            }
+        }
+    }
+
+    @Test fun `work fills the left side at both heights and target line is vertical`() {
+        val state = KarooPreviewState.copy(progressMeters = 145.0, totalDistanceMeters = 300.0,
+            pacingZones = zones, plannedFinishSeconds = 300,
+            sectionWork = listOf(com.gritmap.karoo.ui.state.SectionWorkSample(100.0, 18200.0, 15600.0, 26000.0)))
+        val bitmap = PacingCoachBitmapRenderer().render(state, 480, 624)
+        for (y in listOf(350, 410)) {
+            assertTrue(android.graphics.Color.blue(bitmap.getPixel(260, y)) >
+                android.graphics.Color.blue(bitmap.getPixel(435, y)) + 50)
+        }
+        assertTrue((280..288).any { x ->
+            listOf(335, 420).all { y ->
+                val pixel = bitmap.getPixel(x, y)
+                android.graphics.Color.red(pixel) > 220 && android.graphics.Color.green(pixel) > 220 && android.graphics.Color.blue(pixel) > 220
+            }
+        })
+    }
+
 }

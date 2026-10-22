@@ -11,6 +11,7 @@ import android.os.IBinder
 import android.os.SystemClock
 import androidx.core.app.NotificationCompat
 import androidx.core.content.ContextCompat
+import com.gritmap.karoo.BuildConfig
 import com.gritmap.karoo.R
 import com.gritmap.karoo.data.DatabaseProvider
 import com.gritmap.karoo.physiology.H10BleClient
@@ -75,6 +76,37 @@ class LiveSegmentService : Service() {
             diagnostic = { event, details -> LiveDiagnostics.record(this, event, details) },
         )
     }
+    private val concurrentRide by lazy {
+        val database = DatabaseProvider.get(this)
+        val discovery = RoomConcurrentDiscovery(database, ::prepareH10ForApproach)
+        ConcurrentLiveRide(
+            discover = discovery::discover,
+            persistence = RoomConcurrentAttemptPersistence(database),
+            publish = ::publish,
+            diagnostic = { event, details -> LiveDiagnostics.record(this, event, details) },
+            onStart = { session ->
+                LiveDemoController.stop(clear = false)
+                prepareH10ForApproach(session.segmentId)
+                h10ReleaseJob?.cancel()
+                karooSystem.dispatch(segmentEntryAlert(session))
+                LiveDiagnostics.record(this, "attempt_started", "segment=${session.segmentId} attempt=${session.attemptId} concurrent=true")
+            },
+            onFinish = { session, reason, timestamp ->
+                if (reason == "completed") karooSystem.dispatch(segmentCompletionAlert(session, timestamp))
+                LiveDiagnostics.record(this, "attempt_finished", "segment=${session.segmentId} attempt=${session.attemptId} reason=$reason concurrent=true")
+                if (concurrentRideActiveCount() == 0) scheduleH10Release(POST_SEGMENT_H10_GRACE_MS, "segments-ended")
+            },
+            augment = { state ->
+                val h10 = H10ServiceState.captureState.value
+                state.copy(h10ConnectionState = H10ServiceState.bleState.value.connectionState.name, h10EnhancedAvailable = h10.enhancedMetricsAllowed, h10DfaAlpha1 = h10.dfaAlpha1,
+                    h10RmssdMs = h10.rmssdMs, h10ValidRrPct = h10.validRrPct,
+                    h10DfaHistory = h10.dfaAlpha1History.map {
+                        com.gritmap.karoo.ui.state.H10DfaSample((it.elapsedMs / 1_000L).toInt(), it.value)
+                    })
+            },
+        )
+    }
+    private fun concurrentRideActiveCount(): Int = if (BuildConfig.CONCURRENT_SEGMENTS_ENABLED) concurrentRide.activeCount else 0
     private var rideStateConsumerId: String? = null
     private var userProfileConsumerId: String? = null
     private val telemetryConsumerIds = mutableListOf<String>()
@@ -153,7 +185,8 @@ class LiveSegmentService : Service() {
                 try {
                     // Matching is intentionally single-threaded. A conflated channel keeps only
                     // the newest GPS tick if Room/projection work briefly takes longer than 1 Hz.
-                    coordinator.process(update.sample, update.sensors)
+                    if (BuildConfig.CONCURRENT_SEGMENTS_ENABLED) concurrentRide.process(update.sample, update.sensors)
+                    else coordinator.process(update.sample, update.sensors)
                 } catch (error: Exception) {
                     LiveDiagnostics.record(
                         this@LiveSegmentService,
@@ -177,6 +210,10 @@ class LiveSegmentService : Service() {
     }
 
     override fun onDestroy() {
+        recording = false
+        if (BuildConfig.CONCURRENT_SEGMENTS_ENABLED) runBlocking(Dispatchers.IO) {
+            concurrentRide.finishAll("service-destroyed", telemetry.timestampMs)
+        }
         activeSession?.let { session ->
             // Service teardown is a macro-event and must not be cancelled with the live scope.
             runBlocking(Dispatchers.IO) { eventSink.onSegmentExit(session, "service-destroyed") }
@@ -392,7 +429,9 @@ class LiveSegmentService : Service() {
                 stopTelemetryConsumers()
             }
         } else {
-            activeSession?.let { finishAttempt("ride-ended") }
+            if (BuildConfig.CONCURRENT_SEGMENTS_ENABLED) runBlocking(Dispatchers.IO) {
+                concurrentRide.finishAll("ride-ended", telemetry.timestampMs)
+            } else activeSession?.let { finishAttempt("ride-ended") }
             finalizeH10Capture("ride-ended")
             automaticH10Requested = false
             h10ReleaseJob?.cancel()
@@ -424,6 +463,7 @@ class LiveSegmentService : Service() {
             cardiacDriftValidSeconds = drift.validSeconds,
             cardiacDriftPairedPct = drift.pairedPct,
             cardiacDriftPowerSteady = drift.powerSteady,
+            h10ConnectionState = H10ServiceState.bleState.value.connectionState.name,
             h10EnhancedAvailable = h10.enhancedMetricsAllowed,
             h10DfaAlpha1 = h10.dfaAlpha1,
             h10RmssdMs = h10.rmssdMs,
@@ -666,7 +706,7 @@ class LiveSegmentService : Service() {
 
     private fun startAutomaticH10Capture(source: String) {
         if (!h10CaptureController.state.value.capturing) {
-            h10CaptureController.startCapture(segmentId = approachingSegmentIds.firstOrNull())
+            h10CaptureController.startCapture(segmentId = if (BuildConfig.CONCURRENT_SEGMENTS_ENABLED) null else approachingSegmentIds.firstOrNull())
             LiveDiagnostics.record(this, "h10_auto_capture_started", "source=$source")
         }
     }
@@ -675,7 +715,7 @@ class LiveSegmentService : Service() {
         h10ReleaseJob?.cancel()
         h10ReleaseJob = scope.launch {
             delay(delayMs)
-            if (activeSession == null) releaseAutomaticH10(reason)
+            if (activeSession == null && concurrentRideActiveCount() == 0) releaseAutomaticH10(reason)
         }
     }
 
@@ -745,6 +785,7 @@ internal fun enrichLiveMetrics(
             ?.roundToInt(),
         predictedFinishSeconds = predictedFinish,
         elapsedAttemptSeconds = elapsedSeconds,
+        sectionWork = session.recordSectionWork(sample, state),
         wPrime = session.updateWPrime(sample, state),
     )
 }

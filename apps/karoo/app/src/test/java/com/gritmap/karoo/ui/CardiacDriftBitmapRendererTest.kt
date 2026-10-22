@@ -104,4 +104,14 @@ class CardiacDriftBitmapRendererTest {
         bitmap.getPixels(pixels, 0, bitmap.width, 0, 0, bitmap.width, bitmap.height)
         assertTrue(pixels.toSet().size > 8)
     }
+    @org.junit.Test fun `H10 status is visible before long effort gate without weakening signal qualification`() {
+        val state = com.gritmap.karoo.ui.state.LiveUiState(h10ConnectionState = "CONNECTED")
+        org.junit.Assert.assertTrue(shouldShowH10Strip(state))
+        org.junit.Assert.assertEquals("H10 • WAITING FOR RR", h10StripStatus(state))
+        org.junit.Assert.assertFalse(shouldShowH10Strip(com.gritmap.karoo.ui.state.LiveUiState()))
+        val ready = state.copy(h10EnhancedAvailable = true, h10ValidRrPct = 98, h10DfaAlpha1 = .83)
+        org.junit.Assert.assertTrue(h10StripStatus(ready).contains("0.83"))
+        org.junit.Assert.assertFalse(h10StripStatus(ready.copy(h10ValidRrPct = 80)).contains("0.83"))
+    }
+
 }

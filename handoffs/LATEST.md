@@ -1,3 +1,94 @@
+# Coordinator: PHONE SESSION tasks (2026-10-22, Jason approved; replaces the 2026-10-09 phone task below)
+
+Apple approved build 7 for external TestFlight. Beta riders arrive now. In order:
+1. **Push** the 13 local commits (Jason approved 2026-10-21): fetch, rebase/merge onto origin/main, never force-push, check the diff for personal data (no ride files,
+   no FTP/weight/goal values, nothing from `fixtures/`), run typecheck and tests, report the pushed head.
+2. **Fresh-install walkthrough of the beta loop** as a stranger would (empty database, no FTP): onboarding, get a segment, set a goal, plan, send to the Karoo over the
+   IP route with the in-app instructions, import a FIT, see plan vs actual. Report confusing or broken steps, ranked by how likely a stranger is to get stuck. Report
+   first; no code changes until the report is reviewed.
+3. **Open Segments usable by strangers** (GOALS priority 3): short plan first, from `docs/OPEN_SEGMENTS_VERCEL.md` (a proposal; any hosting needs Jason's approval).
+4. **Build 8 contents, plan only**: realistic plans, staged goal, past weights, and whether Bluetooth can be shown. Bluetooth needs a public Karoo release first (the
+   BLE fix is not in `karoo-beta-0.10.44`). No build or upload until Jason says go.
+Blocked on Codex (do not build): sending ceilings and `segmentRecord` to the Karoo (needs the Karoo parser to accept the optional fields first, plus shared fixtures).
+
+# Handoff: Coach/Profile update installed (2026-10-22 16:18 PDT)
+
+Karoo USB install succeeded: **0.10.44-fields1 / versionCode70**, preserving app data. Includes the horizontal work fill, 1.5× active Coach and brighter Profile/title/timing/elevation changes below. Signed beta build, APK signature/package verification and postinstall device version check passed. BLE enabled; concurrent tracking stays disabled. Source remains uncommitted; no public release. Next versionCode >=71. Details: `handoffs/archive/2026-10-22-1618-codex-fields1-installed.md`.
+
+# Handoff: horizontal Coach work and Profile visibility (2026-10-21 22:30 PDT)
+
+Active Coach is now **1.5× original size**, with left-to-right actual-work fill and a vertical white planned-work line. Large Profile restores the title and HOLD/action timing banner, adds stable left elevation labels, replaces YOU with a small white dot, and brightens terrain. Full QA: **226 tests, lint and debug build passed**; final focused renderer/layout tests, lint and build also passed after the last refinements. Previews visually checked. **Uncommitted; not installed.** Details: `handoffs/archive/2026-10-21-2230-codex-coach-horizontal-profile-visibility.md`. Earlier concurrent/coordinator work remains below.
+
+# Handoff: Coach work fill, larger Profile and cardiac/H10 display (2026-10-20 23:31 PDT)
+
+Jason confirmed accumulated work vs planned work. Coach now has full-block actual-joule fill, a horizontal target-work line, and a doubled active row/content. Profile removes the middle PACE card and enlarges TARGET/ACTUAL and other numbers. Cardiac drift qualifies steady/comparable windows, resets interruptions and smooths by elapsed time; H10 status appears sooner with RR qualification retained. **224 tests, lint and debug build pass; final Profile renderer tests/build pass. Not installed: ADB saw no device.** Full-scale work budget uses an explicitly estimated distance-proportional plan time. Changes and prior concurrent work are uncommitted. Details: `handoffs/archive/2026-10-20-2331-codex-work-coach-profile-cardiac-fields.md`; semantics: `docs/KAROO_FIELD_WORK_FILL.md`.
+
+# Coordinator: ORDER for Codex on the replanning task (2026-10-20, Jason approved): deterministic replanner FIRST, Needle later
+
+**Build the deterministic live replanner first (Step 4), on its own, shippable without Needle.** Needle has never run on the Karoo: `MODEL_PROVENANCE.md` still
+says PIN BEFORE DISTRIBUTION (no model bundle, no digest, no licence check) and the Cactus runtime library is not shipped, so `NeedleAgentManager` refuses to
+initialise and the fallback is what every build uses today. Therefore:
+1. Replanner first: quarter-mile boundary replanning from actual vs planned time, deadband, behind: spread the deficit weighted to easier grades within ceilings,
+   ahead: do not spend the surplus early, unreachable goal: show the best achievable finish. Inputs: per-zone ceilings once the phone contract lands
+   (`docs/PLAN_CEILINGS_CONTRACT.md`, phone side already built, not yet sent; your parser must accept the optional fields first); until then derive no ceilings and
+   only replan within the plan's own targets and the adjacent-step limit. Default-off flag like the concurrent work. Unit tests + a replay of a fake ride.
+2. Needle second, as an optional advisory layer behind the same fallback: do not start until the replanner works. Meanwhile write a short note listing exactly what
+   Needle needs before it can run for a rider (which Needle 2 bundle, digest, licences, packaging/install path, runtime library, size, latency on the Karoo 3)
+   and your estimate, so Jason can decide whether to invest in it.
+3. Nothing about Needle may block the replanner, the beta, or the BLE/multi-segment work.
+
+# Coordinator: COMMIT REQUEST for Codex (2026-10-20, Jason approved)
+
+Please commit the multi-segment foundation and concurrent runtime now, **default-off** (`CONCURRENT_SEGMENTS_ENABLED=false` for debug and beta, opt-in via
+`-PgritmapConcurrentSegments=true`). Use explicit `git add` paths, include the design/proposal docs and archives, and keep the separate H10 export work out
+of this commit. Re-run the default and opt-in QA before committing and record the results. No tag, release, version bump or Karoo install. Push is allowed
+once the handoff commit is made. Then start the realistic-targets/replanning task below (read the NEW TASK section above) with a short plan first.
+
+# Coordinator: NEW TASK (2026-10-20, Jason approved, GOALS priority 8): realistic quarter-mile targets and live replanning, Needle included
+
+Problem: on long segments (Diablo Northgate to Junction, ~6.5 mi) the plan puts an unsustainable target on one very steep quarter-mile; the rider falls short
+and every later target still assumes the original plan, so the rider stays behind. Full spec from Jason: Steps 1 to 5 (summarised below). **Before coding,
+each session posts a short plan and flags conflicts with the existing architecture.**
+- **Phone session (plan side, Steps 1 to 3):** (1) Reproduce first from the stored ride history for the segment: per quarter-mile print grade, planned watts,
+  and actual watts on each past ride (including the 41:40 PR); confirm which quarter-miles are targeted above anything ever held. Print locally only; **do not
+  commit ride data** (public repo). (2) Per-quarter-mile personal ceiling from completed rides (best power held there, +3 to 5%), fallback to a configurable
+  sliding %FTP (about 105% early on a short pitch trending to about 95%), plus an energy-budget (W' style) check that rejects overspending plans. (3) Redistribute capped
+  effort to following easier quarter-miles within ceilings; limit adjacent-step change (about 15 to 20 W, configurable); if the goal is infeasible return the
+  best achievable time and the gap, never inflate targets. Then **write a contract note**: the plan carries the per-quarter-mile ceilings (and constants) so the Karoo
+  can replan. Shared fixtures with Codex. The phone remains the only place plans are created.
+- **Codex (live side, Steps 4 and 5), after the multi-segment foundation:** at each quarter-mile boundary compare cumulative actual vs planned time and recompute
+  the remaining targets from what the rider did, with a deadband; behind: spread the deficit weighted to easier grades within ceilings; ahead: do not spend the surplus
+  early; goal unreachable: show the best achievable finish. **Needle** (already integrated: `NeedleAgentManager`, `NeedleLivePacingGuidanceEngine`, `AiPlanValidator`,
+  `processTelemetry`, 5 s timeout with fallback) assists only: estimate sustainable power and fade from the live stream and suggest the adjustment size and a short cue,
+  clamped to the ceilings and smoothing limits; unavailable, slow or invalid means silent fallback to the deterministic replanner. Note that the README says Needle
+  initialisation is disabled until a model bundle and digest are recorded: say what is missing and whether the Karoo can run it today. If Needle cannot do this
+  role, tell Jason what it can do and propose the closest fit before building. The deterministic engine stays the authority.
+- Acceptance: no target above its ceiling on Diablo; replaying the PR ride through the replanner adapts targets after the mid-segment pitch; a 20 W shortfall on
+  the hard pitch redistributes without breaking ceilings or the step limit; short segments and thin history use the fallback; unit tests for ceiling, redistribution,
+  replanning; existing behaviour unchanged. Order: phone Step 1 first (confirms the diagnosis), contract note second, Karoo replanner third.
+
+# Handoff: concurrent live service integrated, default OFF (2026-10-20 15:32 PDT)
+
+`gritmapConcurrentSegments=true` now opts into independent sessions/persistence for up to four overlapping segments, plan-first headline/handover, fifth-segment diagnostics, shared H10 lifetime, secondary Performance line and unplanned elapsed/progress. Final QA: **213 tests, lint and dev build pass**; normal build passes and debug/beta defaults are false. Phone PR basis confirmed as sampled `endTimestampMs - startTimestampMs`, including pauses. **PR import/storage/display still pending; no wire or device changes.** W′ is disabled only in the opt-in path pending a ride-level engine. Code/docs remain uncommitted. Details and limitations: `handoffs/archive/2026-10-20-1532-codex-concurrent-runtime-integrated.md`.
+
+# Coordinator: DECISIONS for multi-segment and PR (2026-10-20, Jason approved)
+
+For Codex and the phone session, answering the open points in `docs/KAROO_MULTI_SEGMENT_DESIGN.md`:
+1. **Time basis: use the phone's definition.** A PR on the Karoo means the same thing as the phone's personal record (its fastest accepted
+   effort and its time basis). Codex: read the phone's effort/PR code in `src/` to match it exactly, and say in the contract which basis it is.
+2. **Concurrent cap: 4.** The Karoo tracks up to 4 segments at once. A fifth is not tracked, and the Karoo **logs a diagnostic** when it
+   ignores one (segment id and reason). It must not drop or reset an already-tracked segment to make room.
+3. Still open, to settle between Codex and the phone session (no rider-facing impact yet): rider ownership of a record, record replacement,
+   split anchors. Phone must not send `segmentRecord` until the Karoo parser accepts it and shared fixtures exist.
+
+# Handoff: concurrent tracking foundation implemented (2026-10-20 14:34 PDT)
+
+Pure `ConcurrentSegmentTracker` and headline selection now pass nine synthetic overlap/lifecycle tests; full Karoo QA passes **207 tests, lint and debug build**. Independent attempts survive another segment finishing or abandoning; plan-first/nearest-finish headline is deterministic. **Not wired to live service yet; device/beta behavior unchanged.** Code/docs uncommitted. Next: default-off service integration, ordered persistence and shared H10 lifecycle. Details: `handoffs/archive/2026-10-20-1434-codex-concurrent-tracker-foundation.md`.
+
+# Handoff: multi-segment design and PR contract review ready (2026-10-20 13:42 PDT)
+
+Drafted `docs/KAROO_MULTI_SEGMENT_DESIGN.md` after inspecting the runtime. Covers concurrent sessions, deterministic headline, PR/first-attempt display, per-attempt persistence and shared H10 ownership. Contract review identifies time-basis, rider ownership and split-cap details to agree before sender changes. **Design only, no source/wire/device changes.** Documents uncommitted; beta unchanged. Details: `handoffs/archive/2026-10-20-1342-codex-multi-segment-design-review.md`.
+
 # Handoff: H10 export request committed (2026-10-20 09:04 PDT)
 
 `273bd59` commits the H10 recordings list/export request; the feature is **not implemented**. BLE commits `67bfc60` and `1c2de1a` are retained, and newer remote multi-segment docs `3d30816` merged cleanly. Push authorized and follows this handoff commit; no tag/release. Details: `handoffs/archive/2026-10-20-0904-codex-h10-request-committed.md`.

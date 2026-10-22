@@ -32,6 +32,9 @@ android {
             providers.gradleProperty("gritmapDirectBleV2").orNull ?: "false",
         )
 
+        buildConfigField("boolean", "CONCURRENT_SEGMENTS_ENABLED",
+            providers.gradleProperty("gritmapConcurrentSegments").orNull ?: "false")
+
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables.useSupportLibrary = true
         ndk.abiFilters += "arm64-v8a"

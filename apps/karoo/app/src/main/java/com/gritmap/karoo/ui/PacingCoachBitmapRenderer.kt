@@ -79,24 +79,25 @@ class PacingCoachBitmapRenderer(
         val centerY = (availableTop + availableBottom) / 2f
         val visibleSlots = visibleRadius * 2 + 1
         val baseGap = (availableBottom - availableTop) / (visibleSlots + 0.15f)
-        val activeCompletion = zoneCompletion(state.progressMeters, zones[currentIndex], currentIndex, currentIndex)
-        val stackPosition = continuousStackPosition(currentIndex, activeCompletion, zones.lastIndex)
+        val normalHeight = min(baseGap * 0.90f, h * 0.205f)
+        val activeHeight = min(normalHeight * 1.5f, (availableBottom - availableTop) * 0.88f)
         val range = powerRange(state)
         canvas.save()
         canvas.clipRect(0f, availableTop, w, availableBottom)
         shown.forEach { index ->
-            val relativePosition = index - stackPosition
-            val distance = kotlin.math.abs(relativePosition)
-            val emphasis = stackEmphasis(distance)
-            val scale = emphasis.first
-            val alpha = emphasis.second
+            val relative = index - currentIndex
+            val emphasis = stackEmphasis(kotlin.math.abs(relative).toFloat())
+            val scale = if (relative == 0) 1f else emphasis.first
+            val alpha = if (relative == 0) 255 else emphasis.second
             if (alpha <= 8) return@forEach
-            val rowHeight = min(baseGap * 0.90f, h * 0.205f) * scale
-            val y = centerY - relativePosition * baseGap
+            val rowHeight = if (relative == 0) activeHeight else normalHeight * scale
+            val offset = activeHeight / 2f + rowHeight / 2f + baseGap * 0.10f +
+                (kotlin.math.abs(relative) - 1).coerceAtLeast(0) * baseGap
+            val y = if (relative == 0) centerY else centerY - kotlin.math.sign(relative.toFloat()) * offset
             val rowWidth = (w - margin * 2f) * scale
             val left = (w - rowWidth) / 2f
-            val right = left + rowWidth
-            drawZone(canvas, state, zones[index], index, currentIndex, left, y - rowHeight / 2f, right, y + rowHeight / 2f, range, alpha)
+            drawZone(canvas, state, zones[index], index, currentIndex, left, y - rowHeight / 2f,
+                left + rowWidth, y + rowHeight / 2f, range, alpha)
         }
         canvas.restore()
         return bitmap
@@ -137,14 +138,13 @@ class PacingCoachBitmapRenderer(
         val path = Path().apply { addRoundRect(rect, radius, radius, Path.Direction.CW) }
         canvas.save()
         canvas.clipPath(path)
-        if (actualX != null) {
-            canvas.drawRect(left, top, actualX, bottom, Paint().apply { color = withAlpha(effort, (alpha * 0.80f).roundToInt()) })
-        }
-        val completion = zoneCompletion(state.progressMeters, zone, zoneIndex, currentIndex)
-        if (completion > 0f) {
-            canvas.drawRect(left, completionTop(top, bottom, completion), right, bottom, Paint().apply {
-                color = Color.argb((alpha * 0.16f).roundToInt(), 255, 255, 255)
-            })
+        val work = state.sectionWork.firstOrNull { it.startDistanceMeters == zone.startDistanceMeters }
+        val budget = work?.estimatedBudgetJoules?.takeIf { it > 0 }
+        val actualFill = if (budget != null) work?.actualJoules?.div(budget)?.toFloat() else null
+        val plannedFill = if (budget != null) ((work?.plannedJoules ?: 0.0) / budget).toFloat() else null
+        if (actualFill != null) {
+            canvas.drawRect(left, top, workFillX(left, right, actualFill), bottom,
+                Paint().apply { color = withAlpha(effort, (alpha * 0.85f).roundToInt()) })
         }
         canvas.restore()
 
@@ -155,31 +155,44 @@ class PacingCoachBitmapRenderer(
         }
         canvas.drawRoundRect(rect, radius, radius, border)
 
-        val targetX = powerX(zone.targetPowerWatts, range, left, right)
-        canvas.drawLine(targetX, top + 3f, targetX, bottom - 3f, Paint(Paint.ANTI_ALIAS_FLAG).apply {
-            color = Color.argb(alpha, 255, 255, 255)
-            strokeWidth = if (zoneIndex == currentIndex) 4f else 3f
-        })
-
         val labelSize = (bottom - top) * if (zoneIndex == currentIndex) 0.30f else 0.25f
         val labelBox = RectF(
             left + (right - left) * 0.025f,
             top + (bottom - top) * 0.12f,
-            left + (right - left) * if (zoneIndex == currentIndex) 0.34f else 0.31f,
+            left + (right - left) * if (zoneIndex == currentIndex) 0.48f else 0.31f,
             bottom - (bottom - top) * 0.12f,
         )
         val labelRadius = labelBox.height() * 0.17f
         canvas.drawRoundRect(labelBox, labelRadius, labelRadius, Paint(Paint.ANTI_ALIAS_FLAG).apply {
-            color = Color.argb((alpha * 0.92f).roundToInt(), 13, 17, 21)
+            color = Color.argb((alpha * if (zoneIndex == currentIndex) 0.35f else 0.92f).roundToInt(), 13, 17, 21)
         })
         val labelX = labelBox.left + labelBox.width() * 0.08f
         text(canvas, zone.effort.label(), labelX, labelBox.top + labelBox.height() * 0.31f, labelSize, Color.argb(alpha, 255, 255, 255), Paint.Align.LEFT)
         text(canvas, "${zone.targetPowerWatts} W", labelX, labelBox.top + labelBox.height() * 0.71f, labelSize * 0.90f, Color.argb(alpha, 255, 255, 255), Paint.Align.LEFT)
 
         if (actual != null && actualX != null) {
-            val valueX = (actualX - 8f).coerceIn(left + (right - left) * 0.42f, right - 8f)
+            val valueX = right - (right - left) * 0.025f
             text(canvas, "$actual W", valueX, (top + bottom) / 2f, labelSize * 1.15f, Color.argb(alpha, 255, 255, 255), Paint.Align.RIGHT)
         }
+        if (zoneIndex == currentIndex) {
+            val caption = when {
+                work?.actualJoules == null && work != null -> "POWER DATA GAP"
+                work == null && state.plannedFinishSeconds != null -> "COLLECTING WORK"
+                budget == null -> "NO TIMED WORK GOAL"
+                (actualFill ?: 0f) > 1f || (plannedFill ?: 0f) > 1f ->
+                    "WORK ${((actualFill ?: 0f) * 100).roundToInt()}% · TARGET ${((plannedFill ?: 0f) * 100).roundToInt()}%"
+                else -> "WHITE: TARGET WORK · EST. SCALE"
+            }
+            text(canvas, caption, (left + right) / 2f, bottom - (bottom - top) * 0.07f,
+                (bottom - top) * 0.085f, Color.argb(alpha, 255, 255, 255), Paint.Align.CENTER)
+        }
+        if (plannedFill != null) {
+            val lineX = workFillX(left, right, plannedFill).coerceIn(left + 3f, right - 3f)
+            canvas.drawLine(lineX, top + 3f, lineX, bottom - 3f, Paint(Paint.ANTI_ALIAS_FLAG).apply {
+                color = Color.argb(alpha, 255, 255, 255); strokeWidth = 4f
+            })
+        }
+
     }
 
     private fun powerRange(state: LiveUiState): IntRange {
@@ -266,6 +279,11 @@ internal fun completionTop(top: Float, bottom: Float, completion: Float): Float 
     bottom - (bottom - top) * completion.coerceIn(0f, 1f)
 
 internal fun completedZoneAveragePower(state: LiveUiState, zone: PacingZone): Int? {
+    state.sectionWork.firstOrNull { it.startDistanceMeters == zone.startDistanceMeters }?.let { work ->
+        if (work.actualJoules != null && work.plannedJoules > 0) {
+            return (work.actualJoules * zone.targetPowerWatts / work.plannedJoules).roundToInt()
+        }
+    }
     val samples = state.powerExecutionHistory.filter { it.distanceMeters >= zone.startDistanceMeters && it.distanceMeters <= zone.endDistanceMeters }
     return samples.takeIf { it.isNotEmpty() }?.map { it.actualWatts }?.average()?.roundToInt()
 }
@@ -276,3 +294,6 @@ internal fun currentZoneAveragePower(state: LiveUiState, zone: PacingZone): Int?
 }
 
 private fun Effort.label(): String = when (this) { Effort.RECOVER -> "REST"; Effort.HOLD -> "HOLD"; Effort.PUSH -> "PUSH" }
+
+internal fun workFillX(left: Float, right: Float, fraction: Float): Float =
+    left + (right - left) * fraction.coerceIn(0f, 1f)

@@ -163,6 +163,8 @@ class ProfileBitmapRenderer(
         val bitmap = Bitmap.createBitmap(safeWidth, safeHeight, Bitmap.Config.ARGB_8888)
         val canvas = Canvas(bitmap)
         canvas.drawColor(palette.background)
+        drawCenteredText(canvas, "GM PACING PROFILE", safeWidth / 2f, safeHeight * 0.035f,
+            safeWidth * 0.061f, palette.primaryText)
         if (state.totalDistanceMeters <= 0.0 || state.routeProfile.size < 2) {
             drawCenteredText(
                 canvas,
@@ -184,10 +186,15 @@ class ProfileBitmapRenderer(
         }
 
         val pacer = virtualPacerGap(state)
-        val mapTop = 3f
-        val mapBottom = safeHeight * 0.61f
+        val bannerPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = effortColor(effortAt(state, state.progressMeters)) }
+        canvas.drawRoundRect(safeWidth * 0.035f, safeHeight * 0.075f, safeWidth * 0.965f,
+            safeHeight * 0.15f, 14f, 14f, bannerPaint)
+        drawCenteredText(canvas, profileTimingLabel(state), safeWidth / 2f, safeHeight * 0.1125f,
+            safeWidth * 0.056f, Color.WHITE)
+        val mapTop = safeHeight * 0.17f
+        val mapBottom = safeHeight * 0.57f
         val metricTop = mapBottom + 5f
-        val metricBottom = safeHeight * 0.79f
+        val metricBottom = safeHeight * 0.81f
         val elevationTop = metricBottom + 5f
         val elevationBottom = safeHeight - 4f
         val targetGap = pacer?.gapMeters ?: 0.0
@@ -306,7 +313,7 @@ class ProfileBitmapRenderer(
         // Ground-plane contours are intentionally stronger than the prior diagnostic lines.
         val contourPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
             color = palette.secondaryText
-            alpha = 150
+            alpha = 230
             strokeWidth = 3f
         }
         elevationContourCrossings(state, windowStart, windowEnd).forEach { contour ->
@@ -317,15 +324,6 @@ class ProfileBitmapRenderer(
                 val halfWidth = safeWidth * (0.20f + depth * 0.27f)
                 val left = safeWidth / 2f - halfWidth
                 canvas.drawLine(left, contourY, safeWidth / 2f + halfWidth, contourY, contourPaint)
-                drawText(
-                    canvas,
-                    "${contour.second} ft",
-                    8f,
-                    contourY - 6f,
-                    17f,
-                    palette.secondaryText,
-                    Paint.Align.LEFT,
-                )
             }
         }
 
@@ -385,10 +383,10 @@ class ProfileBitmapRenderer(
                     0f,
                     roadHorizonY,
                     intArrayOf(
-                        shadeColor(baseColor, 0.12f),
-                        shadeColor(baseColor, 0.46f),
-                        shadeColor(baseColor, 0.92f),
-                        shadeColor(baseColor, 0.42f),
+                        shadeColor(baseColor, 0.38f),
+                        shadeColor(baseColor, 0.74f),
+                        shadeColor(baseColor, 1.0f),
+                        shadeColor(baseColor, 0.70f),
                     ),
                     floatArrayOf(0f, 0.28f, 0.68f, 1f),
                     Shader.TileMode.CLAMP,
@@ -402,6 +400,17 @@ class ProfileBitmapRenderer(
                 close()
             }
             canvas.drawPath(quad, roadPaint)
+        }
+
+        listOf(0.65, 0.25, 0.0).forEach { fraction ->
+            val distance = (state.progressMeters + aheadMeters * fraction).coerceAtMost(state.totalDistanceMeters)
+            val elevation = elevationAt(state, distance)
+            val value = if (state.elevationUnitSystem == UnitSystem.IMPERIAL)
+                "${(elevation * 3.28084).roundToInt()} ft" else "${elevation.roundToInt()} m"
+            val y = yFor(distance)
+            canvas.drawRoundRect(5f, y - 16f, safeWidth * 0.23f, y + 16f, 6f, 6f,
+                Paint().apply { color = palette.background })
+            drawText(canvas, value, 10f, y + 8f, safeWidth * 0.045f, palette.primaryText, Paint.Align.LEFT)
         }
 
         state.nextPacingZone?.takeIf { it.startDistanceMeters <= windowEnd }?.let { next ->
@@ -419,12 +428,12 @@ class ProfileBitmapRenderer(
             canvas.drawLine(point.x, point.y, lineEndX, calloutY, calloutPaint)
             val distance = (next.startDistanceMeters - state.progressMeters).coerceAtLeast(0.0)
             val label = "${effortLabel(next.effort)} IN ${formatDistance(distance, state.distanceUnitSystem)} • ${next.targetPowerWatts} W"
-            drawText(canvas, label, textX, calloutY - 5f, 19.2f, palette.primaryText, align)
+            drawText(canvas, label, textX, calloutY - 5f, 22.5f, palette.primaryText, align)
         }
 
         val riderPoint = projectedAt(state.progressMeters)
         val riderX = riderPoint.x
-        val riderRadius = (safeWidth * 0.047f).coerceIn(20f, 29f)
+        val riderRadius = (safeWidth * 0.016f).coerceIn(6f, 9f)
         pacer?.takeIf { it.targetIsAhead }?.let {
             val targetPoint = projectedAt(it.targetProgressMeters.coerceIn(windowStart, windowEnd))
             val pacerRadius = (safeWidth * 0.045f).coerceIn(19f, 28f)
@@ -446,13 +455,12 @@ class ProfileBitmapRenderer(
         }
         canvas.drawCircle(riderX, riderY, riderRadius + 4f, Paint(Paint.ANTI_ALIAS_FLAG).apply { color = palette.background })
         canvas.drawCircle(riderX, riderY, riderRadius, markerPaint)
-        drawCenteredText(canvas, "YOU", riderX, riderY, riderRadius * 1.032f, palette.background)
 
         val target = state.recommendation?.targetPowerWatts
         val actual = state.rollingPowerWatts3s ?: state.currentPowerWatts
         val currentEffort = effortAt(state, state.progressMeters)
         val cardGap = safeWidth * 0.025f
-        val cardWidth = (safeWidth - cardGap * 4f) / 3f
+        val cardWidth = (safeWidth - cardGap * 3f) / 2f
         drawColoredMetricCard(
             canvas, "TARGET", target?.let { "$it W" } ?: "-- W",
             cardGap, metricTop,
@@ -465,16 +473,8 @@ class ProfileBitmapRenderer(
         }
         drawColoredMetricCard(
             canvas, "ACTUAL", actual?.let { "$it W" } ?: "-- W",
-            cardGap * 3f + cardWidth * 2f, metricTop,
-            cardGap * 3f + cardWidth * 3f, metricBottom, actualBackground,
-        )
-        val signedDistanceMeters = pacer?.let {
-            if (it.targetIsAhead) -abs(it.gapMeters) else abs(it.gapMeters)
-        } ?: 0.0
-        drawColoredMetricCard(
-            canvas, "PACE", formatSignedPacerDistance(signedDistanceMeters, state.distanceUnitSystem),
             cardGap * 2f + cardWidth, metricTop,
-            cardGap * 2f + cardWidth * 2f, metricBottom, palette.surface,
+            cardGap * 2f + cardWidth * 2f, metricBottom, actualBackground,
         )
         drawMiniElevationProfile(canvas, state, safeWidth, elevationTop, elevationBottom, pacer)
         return bitmap
@@ -989,7 +989,7 @@ class ProfileBitmapRenderer(
         valueColor: Int,
     ) {
         val titleSize = (canvasWidth * 0.052f).coerceIn(22f, 34f)
-        val valueSize = (canvasWidth * 0.068f).coerceIn(28f, 44f)
+        val valueSize = (canvasWidth * 0.095f).coerceIn(36f, 58f)
         val titlePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
             color = palette.secondaryText
             textSize = titleSize
@@ -1073,7 +1073,7 @@ class ProfileBitmapRenderer(
                 horizonY + (mapBottom - horizonY) * 0.09f,
                 parallaxOffsetX * 0.42f,
             ),
-            Paint(Paint.ANTI_ALIAS_FLAG).apply { color = Color.rgb(37, 42, 48); alpha = 185 },
+            Paint(Paint.ANTI_ALIAS_FLAG).apply { color = Color.rgb(115, 129, 145); alpha = 255 },
         )
         canvas.drawPath(
             mountainPath(
@@ -1081,7 +1081,7 @@ class ProfileBitmapRenderer(
                 horizonY + (mapBottom - horizonY) * 0.13f,
                 parallaxOffsetX,
             ),
-            Paint(Paint.ANTI_ALIAS_FLAG).apply { color = Color.rgb(25, 30, 35); alpha = 220 },
+            Paint(Paint.ANTI_ALIAS_FLAG).apply { color = Color.rgb(75, 90, 106); alpha = 255 },
         )
     }
 
@@ -1161,14 +1161,14 @@ class ProfileBitmapRenderer(
         }
         val axisPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
             color = palette.secondaryText
-            textSize = (width * 0.0375f).coerceIn(16f, 21f)
+            textSize = (width * 0.047f).coerceIn(19f, 26f)
             textAlign = Paint.Align.RIGHT
             isFakeBoldText = true
         }
-        repeat(4) { index ->
-            val fraction = index / 3.0
+        repeat(3) { index ->
+            val fraction = index / 2.0
             val elevationMeters = minElevation + span * fraction
-            val y = bottom - 5f - (fraction * (bottom - top - 10f)).toFloat()
+            val y = bottom - 20f - (fraction * (bottom - top - 40f).coerceAtLeast(1f)).toFloat()
             val value = if (state.elevationUnitSystem == UnitSystem.IMPERIAL) {
                 (elevationMeters * 3.28084).roundToInt().toString()
             } else {
@@ -1179,9 +1179,9 @@ class ProfileBitmapRenderer(
         drawText(
             canvas,
             if (state.elevationUnitSystem == UnitSystem.IMPERIAL) "ft" else "m",
-            chartLeft - 7f,
+            width - 5f,
             bottom - 2f,
-            (width * 0.033f).coerceIn(14f, 18f),
+            (width * 0.04f).coerceIn(17f, 22f),
             palette.secondaryText,
             Paint.Align.RIGHT,
         )
@@ -1353,3 +1353,20 @@ internal fun firstPersonPastMeters(targetGapMeters: Double): Double =
 // ticks denser and move fewer pixels per meter, while close-state ticks spread out and sweep
 // faster. Major ticks remain every 50 m in drawDistanceTicks.
 internal fun pacerTickIntervalMeters(visibleRadiusMeters: Double): Double = 10.0
+
+internal fun profileTimingLabel(state: LiveUiState): String {
+    val action = when (state.recommendation?.icon) {
+        com.gritmap.karoo.ui.state.GuidanceIcon.RECOVER -> "REST"
+        com.gritmap.karoo.ui.state.GuidanceIcon.PUSH -> "PUSH"
+        com.gritmap.karoo.ui.state.GuidanceIcon.WARNING -> "CHECK"
+        else -> "HOLD"
+    }
+    val pacer = virtualPacerGap(state) ?: return "$action • NO TIME TARGET"
+    val seconds = pacerTimeGapSeconds(state, pacer)
+    val relation = when {
+        abs(pacer.gapMeters) < 3.0 || seconds == 0 -> "ON PACE"
+        seconds > 0 -> "${abs(seconds)}s BEHIND"
+        else -> "${abs(seconds)}s AHEAD"
+    }
+    return "$action • $relation"
+}

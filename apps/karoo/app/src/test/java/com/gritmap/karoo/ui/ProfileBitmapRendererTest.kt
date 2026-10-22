@@ -214,4 +214,16 @@ class ProfileBitmapRendererTest {
         val rider = bitmap.getPixel(150, 250)
         assertTrue(Color.red(rider) > 230 && Color.green(rider) > 230 && Color.blue(rider) > 230)
     }
+    @Test fun `larger two card profile preview`() {
+        val bitmap = ProfileBitmapRenderer().renderFirstPersonRoute(com.gritmap.karoo.karoo.KarooPreviewState, 480, 624)
+        java.io.FileOutputStream(java.io.File("/tmp/gritmap-profile-two-cards.png")).use {
+            bitmap.compress(android.graphics.Bitmap.CompressFormat.PNG, 100, it)
+        }
+    }
+
+    @Test fun `profile timing banner preserves action and ahead behind relation`() {
+        assertEquals("HOLD • 3s BEHIND", profileTimingLabel(KarooPreviewState))
+        assertTrue(profileTimingLabel(KarooPreviewState.copy(plannedFinishSeconds = null)).contains("NO TIME TARGET"))
+    }
+
 }
