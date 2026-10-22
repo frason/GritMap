@@ -202,7 +202,7 @@ export function ZonesSettingsScreen() {
             setPastDateInput(text);
             setPastError(undefined);
           }}
-          placeholder="e.g. 2025-05-10"
+          placeholder="e.g. 2025-06-14"
           hint="Year-month-day."
           keyboardType="numbers-and-punctuation"
         />

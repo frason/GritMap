@@ -49,24 +49,24 @@ describe("describePlanFeasibility", () => {
   it("words an out-of-reach goal relative to the rider's own best when the plan beats it", () => {
     const lines = describePlanFeasibility({
       realistic: { ...base, feasible: false },
-      goalDurationMs: 2_340_000,
-      predictedFinishMs: 2_472_000,
-      bestEffortMs: 2_487_000,
+      goalDurationMs: 2_280_000,
+      predictedFinishMs: 2_412_000,
+      bestEffortMs: 2_427_000,
     })!;
     assert.equal(lines.tone, "info");
-    assert.equal(lines.headline, "Your 39:00 goal is a stretch for now, but your best is within reach.");
-    assert.match(lines.detail, /about 41:12, 0:15 faster than your best of 41:27/);
+    assert.equal(lines.headline, "Your 38:00 goal is a stretch for now, but your best is within reach.");
+    assert.match(lines.detail, /about 40:12, 0:15 faster than your best of 40:27/);
   });
 
   it("mentions the rider's best when the plan cannot beat it", () => {
     const lines = describePlanFeasibility({
       realistic: { ...base, feasible: false },
-      goalDurationMs: 2_340_000,
+      goalDurationMs: 2_280_000,
       predictedFinishMs: 2_520_000,
-      bestEffortMs: 2_487_000,
+      bestEffortMs: 2_427_000,
     })!;
     assert.equal(lines.tone, "warning");
-    assert.match(lines.detail, /about 42:00, 3:00 slower than your goal\. Your best so far is 41:27\./);
+    assert.match(lines.detail, /about 42:00, 4:00 slower than your goal\. Your best so far is 40:27\./);
   });
 
   it("falls back to watts when no finish time can be predicted", () => {

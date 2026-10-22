@@ -28,8 +28,8 @@ Untouched on purpose: W' reserve 15%, `historyMarginPct` 4%, `targetFinishTimeSe
 ## Verified
 
 - `npx tsc --noEmit` clean; `npm test` 707/707; `npm run web:smoke` clean. New tests cover floors, CP from history, forward-only redistribution, reference-effort selection, the feasibility wording and the FTP flag.
-- Local reproduction with Jason's real FTP/weight/goals (values are NOT committed anywhere; scratch only): the realistic plan is predicted 41:17 for either goal (the PR is 41:27), W' does not bind at the real FTP,
-  goal 39:00 is out of reach for now, goal = the PR time is reachable. Details were sent to the coordinator.
+- Local reproduction with Jason's real FTP/weight/goals (values are NOT committed anywhere; scratch only): the realistic plan is predicted slightly faster than the rider's best for either goal, W' does not bind at the real FTP,
+  the long-term goal is out of reach for now, a goal equal to the best time is reachable. Details were sent to the coordinator.
 - Not run: simulator/device after these UI changes (the notice now needs a saved FTP, so the demo screenshot no longer shows it until Profile is saved); the Karoo (wire shape unchanged).
 
 ## External state
@@ -43,7 +43,7 @@ Untouched on purpose: W' reserve 15%, `historyMarginPct` 4%, `targetFinishTimeSe
 ## Hazards and blockers
 
 - Whole-profile floors make the plan at least as hard as the reference effort in every zone: it can be harder than the reference effort's pacing late (higher mean). The rider's PR proves the profile, not that more is sustainable.
-- The goal's power still comes from the power-duration table (283 W vs 284 W for 41:27 vs 39:00 at the real FTP): different goals give almost the same plan. Proposed fix: derive required power from the goal time with the physics model (staged-goal work).
+- The goal's power still comes from the power-duration table (a long-term goal and a goal equal to the best time differ by only about 1 W at the real FTP): different goals give almost the same plan. Proposed fix: derive required power from the goal time with the physics model (staged-goal work).
 - Riders who saved an FTP before this change will not see the out-of-reach notice until they save the Profile again.
 
 ## Next safe action

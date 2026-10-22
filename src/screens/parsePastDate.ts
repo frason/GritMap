@@ -3,7 +3,7 @@ export type PastDateResult = { ok: true; value: number } | { ok: false; error: s
 const EARLIEST_YEAR = 2000;
 
 /**
- * Reads a date the rider typed for a past weight: year-month-day ("2025-05-10") or month/day/year ("5/10/2025").
+ * Reads a date the rider typed for a past weight: year-month-day ("2025-06-14") or month/day/year ("6/14/2025").
  * Returns noon local time that day (callers cap it at "now" for today), so it falls inside the ride day whatever the time
  * zone; dates after today and impossible dates are refused with a plain message.
  */
@@ -23,11 +23,11 @@ export function parsePastDateInput(text: string, nowMs: number): PastDateResult 
     day = Number(us[2]);
     year = Number(us[3]);
   } else {
-    return { ok: false, error: "Enter the date as year-month-day, for example 2025-05-10." };
+    return { ok: false, error: "Enter the date as year-month-day, for example 2025-06-14." };
   }
   const date = new Date(year, month - 1, day, 12, 0, 0, 0);
   if (date.getFullYear() !== year || date.getMonth() !== month - 1 || date.getDate() !== day || year < EARLIEST_YEAR) {
-    return { ok: false, error: "That date doesn't exist. Enter it as year-month-day, for example 2025-05-10." };
+    return { ok: false, error: "That date doesn't exist. Enter it as year-month-day, for example 2025-06-14." };
   }
   const now = new Date(nowMs);
   const startOfTomorrow = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1).getTime();

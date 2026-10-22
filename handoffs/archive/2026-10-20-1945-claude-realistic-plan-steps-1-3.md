@@ -17,7 +17,7 @@ the changed per-section targets in the existing `baselinePacingPlan` shape. Impo
 ## Step 1 (reproduction, local print only, no ride data committed)
 
 Real Diablo attempts in `fixtures/fit` (git-ignored): only two: 2026-07-18 09:08 (45:19) and 2026-09-13 06:47 (45:45). Jason's six
-newer files are not Diablo (short 2 to 12 minute rides near 37.891,-122.128, no power). The 41:40 PR and the other recent Diablo efforts are NOT available;
+newer files are not Diablo (short 2 to 12 minute rides near 37.891,-122.128, no power). The rider's personal-best ride and the other recent Diablo efforts were NOT available then;
 the simulator's three rides are synthetic "Demo ride" files. Plan: FTP 250 W, goal 40:00 (assumed; real values not confirmed).
 - 10 of 26 quarter-miles planned above the best ever held: worst qm19 (7.6%) +21 W, qm3 (descent) +16, qm13 (8.5%) +16, qm21 +15, qm24 +10.
 - Calibrated on the two efforts, even the raw plan is predicted to finish in 45:06, not 40:00: a 40:00 goal at FTP 250 is out of reach on this evidence.

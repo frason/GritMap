@@ -42,10 +42,10 @@ new `src/screens/parsePastDate.ts` (+ tests), `describePlanFeasibility.ts` (+ te
 
 ## Hazards and blockers
 
-- Back-dated weights apply to every effort after their date until the next row. One entry on 2025-05-10 therefore also covers efforts up to the next recorded weight (for example the profile row written when the app was updated); add further dated weights for a closer fit.
+- Back-dated weights apply to every effort after their date until the next row. One entry on a past date therefore also covers efforts up to the next recorded weight (for example the profile row written when the app was updated); add further dated weights for a closer fit.
 - Efforts older than the earliest row use the earliest row's weight (so, with only today's profile, all efforts use today's weight, as before).
 - The per-effort weight only affects the calibration of the physics model (finish predictions and the goal-time power); it does not change what is sent to the Karoo directly.
 
 ## Next safe action
 
-Coordinator: ask Jason about pushing and the next TestFlight build (nothing is pushed). After it is installed Jason enters his weight for 2025-05-10 on the Profile screen.
+Coordinator: ask Jason about pushing and the next TestFlight build (nothing is pushed). After it is installed Jason enters his weight for the date of his best ride on the Profile screen.
