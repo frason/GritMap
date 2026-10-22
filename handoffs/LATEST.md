@@ -1,3 +1,19 @@
+# Current task status: replanner development milestone verified (2026-10-22 16:44 PDT)
+
+**Completed:**
+- `c9da364`: concurrent foundation/runtime (default off) plus installed Coach/Profile/cardiac display work committed and pushed; verification handoff `c26e024`.
+- `1650b79`: deterministic live replanner, optional ceiling import/storage, data-preserving Room migration, synthetic replay and phone/Karoo shared-fixture checks implemented. Default and opt-in full QA pass **249 tests each, lint and build**; phone fixture3/3 and typecheck pass. Both experimental flags are off for default debug/beta.
+- Needle readiness/ABI/effort assessment written; **Needle is not activated**.
+
+**Remaining:**
+- Receiver capability/rollout gating and physical/real-ride validation before enabling ceiling metadata/replanning. Installed Karoo is still **version70 / 0.10.44-fields1** and rejects the new extension. Phone production sender unchanged. Next device/public code >=71.
+- Calibrated per-section timing/best-finish prediction and ride-level energy accounting; current response/schedule are explicit estimates, private Diablo PR replay not performed.
+- PR `segmentRecord` contract/import/storage/display; concurrent tracking remains disabled.
+- H10 recordings list/export, separate October18 RR-artifact confirmation, and ride validation of cardiac/H10/field changes.
+- Needle artifact/runtime/advisory implementation and device validation, after the deterministic path; see `docs/NEEDLE_READINESS.md`.
+
+No new device install, public release or model download. Feature source committed; handoff commit/push follows. Details, exact verification and safest next action: `handoffs/archive/2026-10-22-1644-codex-live-replanner-verified.md`. Older entries below are historical; this status supersedes their pending/installation statements.
+
 # Handoff: concurrent/field milestone committed (2026-10-22 16:24 PDT)
 
 `c9da364` commits concurrent attempts (default off) and completed installed field updates. Default and opt-in full tests/lint/debug builds passed (226 tests each). H10 export remains pending. No new device install or release. Push follows; default-off replanner implementation is starting. Details: `handoffs/archive/2026-10-22-1624-codex-concurrent-fields-committed.md`.
