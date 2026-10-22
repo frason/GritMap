@@ -1,3 +1,7 @@
+# Handoff: concurrent/field milestone committed (2026-10-22 16:24 PDT)
+
+`c9da364` commits concurrent attempts (default off) and completed installed field updates. Default and opt-in full tests/lint/debug builds passed (226 tests each). H10 export remains pending. No new device install or release. Push follows; default-off replanner implementation is starting. Details: `handoffs/archive/2026-10-22-1624-codex-concurrent-fields-committed.md`.
+
 # Coordinator: PHONE SESSION tasks (2026-10-22, Jason approved; replaces the 2026-10-09 phone task below)
 
 Apple approved build 7 for external TestFlight. Beta riders arrive now. In order:
