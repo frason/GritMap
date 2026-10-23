@@ -1,3 +1,9 @@
+# BLE recovery fix: code72 verified, install approval pending (2026-10-23 16:50 PDT)
+
+Code71 physical interruption **failed** (BLE write status1; phone Sending13%). Corrected source **0312e10** retries bounded transport failures, notices radio shutdown, preserves completed chunks and verifies the entire manifest on reconnect. **257 tests, debug/beta lint, signed/minified build pass.**
+
+Candidate **0.10.45-bluetooth-resume1 /72**, SHA256 `2e15a9543047d65b05c46bec54473e1c5acce81a30815d28e407f7f5d5cbc8f2`. APK in `/tmp/gritmap-karoo-0.10.45-bluetooth-resume1-72/`. **Not installed;71 remains installed. No tag/publication.** Next: exact install approval, then physical repeat. Pre-existing two-minute timeout currently covers the whole receive, contrary to discovery-only docs; assess before public release. Details: `handoffs/archive/2026-10-23-1650-codex-ble-resume72-verified-candidate.md`.
+
 # FIT inspected; RR saved locally, export missing (2026-10-23 15:53 PDT)
 
 **RR capture saves on Karoo:**624 samples finalized at ride end. **Export/transfer to phone is unfinished.** User FIT contains217 HR readings (54–62 bpm, session average57),9:31 elapsed/3:35 timer, and four GritMap pacing developer fields; no RR/HRV or H10-derived metric fields. Raw RR artifact/quality/checksum remain uninspected. User ride file remains outside Git.
