@@ -5,7 +5,8 @@ import { describe, it } from "node:test";
 
 import type { SegmentDetail } from "../db/getSegmentDetail.ts";
 import { describeBleSend, reduceBleEvent, type BleSendState } from "./bleSendStatus.ts";
-import { isBleTransferEnabled } from "./bleTransferSettings.ts";
+import { BLE_TRANSFER_DISABLED_KEY, isBleTransferEnabled } from "./bleTransferSettings.ts";
+import { OLDER_KAROO_HINT_AFTER_MS, offersWifiFallback, shouldHintOlderKaroo } from "./bleSendStatus.ts";
 import {
   assembleTransferPackage,
   buildDirectTransfer,
@@ -274,7 +275,7 @@ describe("what the phone says", () => {
   it("walks advertising, connected, sending with a percentage, then sent-unconfirmed", () => {
     let state: BleSendState = { phase: "idle" };
     state = reduceBleEvent(state, { state: "advertising" });
-    assert.match(describeBleSend(state).text, /Inbox, then Receive from Phone/);
+    assert.match(describeBleSend(state).text, /Inbox, then tap Receive from Phone/);
     state = reduceBleEvent(state, { state: "connected" });
     state = reduceBleEvent(state, { state: "progress", resource: "plan", served: 1500, total: 3000 });
     assert.match(describeBleSend(state).text, /Sending the plan to your Karoo… 50%/);
@@ -290,15 +291,31 @@ describe("what the phone says", () => {
   });
 });
 
-describe("development flag and base64", () => {
+describe("kill switch, older-Karoo hint and base64", () => {
   const db = (value?: string) => ({ prepare: () => ({ get: () => (value === undefined ? undefined : { value }), run: () => undefined }) });
 
-  it("is off for a release build without a flag, on in a dev build, a build flag or the device setting", () => {
-    assert.equal(isBleTransferEnabled(db(), false, ""), false);
-    assert.equal(isBleTransferEnabled(db("0"), false, ""), false);
-    assert.equal(isBleTransferEnabled(db(), true, ""), true);
-    assert.equal(isBleTransferEnabled(db(), false, "1"), true);
-    assert.equal(isBleTransferEnabled(db("1"), false, ""), true);
+  it("Bluetooth sending is on in every build; only the hidden kill switch (ble_transfer_disabled = 1) hides it", () => {
+    assert.equal(BLE_TRANSFER_DISABLED_KEY, "ble_transfer_disabled");
+    assert.equal(isBleTransferEnabled(db()), true);
+    assert.equal(isBleTransferEnabled(db("0")), true);
+    assert.equal(isBleTransferEnabled(db("1")), false);
+  });
+
+  it("hints that the Karoo may be too old only after a wait with nobody connecting", () => {
+    assert.equal(shouldHintOlderKaroo({ phase: "advertising" }, OLDER_KAROO_HINT_AFTER_MS - 1), false);
+    assert.equal(shouldHintOlderKaroo({ phase: "advertising" }, OLDER_KAROO_HINT_AFTER_MS), true);
+    assert.equal(shouldHintOlderKaroo({ phase: "connected" }, 60_000), false);
+    assert.equal(shouldHintOlderKaroo({ phase: "timedOut" }, 60_000), false);
+  });
+
+  it("offers the Wi-Fi route when Bluetooth is waiting, timed out, unsent, unavailable or failed, but not during a good transfer", () => {
+    for (const phase of ["advertising", "timedOut", "sentUnconfirmed", "stopped", "poweredOff", "unauthorized", "unsupported", "error"] as const) {
+      assert.equal(offersWifiFallback({ phase } as never), true, phase);
+    }
+    assert.equal(offersWifiFallback({ phase: "unavailable", reason: "noPlan" }), true);
+    assert.equal(offersWifiFallback({ phase: "rejected", code: "bad_hash" }), true);
+    for (const phase of ["idle", "preparing", "connected", "imported"] as const) assert.equal(offersWifiFallback({ phase } as never), false, phase);
+    assert.equal(offersWifiFallback({ phase: "sending", resource: "plan", served: 1, total: 2, planDone: false }), false);
   });
 
   it("encodes bytes as standard padded base64, like Node", () => {

@@ -24,6 +24,7 @@ const iconGlyphs = {
   more: "ellipsis-vertical",
   search: "search",
   wifi: "wifi",
+  bluetooth: "bluetooth",
   download: "download-outline",
   people: "people-outline",
   speedometer: "speedometer-outline",

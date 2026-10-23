@@ -14,7 +14,7 @@
         "NSAppTransportSecurity": {
           "NSAllowsLocalNetworking": true
         },
-        "NSBluetoothAlwaysUsageDescription": "GritMap uses Bluetooth to hand a segment and plan to your Karoo, only while you are on the Send screen.",
+        "NSBluetoothAlwaysUsageDescription": "GritMap uses Bluetooth to send a segment and plan from your phone to your Karoo, only while you are on the Send to Karoo screen.",
         "NSLocalNetworkUsageDescription": "GritMap sends segments directly to your Karoo over your local WiFi network."
       },
       "buildNumber": "1",

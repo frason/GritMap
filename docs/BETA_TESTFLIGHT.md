@@ -16,7 +16,7 @@ sideloaded APK (`docs/BETA_KAROO_INSTALL.md`).
 | Export compliance | `ITSAppUsesNonExemptEncryption = false` (in `ios/GritMap/Info.plist` and `app.json`) | The app only uses encryption built into iOS (HTTPS to GitHub and the map tile server, hashing, Keychain). That is exempt, so TestFlight will not ask the export-compliance question on every build. If you ever add your own cryptography, change this. |
 | Devices | iPhone only (`supportsTablet: false`, `TARGETED_DEVICE_FAMILY = 1`) | Only phone layouts have been designed and checked; iPad layouts were not. This also avoids iPad screenshot requirements at App Store time. Re-enable after the beta once iPad layouts are checked. |
 | Privacy manifest | `ios/GritMap/PrivacyInfo.xcprivacy`: no tracking, no collected data, required-reason APIs declared (UserDefaults, file timestamps, boot time) | Matches the app: everything is stored on the phone. Libraries ship their own manifests (React Native, expo-file-system) and are merged by Xcode. |
-| Usage strings | Only `NSLocalNetworkUsageDescription` ("GritMap sends segments directly to your Karoo over your local WiFi network.") plus `NSAllowsLocalNetworking` | The app uses no camera, photos, location, contacts or microphone. The file picker needs no permission string. Secure storage uses the Keychain (no permission). The local-network prompt appears the first time a rider sends to a Karoo. |
+| Usage strings | `NSBluetoothAlwaysUsageDescription` ("GritMap uses Bluetooth to send a segment and plan from your phone to your Karoo, only while you are on the Send to Karoo screen.") for the main send, and `NSLocalNetworkUsageDescription` plus `NSAllowsLocalNetworking` for the Wi-Fi fallback | The app uses no camera, photos, location, contacts or microphone. The file picker needs no permission string. Secure storage uses the Keychain (no permission). The local-network prompt appears the first time a rider sends to a Karoo. |
 | Icon / splash | `assets/icon.png` 1024x1024 RGB (no transparency, as App Store Connect requires); splash is 1024x1024 | Meets requirements. |
 | `.easignore` | Leaves `apps/` (Karoo), `fixtures/`, `docs/`, `handoffs/`, `registry/` and agent folders out of the cloud upload | Smaller, faster build and keeps real ride files off Expo's servers. |
 
@@ -75,7 +75,10 @@ Apple processes the build (usually 10-30 minutes) and emails you. In App Store C
 - **External testing** (the 20+ strangers): TestFlight -> External Testing -> New Group, add the build. The **first build of a
   version goes through Beta App Review** (usually under a day). Invite by email, or enable a **public link** (up to 10,000
   testers) and share that. Later builds of the same version usually skip review.
-- In "What to Test" tell testers to follow the in-app steps and send them the Karoo install guide.
+- In "What to Test" and the beta description, say what GritMap needs, first: **a Hammerhead Karoo 3, a power meter on your bike and a heart-rate monitor.**
+  Then: follow the in-app steps, send them the Karoo install guide, and update the Karoo extension to the version that receives over Bluetooth
+  (build 8 sends over Bluetooth first; an older Karoo extension needs the Wi-Fi fallback on the Send to Karoo screen). Ask testers to report whether
+  "Imported on your Karoo" appeared after a Bluetooth send.
 
 ### 8. Beta App Review information (TestFlight -> Test Information)
 Fill in: feedback email, marketing/support URL, contact (name, phone, email), and **no sign-in required** (the app has no
@@ -83,19 +86,22 @@ accounts). Suggested review notes:
 
 > GritMap helps cyclists pace climbs and review how they rode them. It works entirely on the phone with no account.
 > It also pairs with an optional companion extension for Hammerhead Karoo bike computers, which we distribute separately to testers.
-> Reviewers do not need a Karoo: everything except "Send to Karoo" works without one. The first time a rider taps
-> Send to Karoo, iOS asks for Local Network access because the phone sends the segment to the Karoo over the same Wi-Fi network.
+> GritMap is built for riders with a power meter and a heart-rate monitor, and for the Karoo 3. Reviewers do not need any of them: everything
+> except "Send to Karoo" works without a Karoo. The first time a rider taps "Start Bluetooth send" on the Send to Karoo screen, iOS asks for
+> Bluetooth permission because the phone sends the plan to the Karoo directly over Bluetooth (about 2 minutes, only while that screen is open).
+> Without a Karoo the screen just says it is waiting and then times out; a Wi-Fi alternative is offered below it.
 >
 > To review: complete the short setup (FTP and weight can be any numbers, e.g. 250 W and 75 kg). On the Segments tab choose
 > "Open Segments" and add any segment (this needs internet). Open it, set a goal time (for example 40 minutes), and the app shows
-> a pacing plan. To see ride analysis, import the attached sample ride on the Rides tab (Import, choose the file).
+> a pacing plan. To see ride analysis, import the attached sample ride on the Rides tab (Import, choose the file). The sample ride is
+> synthetic and has no power or heart-rate data, so the app will say plainly that the ride has no power and that pacing needs power.
 
 Attach `docs/beta-review-sample-ride.gpx` in the review attachment field. It is **synthetic** (generated by
 `scripts/make-review-sample-gpx.ts` along the public "Diablo Northgate to Junction" Open Segments entry, invented timing); it imports
 and matches that segment (checked on the simulator: one effort, 99% match). Tell the reviewer to add "Diablo Northgate to Junction"
 from Open Segments first. Do not attach any personal ride. If Apple asks about the Karoo dependency: it
-is optional hardware, the phone app is useful without it (planning, import, analysis), and the Karoo send uses plain HTTP on the
-local network only.
+is optional hardware, the phone app is useful without it (planning, import, analysis), the Karoo send uses Bluetooth directly between the two
+devices (or plain HTTP on the local network as a fallback), and nothing is sent to any server.
 
 ### 9. Privacy policy URL (required) and the App Privacy answers
 Apple requires a **Privacy Policy URL** for external TestFlight testing (Test Information) and for the App Store. **The policy is written: `docs/PRIVACY.md`.**
@@ -113,6 +119,7 @@ today, so update it if the app changes (a new service, analytics, or opening Ope
 | Third-party SDKs that collect data? | **None** | The app has no analytics, crash-reporting or advertising dependency (checked in `package.json` and the source). |
 | Account / sign-in | None | There are no accounts. |
 | Privacy policy URL | the published URL of `docs/PRIVACY.md` | Required. |
+| Does the app use Bluetooth to collect data? | **No** | Bluetooth is used only to send the rider's own plan to their own Karoo; nothing is collected by the developer. Re-checked for build 8: the "Data Not Collected" answers above still hold. |
 | Does the app use encryption beyond OS-provided? | **No** | `ITSAppUsesNonExemptEncryption = false` is already set. |
 
 Decisions for Jason: (1) if you would rather over-disclose, you could declare "Other Data" for the transient IP address seen by GitHub and OpenFreeMap, but Apple's definition does not

@@ -77,12 +77,12 @@ export function describeBleSend(state: BleSendState): BleSendStatus {
     case "preparing":
       return { text: "Preparing the transfer…", tone: "info", active: true };
     case "unavailable":
-      return { text: "A Bluetooth send carries a pacing plan. Set your FTP and a goal time for this segment first, then try again.", tone: "warning", active: false };
+      return { text: "A Bluetooth send carries a pacing plan. Set your FTP and a goal time for this segment first, then try again, or use Wi-Fi to send just the segment.", tone: "warning", active: false };
     case "prepareFailed":
       return { text: `Couldn't prepare the transfer. ${state.detail}`.trim(), tone: "error", active: false };
     case "advertising":
       return {
-        text: "Waiting for your Karoo. On the Karoo, open GritMap, then Inbox, then Receive from Phone. Keep this screen open: it stops after 2 minutes.",
+        text: "Waiting for your Karoo. On the Karoo, open GritMap, then Inbox, then tap Receive from Phone. Keep this screen open: it stops after 2 minutes.",
         tone: "info",
         active: true,
       };
@@ -115,4 +115,20 @@ export function describeBleSend(state: BleSendState): BleSendStatus {
     case "error":
       return { text: "Bluetooth couldn't start. Try again.", tone: "error", active: false };
   }
+}
+
+/** How long the phone waits with nobody connecting before it suggests the Karoo may be too old for Bluetooth. */
+export const OLDER_KAROO_HINT_AFTER_MS = 30_000;
+
+/**
+ * True when the phone has been advertising for a while with no Karoo connecting: most often the Karoo's GritMap is an older
+ * version without the Bluetooth receiver (the phone cannot read the Karoo's version), or Receive from Phone is not open.
+ */
+export function shouldHintOlderKaroo(state: BleSendState, waitedMs: number): boolean {
+  return state.phase === "advertising" && waitedMs >= OLDER_KAROO_HINT_AFTER_MS;
+}
+
+/** Phases after which the rider should be offered the Wi-Fi route (anything that is not a clean success or a fresh start). */
+export function offersWifiFallback(state: BleSendState): boolean {
+  return state.phase !== "idle" && state.phase !== "preparing" && state.phase !== "imported" && state.phase !== "connected" && state.phase !== "sending";
 }

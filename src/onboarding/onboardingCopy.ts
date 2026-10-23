@@ -4,10 +4,10 @@
  * written alongside) cannot drift apart. Change a name here only together with the Karoo app.
  */
 export const KAROO_APP_NAME = "GritMap";
-/** The button on the Karoo's GritMap screen that opens the transfer listener and shows its address. */
+/** The Karoo button (GritMap, Inbox) that opens the Bluetooth receiver. */
 export const KAROO_RECEIVE_SCREEN = "Receive from Phone";
 /** The button on a segment, on the phone, that sends the segment and its plan. */
-export const PHONE_SEND_BUTTON = "Send plan to Karoo";
+export const PHONE_SEND_BUTTON = "Send to Karoo";
 /** How long the Karoo keeps listening once "Receive from Phone" is open (HttpSegmentInbox.DEFAULT_TIMEOUT_MINUTES). */
 export const KAROO_RECEIVE_WINDOW_MINUTES = 10;
 /** What the address on the Karoo looks like; shown as an example only. */
@@ -61,28 +61,63 @@ export const SEGMENT_WAYS: readonly { icon: "search" | "download" | "route"; tit
   },
 ];
 
+/** The Karoo screen the GritMap app opens first: its Inbox holds both receive buttons. */
+export const KAROO_INBOX = "Inbox";
+/** The Karoo button that starts the Wi-Fi receiver in current Karoo builds (older builds label it "Receive from Phone"). */
+export const KAROO_WIFI_RECEIVE = "Legacy Wi-Fi Receive";
+/** How long the Karoo listens over Bluetooth once "Receive from Phone" is open (docs/BLE_DIRECT_TRANSFER_CONTRACT.md). */
+export const KAROO_BLUETOOTH_WINDOW_MINUTES = 2;
+
+/** What GritMap needs to be useful (docs/GOALS.md, decided 2026-10-23). Shown before anything is set up. */
+export const WHAT_YOU_NEED = {
+  title: "What you need",
+  intro: "GritMap needs:",
+  items: ["A Hammerhead Karoo 3", "A power meter on your bike", "A heart-rate monitor"],
+  body: "Pacing plans are power targets, so without a power meter GritMap can show your rides and segments but cannot pace or judge your effort.",
+} as const;
+
+/** Said next to FTP so the rider knows where the number comes from. */
+export const FTP_SOURCE_NOTE = "Your FTP is the number your power meter and recent rides point to.";
+
+/** Steps for the main way to send: Bluetooth, straight from the phone to the Karoo, no Wi-Fi or address needed. */
 export const KAROO_STEPS: readonly { title: string; body: string }[] = [
   {
-    title: `Install ${KAROO_APP_NAME} on your Karoo`,
+    title: `Update ${KAROO_APP_NAME} on your Karoo`,
     body: `Follow the Karoo install guide you were sent. When it worked, ${KAROO_APP_NAME} appears in your Karoo's app list.`,
   },
+  {
+    title: `On the Karoo, open ${KAROO_APP_NAME}, then ${KAROO_INBOX}, then tap ${KAROO_RECEIVE_SCREEN}`,
+    body: `Keep that screen open. The Karoo listens over Bluetooth for ${KAROO_BLUETOOTH_WINDOW_MINUTES} minutes.`,
+  },
+  {
+    title: `On your phone, open a segment and tap ${PHONE_SEND_BUTTON}`,
+    body: "Then tap Start Bluetooth send and keep GritMap open and the phone near the Karoo. iOS asks for Bluetooth permission the first time.",
+  },
+  {
+    title: "Check the Karoo",
+    body: `The phone says "Imported on your Karoo" once the Karoo confirms. If it only says "Sent; check your Karoo", open the Karoo's segment list.`,
+  },
+];
+
+/** What to do when Bluetooth does not work. The Wi-Fi route needs both devices on the same network. */
+export const WIFI_FALLBACK_STEPS: readonly { title: string; body: string }[] = [
   {
     title: "Put your phone and Karoo on the same Wi-Fi",
     body: "Use your home Wi-Fi, or turn on Personal Hotspot on your iPhone and join it from the Karoo.",
   },
   {
-    title: `On the Karoo, open ${KAROO_APP_NAME} and tap ${KAROO_RECEIVE_SCREEN}`,
-    body: `The Karoo shows an address, like ${KAROO_ADDRESS_EXAMPLE}. Keep that screen open: it stops listening after ${KAROO_RECEIVE_WINDOW_MINUTES} minutes.`,
+    title: `On the Karoo, open ${KAROO_APP_NAME}, then ${KAROO_INBOX}, then tap ${KAROO_WIFI_RECEIVE}`,
+    body: `Older ${KAROO_APP_NAME} versions call it ${KAROO_RECEIVE_SCREEN}. The Karoo shows an address like ${KAROO_ADDRESS_EXAMPLE}. It stops listening after ${KAROO_RECEIVE_WINDOW_MINUTES} minutes.`,
   },
   {
-    title: `On your phone, open a segment and tap ${PHONE_SEND_BUTTON}`,
-    body: "Type the address from the Karoo the first time. GritMap remembers it after that.",
-  },
-  {
-    title: "Check the Karoo",
-    body: `It confirms the segment arrived. If your phone says it could not reach the Karoo, check both are on the same Wi-Fi and ${KAROO_RECEIVE_SCREEN} is still open.`,
+    title: "Type that address in the box below and tap send",
+    body: "GritMap remembers the address after that.",
   },
 ];
+
+/** Why a rider might be waiting on a Karoo that cannot receive over Bluetooth (an older GritMap on the Karoo). */
+export const OLDER_KAROO_HINT =
+  `Still waiting. If your Karoo has an older ${KAROO_APP_NAME} version, it cannot receive over Bluetooth: update it, or send over Wi-Fi instead.`;
 
 export const FTP_HELP =
   "FTP is the most power you can hold for about an hour. If you do not know yours, a recent power test or your bike computer's estimate is fine. You can change it later.";

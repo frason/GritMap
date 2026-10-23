@@ -21,10 +21,13 @@ import { useColors } from "../theme/useColors";
 import { AppText, Button, Card, SegmentedControl, TextField } from "../theme/components";
 import {
   FTP_HELP,
+  FTP_SOURCE_NOTE,
   KAROO_STEPS,
   ONBOARDING_STEPS,
   SEGMENT_WAYS,
   WELCOME_POINTS,
+  WHAT_YOU_NEED,
+  WIFI_FALLBACK_STEPS,
 } from "./onboardingCopy";
 import { markOnboardingComplete } from "./onboardingState";
 import {
@@ -247,6 +250,20 @@ function WelcomeStep() {
           </View>
         </Card>
       ))}
+      <Card>
+        <View accessible accessibilityLabel={`${WHAT_YOU_NEED.title}. ${WHAT_YOU_NEED.intro} ${WHAT_YOU_NEED.items.join(", ")}. ${WHAT_YOU_NEED.body}`}>
+          <AppText variant="headline">{WHAT_YOU_NEED.title}</AppText>
+          <AppText variant="subheadline">{WHAT_YOU_NEED.intro}</AppText>
+          {WHAT_YOU_NEED.items.map((item) => (
+            <AppText key={item} variant="subheadline">
+              {`• ${item}`}
+            </AppText>
+          ))}
+          <AppText variant="footnote" color="textSecondary">
+            {WHAT_YOU_NEED.body}
+          </AppText>
+        </View>
+      </Card>
     </View>
   );
 }
@@ -272,7 +289,7 @@ function NumbersStep(props: {
         value={props.ftpInput}
         onChangeText={props.onFtpChange}
         placeholder="e.g. 250"
-        hint={FTP_HELP}
+        hint={`${FTP_HELP} ${FTP_SOURCE_NOTE}`}
         keyboardType="number-pad"
         {...(props.ftpError === undefined ? {} : { error: props.ftpError })}
       />
@@ -330,7 +347,7 @@ function KarooStep() {
   return (
     <View style={styles.stack}>
       <AppText variant="body" color="textSecondary">
-        To ride a segment with live pacing, GritMap sends it and its plan to your Karoo over Wi-Fi. Do this when you are ready to ride; you can skip it for now.
+        To ride a segment with live pacing, GritMap sends it and its plan to your Karoo over Bluetooth, straight from your phone. Do this when you are ready to ride; you can skip it for now.
       </AppText>
       {KAROO_STEPS.map((item, index) => (
         <View key={item.title} style={styles.numberedRow}>
@@ -345,6 +362,22 @@ function KarooStep() {
               {item.body}
             </AppText>
           </View>
+        </View>
+      ))}
+      <AppText variant="headline" accessibilityRole="header">
+        If Bluetooth does not work
+      </AppText>
+      <AppText variant="subheadline" color="textSecondary">
+        You can send over Wi-Fi instead, from the segment's Send to Karoo screen.
+      </AppText>
+      {WIFI_FALLBACK_STEPS.map((item, index) => (
+        <View key={item.title} style={styles.pointText} accessible accessibilityLabel={`Wi-Fi step ${index + 1}. ${item.title}. ${item.body}`}>
+          <AppText variant="subheadline" style={{ fontWeight: "600" }}>
+            {`${index + 1}. ${item.title}`}
+          </AppText>
+          <AppText variant="footnote" color="textSecondary">
+            {item.body}
+          </AppText>
         </View>
       ))}
       <AppText variant="footnote" color="textSecondary">

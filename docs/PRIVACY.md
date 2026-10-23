@@ -13,7 +13,8 @@ no advertising and no tracking. We (the people who make GritMap) do not collect 
 All of this stays on your iPhone (and, for what you send to it, your Karoo). None of it is sent to us.
 
 - **Your rides.** When you import a ride file (FIT or GPX), GritMap reads it and keeps the ride's route, times, distance, elevation and any power,
-  heart-rate, cadence, speed and temperature it contains. It also keeps a copy of the file you imported inside the app.
+  heart-rate, cadence, speed and temperature it contains. GritMap is built for riders with a power meter and a heart-rate monitor: those values come only from
+  the ride files you import, and they stay on your phone. It also keeps a copy of the file you imported inside the app.
 - **Your segments, goals and pacing plans.** The segments you create or add, your goal times, and the pacing plans GritMap builds or you import.
 - **Your profile.** The numbers you enter: FTP (the power you can hold for about an hour), weight, and maximum heart rate. Weight is stored in kilograms
   even if you type pounds.
@@ -22,7 +23,7 @@ All of this stays on your iPhone (and, for what you send to it, your Karoo). Non
   If you enter one it is kept in your iPhone's Keychain, and you can remove it in the app at any time.
 
 GritMap does not ask for, and does not use, your location, camera, microphone, photos, contacts, health data or notifications on the iPhone.
-It only reads the files you choose in the file picker.
+It uses Bluetooth only to send a plan to your Karoo (see below), and it only reads the files you choose in the file picker.
 
 **Backups.** Like most apps, GritMap's data on your iPhone can be included in your iPhone backups (iCloud Backup or a computer backup) if you use them.
 Those backups are between you and Apple.
@@ -49,14 +50,18 @@ GritMap works without an internet connection for everything you have already imp
 
 GritMap does not check for app updates itself and does not contact any other service.
 
-## Sending to your Karoo (local network only)
+## Sending to your Karoo (direct, nothing goes through a server)
 
-When you tap "Send to Karoo" or "Send plan to Karoo", GritMap sends information directly from your iPhone to your Karoo over your home Wi-Fi (or a
-hotspot both devices share). It does not go through the internet or any server of ours. What is sent: the segment (its name and route), and, with a plan,
-the pacing plan and the rider details the Karoo needs to use it (FTP, weight and, if you set it, maximum heart rate).
+When you tap "Send to Karoo", GritMap sends information directly from your iPhone to your Karoo, by default over **Bluetooth**. It does not go through the
+internet or any server of ours. What is sent: the pacing plan, the rider details the Karoo needs to use it (FTP, weight and, if you set it, maximum heart
+rate), and the segment (its name and route) if the Karoo does not already have it.
 
-- iOS asks your permission for "Local Network" access the first time. GritMap uses it only for this.
-- The Karoo accepts a send only while its "Receive from Phone" screen is open (about 10 minutes), and the send is not encrypted. Do it on a network you trust.
+- **Bluetooth:** iOS asks your permission to use Bluetooth the first time. GritMap uses it only on the Send to Karoo screen: your iPhone offers the transfer for
+  about 2 minutes while that screen is open and GritMap is in front, and only the first Karoo that asks gets it. The link is short-range and **not encrypted**, and
+  it does not pair or bond with your Karoo, so don't send in a crowded place you don't trust.
+- **Wi-Fi (if Bluetooth does not work):** GritMap can send over your home Wi-Fi or a hotspot both devices share. iOS asks your permission for "Local Network"
+  access the first time. The Karoo accepts a Wi-Fi send only while its Wi-Fi receive screen is open (about 10 minutes), and that send is not encrypted either.
+  Do it on a network you trust.
 - The Karoo keeps what it receives on the Karoo.
 
 ## Asking a coach or an AI assistant for a plan (only if you choose to)

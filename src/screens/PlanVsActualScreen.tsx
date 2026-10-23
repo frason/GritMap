@@ -27,6 +27,7 @@ import { formatDurationMinutesSeconds, formatRideDate } from "./formatRideStats"
 import { describeTargetOutcome } from "./describePlanPrediction";
 import { formatTimeDelta } from "./formatTimeDelta";
 import { PlanVsActualChart } from "./PlanVsActualChart";
+import { NO_POWER_COMPARE } from "./describeNoPower";
 
 type PlanVsActualRoute = RouteProp<SegmentsStackParamList, "PlanVsActual">;
 type Navigation = NativeStackNavigationProp<SegmentsStackParamList>;
@@ -214,7 +215,12 @@ export function PlanVsActualScreen() {
       </AppText>
 
       {!loaded.hasPowerTrack ? (
-        <Notice tone="info">This effort has no power data, so it can't be compared with the plan.</Notice>
+        <Card>
+          <AppText variant="headline">{NO_POWER_COMPARE.title}</AppText>
+          <AppText variant="subheadline" color="textSecondary">
+            {NO_POWER_COMPARE.body}
+          </AppText>
+        </Card>
       ) : (
         <>
           <StatRow>

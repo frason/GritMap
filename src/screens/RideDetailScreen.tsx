@@ -8,7 +8,9 @@ import { getRideDetail, type RideDetail } from "../db/getRideDetail";
 import { getRideTrack, type RideTrackPoint } from "../db/getRideTrack";
 import { listAttemptsForRide, type RideAttemptSummary } from "../db/listAttemptsForRide";
 import type { RidesStackParamList, RootTabParamList } from "../navigation/types";
-import { AppText, Button, Card, ErrorState, ListRow, LoadingState, ScreenScroll, Section, StatRow, StatTile } from "../theme/components";
+import { AppText, Button, Card, ErrorState, ListRow, LoadingState, Notice, ScreenScroll, Section, StatRow, StatTile } from "../theme/components";
+import { rideHasPower } from "../db/rideHasPower";
+import { NO_POWER_RIDE_NOTE } from "./describeNoPower";
 import { radius, spacing } from "../theme/spacing";
 import { useColors } from "../theme/useColors";
 import { RouteMapView } from "./RouteMapView";
@@ -33,6 +35,7 @@ export function RideDetailScreen() {
   const [ride, setRide] = useState<RideDetail | undefined>(undefined);
   const [track, setTrack] = useState<RideTrackPoint[]>([]);
   const [attempts, setAttempts] = useState<RideAttemptSummary[]>([]);
+  const [hasPower, setHasPower] = useState(true);
 
   const load = useCallback(() => {
     try {
@@ -44,6 +47,7 @@ export function RideDetailScreen() {
       }
       setTrack(getRideTrack(database, route.params.rideId));
       setAttempts(listAttemptsForRide(database, route.params.rideId));
+      setHasPower(rideHasPower(database, route.params.rideId));
       setState("ready");
     } catch {
       setState("error");
@@ -84,6 +88,8 @@ export function RideDetailScreen() {
           Imported from {ride.originalFilename}
         </AppText>
       </View>
+
+      {hasPower ? null : <Notice tone="info">{NO_POWER_RIDE_NOTE}</Notice>}
 
       <StatRow>
         <StatTile value={formatDistanceMiles(ride.totalDistanceMeters)} label="Distance" />

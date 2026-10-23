@@ -1,7 +1,7 @@
-# Testing the phone's Bluetooth direct transfer (development only)
+# Testing the phone's Bluetooth direct transfer
 
-Contract: `docs/BLE_DIRECT_TRANSFER_CONTRACT.md` (draft v2). Status: phone side implemented behind a development flag on 2026-10-12; the
-Karoo side is not implemented. The Wi-Fi/IP send remains the working path and is unchanged. Nothing here uploads anything.
+Contract: `docs/BLE_DIRECT_TRANSFER_CONTRACT.md` (draft v2). Status: phone side implemented 2026-10-12, verified on a real Karoo 2026-10-19/20, and the main send from build 8 (decided 2026-10-23); the Wi-Fi/IP send is the
+fallback. Nothing here uploads anything.
 
 ## What the phone does
 
@@ -15,11 +15,12 @@ Karoo side is not implemented. The Wi-Fi/IP send remains the working path and is
 - Wording: Preparing, Waiting for your Karoo, Karoo connected, Sending the plan... n%, then "Imported on your Karoo." only after a
   receipt with `status:"imported"`; "Sent; check your Karoo" if the plan was fully read but no receipt arrived.
 
-## Turning the option on
+## Turning the option on (and off)
 
-The "Send over Bluetooth (beta)" card (Send to Karoo screen) is hidden unless: a development client (`__DEV__`), or a local build made with
-`EXPO_PUBLIC_GRITMAP_BLE_TRANSFER=1`, or the device setting `dev_ble_transfer` = `1`. EAS/TestFlight builds have none of these.
-The segment needs an FTP in the profile and a goal time (or an imported plan) so there is a plan to send.
+From build 8 Bluetooth is the main way to send and is on in every build. The Send to Karoo screen leads with it; the Wi-Fi route sits below as
+"Bluetooth not working? Use Wi-Fi". A hidden kill switch exists for field problems: set the device setting `ble_transfer_disabled` to `1` and the screen shows
+only the Wi-Fi route. The segment needs an FTP in the profile and a goal time (or an imported plan) so there is a plan to send; otherwise the Bluetooth card
+says so and the Wi-Fi route can send the segment alone.
 
 ## Automated checks (no radio)
 

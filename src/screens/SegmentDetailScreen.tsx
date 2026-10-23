@@ -16,7 +16,6 @@ import {
   deactivateSegmentPlan,
   getActiveSegmentPlan,
   isSegmentPlanOutdated,
-  markSegmentPlanSent,
   type SavedSegmentPlan,
 } from "../db/segmentPlans";
 import type { RideTrackPoint } from "../db/getRideTrack";
@@ -26,7 +25,7 @@ import { summarizeCoachPlan } from "../pacing/coachPlan";
 import { loadCalibrationAttempts } from "../pacing/loadCalibrationAttempts";
 import { generateRealisticPlan } from "../pacing/generateRealisticPlan";
 import { createWeightAt } from "../db/profileHistory";
-import { loadPlanHistory, PLAN_HISTORY_EFFORTS } from "../pacing/loadPlanHistory";
+import { PLAN_HISTORY_EFFORTS } from "../pacing/loadPlanHistory";
 import type { CalibrationAttempt } from "../pacing/predictPlanFinish";
 import { goalTimeRange } from "../pacing/goalTimeRange";
 import { describePlanFeasibility } from "./describePlanFeasibility";
@@ -35,11 +34,7 @@ import { predictPlanFinish, type PlanFinishPrediction } from "../pacing/predictP
 import { PredictedFinish } from "./PredictedFinish";
 import { parseTargetDurationInput } from "./parseTargetDuration";
 import type { RootTabParamList, SegmentsStackParamList } from "../navigation/types";
-import { sendGuidancePackageToKaroo } from "../karoo/sendGuidancePackageToKaroo";
-import { describeSendResult } from "../karoo/describeSendResult";
-import { KAROO_ADDRESS_EXAMPLE, KAROO_RECEIVE_SCREEN, PHONE_SEND_BUTTON } from "../onboarding/onboardingCopy";
-import { recordPlanSend } from "../db/planSends";
-import { getSavedKarooAddress, saveKarooAddress } from "../karoo/savedKarooAddress";
+import { PHONE_SEND_BUTTON } from "../onboarding/onboardingCopy";
 import type { IconName } from "../theme/icons";
 import { MIN_TOUCH_TARGET, SCREEN_PADDING } from "../theme/layout";
 import { radius, spacing } from "../theme/spacing";
@@ -99,7 +94,6 @@ function average(values: readonly number[]): number {
 }
 
 type LoadState = "loading" | "ready" | "missing" | "error";
-type SendStatus = { text: string; ok: boolean };
 
 export function SegmentDetailScreen() {
   const database = useDatabase();
@@ -126,9 +120,6 @@ export function SegmentDetailScreen() {
   const [longTermSecondsInput, setLongTermSecondsInput] = useState("");
   const [removeLongTerm, setRemoveLongTerm] = useState(false);
   const [editingGoal, setEditingGoal] = useState(false);
-  const [karooAddress, setKarooAddress] = useState("");
-  const [pacingSending, setPacingSending] = useState(false);
-  const [pacingSendStatus, setPacingSendStatus] = useState<SendStatus | undefined>(undefined);
   const [rerunning, setRerunning] = useState(false);
   const [rerunSummary, setRerunSummary] = useState<MatchRunSummary | undefined>(undefined);
   const [compareMode, setCompareMode] = useState(false);
@@ -156,7 +147,6 @@ export function SegmentDetailScreen() {
       setAttempts(currentAttempts);
       const currentProfile = getAthleteProfile(database);
       setAthleteProfile(currentProfile);
-      setKarooAddress((current) => (current === "" ? (getSavedKarooAddress(database) ?? "") : current));
       setActiveGoal(currentGoal);
       const currentPlan = getActiveSegmentPlan(database, route.params.segmentId);
       setActivePlan(currentPlan);
@@ -331,68 +321,17 @@ export function SegmentDetailScreen() {
     if (!segment) return;
     deactivateSegmentPlan(database, segment.segmentId);
     setActivePlan(undefined);
-    setPacingSendStatus(undefined);
-  }
-
-  async function handleSendPacingPlan() {
-    const { ftpWatts, weightKg, maxHeartRateBpm } = athleteProfile;
-    if (!segment || ftpWatts === undefined || weightKg === undefined) return;
-    if (activePlan === undefined && activeGoal === undefined) return;
-    const trimmed = karooAddress.trim();
-    if (trimmed.length === 0) {
-      setPacingSendStatus({ text: `Type the address your Karoo shows on its ${KAROO_RECEIVE_SCREEN} screen.`, ok: false });
-      return;
-    }
-    setPacingSending(true);
-    setPacingSendStatus(undefined);
-    const packageId = generateId();
-    const sentAtMs = Date.now();
-    const result = await sendGuidancePackageToKaroo(
-      segment,
-      { ftpWatts, weightKg, ...(maxHeartRateBpm === undefined ? {} : { maxHeartRateBpm }) },
-      activePlan === undefined ? activeGoal?.targetDurationMs : undefined,
-      trimmed,
-      packageId,
-      sentAtMs,
-      // A coach plan with no target time of its own gets the predicted finish, so the Karoo's
-      // "Goal" and its pacer have a time to work to instead of "Fastest sustainable".
-      activePlan !== undefined && activePlan.targetFinishSeconds === undefined && planPrediction !== undefined
-        ? { ...activePlan, targetFinishSeconds: Math.round(planPrediction.durationMs / 1_000) }
-        : activePlan,
-      // GritMap's own plan is made realistic from the rider's past efforts here; an imported plan is sent as written.
-      loadPlanHistory(database, segment.segmentId, weightKg),
-    );
-    setPacingSending(false);
-    // Keep what the Karoo was handed, so a later ride is judged against this plan and not against
-    // whatever the segment's plan has become by then.
-    if (result.ok && result.baselinePlan !== undefined) {
-      recordPlanSend(database, {
-        id: generateId(),
-        segmentId: segment.segmentId,
-        sentAtMs,
-        packageId,
-        plan: result.baselinePlan,
-      });
-    }
-    if (result.ok && activePlan !== undefined) {
-      markSegmentPlanSent(database, activePlan.id, Date.now());
-      setActivePlan(getActiveSegmentPlan(database, activePlan.segmentId));
-    }
-    if (result.ok) setKarooAddress(saveKarooAddress(database, trimmed, Date.now()));
-    setPacingSendStatus({ text: describeSendResult(result, trimmed), ok: result.ok });
   }
 
   const goToProfile = () => navigation.navigate("ZonesSettings", { returnAfterSave: true });
+  // The Karoo send lives on its own screen: Bluetooth first, Wi-Fi as the fallback.
   const sendBlock = (disabled: boolean) => (
-    <KarooSendBlock
-      hasWeight={athleteProfile.weightKg !== undefined}
-      address={karooAddress}
-      onAddressChange={setKarooAddress}
-      sending={pacingSending}
+    <Button
+      label={PHONE_SEND_BUTTON}
+      icon="bluetooth"
       disabled={disabled}
-      status={pacingSendStatus}
-      onSend={handleSendPacingPlan}
-      onSetWeight={goToProfile}
+      onPress={() => navigation.navigate("SendToKaroo", { segmentId: route.params.segmentId })}
+      accessibilityHint="Opens the screen that sends this segment and plan to your Karoo"
     />
   );
 
@@ -787,56 +726,11 @@ export function SegmentDetailScreen() {
         visible={menuVisible}
         onClose={() => setMenuVisible(false)}
         items={[
-          { label: "Send to Karoo", icon: "wifi", onPress: () => navigation.navigate("SendToKaroo", { segmentId: route.params.segmentId }) },
+          { label: "Send to Karoo", icon: "bluetooth", onPress: () => navigation.navigate("SendToKaroo", { segmentId: route.params.segmentId }) },
           { label: "Share to Open Segments", icon: "people", onPress: () => navigation.navigate("PublishToRegistry", { segmentId: route.params.segmentId }) },
           { label: "Import coach plan", icon: "download", onPress: () => navigation.navigate("ImportCoachPlan", { segmentId: route.params.segmentId }) },
         ]}
       />
-    </>
-  );
-}
-
-/** The address field, send button and result shared by the generated-plan and imported-plan states. */
-function KarooSendBlock({
-  hasWeight,
-  address,
-  onAddressChange,
-  sending,
-  disabled,
-  status,
-  onSend,
-  onSetWeight,
-}: {
-  hasWeight: boolean;
-  address: string;
-  onAddressChange: (value: string) => void;
-  sending: boolean;
-  disabled: boolean;
-  status: SendStatus | undefined;
-  onSend: () => void;
-  onSetWeight: () => void;
-}) {
-  if (!hasWeight) {
-    return <Button label="Set your weight to send this plan to the Karoo" variant="tertiary" fullWidth={false} onPress={onSetWeight} />;
-  }
-  return (
-    <>
-      <AppText variant="footnote" color="textSecondary">
-        On your Karoo, open GritMap and tap {KAROO_RECEIVE_SCREEN}; it shows the address to type here. Both devices need to be on the same Wi-Fi.
-      </AppText>
-      <TextField
-        label="Karoo address"
-        value={address}
-        onChangeText={onAddressChange}
-        placeholder={`e.g. ${KAROO_ADDRESS_EXAMPLE}`}
-        keyboardType="numbers-and-punctuation"
-      />
-      <Button label={PHONE_SEND_BUTTON} onPress={onSend} loading={sending} disabled={disabled} />
-      {status === undefined ? null : (
-        <Notice tone={status.ok ? "success" : "error"} live>
-          {status.text}
-        </Notice>
-      )}
     </>
   );
 }
