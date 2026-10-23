@@ -9,6 +9,22 @@
    release, verify the stable Companion install URL and update docs/BETA_KAROO_INSTALL.md and docs/KAROO_BETA_RELEASE.md. The phone session needs the final Karoo labels and the version number
    for build 8's 'testers need Karoo version X' text: tell Jason both.
 
+# Bluetooth beta71: verified candidate, install approval pending (2026-10-23 14:11 PDT)
+
+**0.10.45-bluetooth-beta / code71**, source `be98b8d`, ready as a local signed candidate. **250 tests, debug/beta lint and signed/minified build pass**. Signing certificate matches public0.10.44 and installed70. Bluetooth on; concurrent/replanner/ceilings off. Host stall cleared; original build completed. Guides/workflow updated and exact phone/Karoo labels preserved.
+
+- APK: `/tmp/gritmap-karoo-0.10.45-bluetooth-beta-71/gritmap-karoo.apk`
+- SHA256: `d6b6e87e13f7aa73644badeb1bed1a9ec4e5802d2eb2e104342a12304ae0977a`
+- Worktree/branch: `/Users/frason/.codex/worktrees/karoo-bluetooth-beta/GritMap`, `codex/karoo-bluetooth-beta`. Phone checkout unchanged; push only this isolated branch.
+- **Not installed/tagged/published.** Karoo still70/0.10.44-fields1. Ask Jason to approve this exact in-place install with the hash/QA above.
+- H10 RR coexistence and deliberate disconnect/resume remain unperformed; **both required before wide Bluetooth invites**. Publication and stable-link Companion test remain later gates.
+
+Full exact verification and next action: `handoffs/archive/2026-10-23-1411-codex-bluetooth-rc71-ready-for-install-approval.md`. Older stalled status below is historical and superseded.
+
+# Bluetooth candidate preparation: QA blocked by host stall (2026-10-23 13:58 PDT)
+
+Isolated worktree `/Users/frason/.codex/worktrees/karoo-bluetooth-beta/GritMap`, branch `codex/karoo-bluetooth-beta`, committed source `be98b8d`. Candidate0.10.45-bluetooth-beta/code71 enablesBLE; concurrent/replanner/ceilings flags defaultoff. Guides and workflow updated; Inbox labels match phone. **QA/build incomplete: host Git/ADB/gh/compiler processes stalled. No APK/hash ready; no install/tag/publication/push.** Both physical gates remain mandatory before wide invites. Phone checkout unchanged. Details and recovery next action: `handoffs/archive/2026-10-23-1358-codex-bluetooth-rc-host-stall.md`.
+
 # Coordinator: PRIORITY for Codex (2026-10-23, Jason approved): public Karoo release with the Bluetooth reader, before the replanner
 
 Jason is moving Bluetooth to beta riders in the next phone build (docs/GOALS.md priority 1, commit ee69df6); the IP route becomes a fallback only. The phone build
