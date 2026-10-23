@@ -43,9 +43,9 @@ tokens. A fresh install with an empty database must work.
    install. Includes:
    - **Beta-loop screens meet standard mobile design practice** (see Phone design below):
      onboarding, segment detail, plan, send-to-Karoo, FIT import, and post-ride results.
-   - **Phone → Karoo send stays on the existing IP route for the beta.** It works today; the beta
-     work is clear in-app instructions a stranger can follow (where to find the Karoo's address,
-     what to open on the Karoo, what success and failure look like). Pairing is not a beta blocker.
+   - **Phone → Karoo send is direct Bluetooth in the next beta build** (decided 2026-10-23, before the public link is shared widely). The IP route stays
+     only as a fallback, offered from the Send-to-Karoo screen when Bluetooth does not work, and the IP send is removed from the segment page. This needs a
+     public Karoo release that includes the BLE reader (versionCode 71 or higher) and a new TestFlight build with Bluetooth enabled.
 2. **Full phone redesign.** Apply the design system to every remaining screen and replace
    one-off layouts.
 3. **Open Segments usable by strangers.** Browse and pull popular segments; publish your own
@@ -89,8 +89,8 @@ The phone app currently falls short of standard design practice. The redesign ta
 
 Moving data between the phone and the Karoo must get easier over time, and each change should
 move toward that, not around it:
-- Beta: keep the working IP route, with clear instructions.
-- Karoo side verified on hardware 2026-10-20; hidden in beta build 7 and ships to riders in a later build: **direct Bluetooth, no
+- Beta (next build): Bluetooth is the main send; the IP route remains as a fallback with clear instructions.
+- Verified on hardware 2026-10-20 (Karoo side) and ships in the next beta build (build 7 hides it): **direct Bluetooth, no
   server** (decided 2026-10-12, `docs/BLE_DIRECT_TRANSFER_CONTRACT.md`). The plan, which is small and
   private, always goes over Bluetooth. The segment, which is large and public, is skipped if the Karoo
   already has it, or else sent in chunks or fetched from Open Segments. The Karoo writes back an
