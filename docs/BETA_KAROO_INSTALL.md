@@ -4,8 +4,8 @@
 cardiac fields depend on both. Without a power meter, GritMap can match segments and show progress, but it cannot pace you.
 
 This guide is for the GritMap beta on the latest-generation Hammerhead Karoo. You need the
-GritMap APK, the Hammerhead Companion app on your iPhone, and Wi-Fi for the initial install and
-for sending a segment from the GritMap phone app.
+GritMap APK, the Hammerhead Companion app on your iPhone, and internet/Wi-Fi for the initial install. Segment and plan transfers use direct Bluetooth;
+Wi-Fi is a fallback when Bluetooth is unavailable.
 
 GritMap is beta software. It does not control your bike. Keep your attention on the road and use
 the pacing guidance only when it is safe to do so.
@@ -31,7 +31,7 @@ Hammerhead documents both URL and APK-file workflows in its
 3. Keep the Karoo connected to Wi-Fi while Companion shows **Transferring**.
 4. An install prompt appears on the Karoo. Tap **Install**.
 5. Open the Karoo app drawer and launch **GritMap** once.
-6. Allow location access when asked. The optional display-over-other-apps permission is not
+6. Allow location access when asked. Allow **Nearby devices / Bluetooth** when opening the Bluetooth receiver. The optional display-over-other-apps permission is not
    required for the official GritMap data fields.
 
 For an update, repeat these steps with the same stable link. Do not uninstall the previous beta first:
@@ -54,26 +54,46 @@ Use Android Platform Tools on a Mac or PC as a fallback:
    adb install -r /path/to/gritmap-karoo-<version>-beta.apk
    ```
 
-If Android reports an incompatible signature, the Karoo has an older development build. Its app
-data cannot be carried across to the beta signing identity: uninstall **GritMap** once, then install
-the beta APK. Future signed beta updates can use `adb install -r` normally.
+If Android reports an incompatible signature, stop and contact the beta maintainer. Do not uninstall
+GritMap or clear its data: that can delete saved segments, plans and private H10 recordings. Official
+beta updates use the same signing identity and should install in place.
 
-## Send a segment and plan from the phone
+## Send a segment and plan over Bluetooth
 
-The phone and Karoo must be on the same Wi-Fi network.
+Bluetooth sending requires **both** the upcoming Bluetooth-enabled GritMap iPhone beta and the
+matching Karoo Bluetooth beta (**0.10.45-bluetooth-beta / code 71**, candidate pending approval).
+The stable link above may still serve 0.10.44 until the new release is published. Check the version
+on the Karoo Segments screen. Phone build 7 hides Bluetooth; use the Wi-Fi fallback with that build.
 
-1. Open **GritMap** on the Karoo.
-2. Open the **Inbox** tab and tap **Receive from Phone**.
-3. The Karoo shows an address such as `192.168.1.23:8734` and waits for 10 minutes. This is the
-   Karoo address to enter on the phone. Leave this screen open.
-4. In GritMap on the iPhone, open the segment and tap **Send plan to Karoo**.
-5. Enter the Karoo address exactly as shown, including `:8734`, then send.
-6. Confirm that the Karoo reports the import. Open **Segments** and select the segment; its detail
-   screen should show that a pacing plan is loaded.
+1. Turn Bluetooth on for both devices and keep them nearby. No shared Wi-Fi or internet is needed
+   for a fully Bluetooth transfer.
+2. Open **GritMap > Inbox > Receive from Phone** on the Karoo. Allow Bluetooth/Nearby devices if asked.
+3. The screen shows **WAITING FOR PHONE** and **Cancel Receiving**. Keep this screen open.
+   It says **Bluetooth closes automatically after 2 minutes**: this is the discovery window;
+   once a phone transfer starts, follow the displayed progress rather than restarting it.
+4. In the Bluetooth-enabled GritMap iPhone beta, open the segment's Send-to-Karoo screen and follow
+   its Bluetooth instructions. Keep the app in the foreground and allow Bluetooth permission.
+5. Wait for the Karoo's successful import confirmation, then check **Segments** for the segment and
+   loaded plan. The phone's sending progress alone is not confirmation of a completed Karoo import.
+6. If discovery times out, open **Receive from Phone** again and retry. To stop waiting, tap
+   **Cancel Receiving**.
 
-If sending fails, confirm that both devices are on the same non-guest Wi-Fi, reopen **Receive from
-Phone**, and retry with the newly displayed address. VPNs and guest networks can block local-device
-connections.
+A Polar H10 is optional for enhanced RR capture; ordinary heart-rate monitors work with the default
+cardiac field. GritMap still needs the rider's power meter and heart-rate monitor for its intended pacing.
+
+### Legacy Wi-Fi fallback
+
+Use this with phone build 7 or when the Bluetooth send cannot complete. Both devices must be on the
+same non-guest Wi-Fi network.
+
+1. Open **GritMap > Inbox > Legacy Wi-Fi Receive** on the Karoo.
+2. The Karoo shows an address such as `192.168.1.23:8734` and waits for 10 minutes. Leave it open.
+3. On the iPhone Send-to-Karoo screen, choose the Wi-Fi fallback (or the IP send in build 7), enter
+   that address including `:8734`, and send.
+4. Confirm the Karoo reports the import and the plan appears under **Segments**.
+
+If this fails, verify the shared network, reopen **Legacy Wi-Fi Receive**, and use the newly shown
+address. Guest networks and VPNs can prevent the two devices from reaching each other.
 
 ## Add GritMap data fields
 

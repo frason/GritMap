@@ -24,13 +24,16 @@ android {
         applicationId = "com.gritmap.karoo"
         minSdk = 31
         targetSdk = 31
-        versionCode = providers.gradleProperty("gritmapVersionCode").orNull?.toInt() ?: 67
-        versionName = providers.gradleProperty("gritmapVersionName").orNull ?: "0.10.44"
+        versionCode = providers.gradleProperty("gritmapVersionCode").orNull?.toInt() ?: 71
+        versionName = providers.gradleProperty("gritmapVersionName").orNull ?: "0.10.45"
         buildConfigField(
             "boolean",
             "DIRECT_BLE_V2_ENABLED",
-            providers.gradleProperty("gritmapDirectBleV2").orNull ?: "false",
+            providers.gradleProperty("gritmapDirectBleV2").orNull ?: "true",
         )
+
+        buildConfigField("boolean", "PLAN_CEILINGS_ENABLED",
+            providers.gradleProperty("gritmapPlanCeilings").orNull ?: "false")
 
         buildConfigField("boolean", "LIVE_REPLANNER_ENABLED",
             providers.gradleProperty("gritmapLiveReplanner").orNull ?: "false")

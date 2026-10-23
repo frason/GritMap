@@ -71,7 +71,18 @@ jobs:
           ./gradlew :app:testDebugUnitTest :app:lintDebug :app:assembleBeta \
             -PgritmapBetaSigningProperties='${{ steps.signing.outputs.properties }}' \
             -PgritmapVersionCode='${{ steps.version.outputs.code }}' \
-            -PgritmapVersionName='${{ steps.version.outputs.name }}-beta'
+            -PgritmapVersionName='${{ steps.version.outputs.name }}-bluetooth-beta'
+
+      - name: Verify beta feature configuration
+        working-directory: apps/karoo
+        shell: bash
+        run: |
+          set -euo pipefail
+          CONFIG="app/build/generated/source/buildConfig/beta/com/gritmap/karoo/BuildConfig.java"
+          grep -F 'boolean DIRECT_BLE_V2_ENABLED = true;' "$CONFIG"
+          grep -F 'boolean CONCURRENT_SEGMENTS_ENABLED = false;' "$CONFIG"
+          grep -F 'boolean LIVE_REPLANNER_ENABLED = false;' "$CONFIG"
+          grep -F 'boolean PLAN_CEILINGS_ENABLED = false;' "$CONFIG"
 
       - name: Verify and stage release assets
         working-directory: apps/karoo
@@ -82,7 +93,7 @@ jobs:
           "$ANDROID_HOME/build-tools/35.0.0/apksigner" verify --verbose --print-certs "$APK"
           BADGING="$($ANDROID_HOME/build-tools/35.0.0/aapt dump badging "$APK" | head -1)"
           grep -F "versionCode='${{ steps.version.outputs.code }}'" <<< "$BADGING"
-          grep -F "versionName='${{ steps.version.outputs.name }}-beta'" <<< "$BADGING"
+          grep -F "versionName='${{ steps.version.outputs.name }}-bluetooth-beta'" <<< "$BADGING"
           mkdir -p "$RUNNER_TEMP/gritmap-release"
           cp "$APK" "$RUNNER_TEMP/gritmap-release/gritmap-karoo.apk"
           cd "$RUNNER_TEMP/gritmap-release"
@@ -90,7 +101,7 @@ jobs:
 
       - uses: actions/upload-artifact@v4
         with:
-          name: gritmap-karoo-${{ steps.version.outputs.name }}-beta
+          name: gritmap-karoo-${{ steps.version.outputs.name }}-bluetooth-beta
           path: |
             ${{ runner.temp }}/gritmap-release/gritmap-karoo.apk
             ${{ runner.temp }}/gritmap-release/SHA256SUMS.txt
@@ -104,6 +115,6 @@ jobs:
           gh release create "$GITHUB_REF_NAME" \
             "$RUNNER_TEMP/gritmap-release/gritmap-karoo.apk" \
             "$RUNNER_TEMP/gritmap-release/SHA256SUMS.txt" \
-            --title "GritMap Karoo ${{ steps.version.outputs.name }} beta" \
+            --title "GritMap Karoo ${{ steps.version.outputs.name }} Bluetooth beta" \
             --latest \
             --generate-notes

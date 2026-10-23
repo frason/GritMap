@@ -39,27 +39,33 @@ class TransferPackageParserTest {
         .replace("\"targetPowerWatts\":300", "\"targetPowerWatts\":300,\"ceilingPowerWatts\":320")
 
     @Test fun `optional metadata round trips without changing original targets`() {
-        val plan = TransferPackageParser().parse(withMetadata()).baselinePlan!!
+        val plan = TransferPackageParser(planCeilingsEnabled = true).parse(withMetadata()).baselinePlan!!
         assertEquals(300, plan.plan.zones.single().targetPowerWatts)
         assertEquals(listOf(320), plan.replanMetadata!!.ceilings)
         assertEquals(plan.replanMetadata, ReplanMetadata.decode(plan.replanMetadata.encode(),listOf(300),250))
     }
     @Test fun `unknown extension version keeps baseline and ignores ceilings`() {
-        val plan = TransferPackageParser().parse(withMetadata(99)).baselinePlan!!
+        val plan = TransferPackageParser(planCeilingsEnabled = true).parse(withMetadata(99)).baselinePlan!!
         assertEquals(300,plan.plan.zones.single().targetPowerWatts)
         org.junit.Assert.assertNull(plan.replanMetadata)
     }
     @Test(expected = ImportValidationException::class)
     fun `rejects ceiling below target`() {
-        TransferPackageParser().parse(withMetadata().replace("\"ceilingPowerWatts\":320","\"ceilingPowerWatts\":299"))
+        TransferPackageParser(planCeilingsEnabled = true).parse(withMetadata().replace("\"ceilingPowerWatts\":320","\"ceilingPowerWatts\":299"))
     }
     @Test(expected = ImportValidationException::class)
     fun `rejects malformed reserve`() {
-        TransferPackageParser().parse(withMetadata().replace("0.15","1.1"))
+        TransferPackageParser(planCeilingsEnabled = true).parse(withMetadata().replace("0.15","1.1"))
     }
     @Test(expected = ImportValidationException::class)
     fun `rejects ceilings without parameters`() {
-        TransferPackageParser().parse(validPackage().replace("\"targetPowerWatts\":300", "\"targetPowerWatts\":300,\"ceilingPowerWatts\":320"))
+        TransferPackageParser(planCeilingsEnabled = true).parse(validPackage().replace("\"targetPowerWatts\":300", "\"targetPowerWatts\":300,\"ceilingPowerWatts\":320"))
+    }
+
+    @Test fun `disabled ceilings preserve baseline but do not retain experimental metadata`() {
+        val plan = TransferPackageParser(planCeilingsEnabled = false).parse(withMetadata()).baselinePlan!!
+        assertEquals(300,plan.plan.zones.single().targetPowerWatts)
+        org.junit.Assert.assertNull(plan.replanMetadata)
     }
 
     private fun validPackage() = """

@@ -1,6 +1,7 @@
 package com.gritmap.karoo.importing
 
 import androidx.room.withTransaction
+import com.gritmap.karoo.BuildConfig
 import com.gritmap.karoo.ai.AiPacingResponseParser
 import com.gritmap.karoo.ai.AiPlanValidator
 import com.gritmap.karoo.data.KarooDatabase
@@ -51,6 +52,7 @@ class TransferPackageParser(
     private val segmentParser: SegmentJsonParser = SegmentJsonParser(),
     private val historyParser: RiderHistoryJsonParser = RiderHistoryJsonParser(),
     private val planValidator: AiPlanValidator = AiPlanValidator(),
+    private val planCeilingsEnabled: Boolean = BuildConfig.PLAN_CEILINGS_ENABLED,
 ) {
     fun parse(input: String): TransferPackage {
         val root = json.parseToJsonElement(input).requireObject("root")
@@ -131,7 +133,7 @@ class TransferPackageParser(
         val metadata = try { ReplanMetadata.fromWire(value, plan.zones.map { it.targetPowerWatts }, ftp) }
             catch (error: Exception) { fail("Invalid replan metadata: ${error.message}") }
         return ImportedBaselinePlan(
-            id, fingerprint, createdAtMs, source, modelVersion, ftp, target, plan, metadata,
+            id, fingerprint, createdAtMs, source, modelVersion, ftp, target, plan, metadata.takeIf { planCeilingsEnabled },
         )
     }
 
