@@ -28,7 +28,7 @@ is happening. Do not force the app open over a ride to manufacture a supported r
 Observed on code71: H10 Enhanced connected and capture started; diagnostics showed60 RR samples
 at100% validity before the test ride. Recording/Paused ride states subsequently appeared. No phone
 transfer, saved-artifact inspection or RR-continuity-during-transfer result has been established.
-H10 capture/save verification can continue separately after the test ride ends. Do not infer BLE RR
+Subsequent ride-end log confirmed h10_capture_saved reason=ride-ended samples=624. The supplied native FIT contained standard heart rate but no RR/HRV messages or H10-derived metric fields. Raw artifact integrity/quality remains uninspected; recording list/export to the phone is unfinished. Do not infer BLE RR
 continuity from native heart rate or a stale alpha-1 value.
 
 Send segments/plans before starting a ride. The old requirement that both gates must pass is superseded

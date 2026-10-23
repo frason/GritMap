@@ -1,3 +1,9 @@
+# FIT inspected; RR saved locally, export missing (2026-10-23 15:53 PDT)
+
+**RR capture saves on Karoo:**624 samples finalized at ride end. **Export/transfer to phone is unfinished.** User FIT contains217 HR readings (54–62 bpm, session average57),9:31 elapsed/3:35 timer, and four GritMap pacing developer fields; no RR/HRV or H10-derived metric fields. Raw RR artifact/quality/checksum remain uninspected. User ride file remains outside Git.
+
+Next priority remains Bluetooth beta: deliberate disconnect/resume physical test before wide invites, then separate exact release approval. In-ride coexistence remains owner-waived, not passed. H10 recording list/export follows unless Jason reprioritizes. Candidate/source/install unchanged. Exact evidence and limitations: `handoffs/archive/2026-10-23-1553-codex-fit-and-rr-export-findings.md`.
+
 # H10 test ride capture saved (2026-10-23 15:00 PDT)
 
 Jason ended/saved the ride. Karoo independently logged **h10_capture_saved reason=ride-ended samples=624** at14:57:37.813, immediately after Idle. Separate H10 capture finalization confirmed; raw samples/checksum and complete-recording quality have not been inspected. Earlier60-sample/100% validity reading covers only that live snapshot. Recording list/export remains unfinished.
