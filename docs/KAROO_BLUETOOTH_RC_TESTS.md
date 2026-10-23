@@ -47,7 +47,7 @@ by Jason's explicit waiver of this during-ride test; GateB and publication appro
   Sending13%; another connection appeared16:33:40.309, without a ble_resume event or successful import.
   This later connection alone does not establish continuation of the same session.
 - Gate failed. The full-radio restart is a harsher outage than a single GATT-link disconnect.
-  No publication approval; preserve installed data. Recovery patch and repeat physical validation pending.
+  No publication approval; preserve installed data. Recovery patch0312e10/code72 passes257 tests/lint/signed build; installation approval and repeat physical validation pending.
 
 ### Repeat procedure
 
