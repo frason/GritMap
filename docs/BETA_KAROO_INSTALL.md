@@ -65,6 +65,9 @@ matching Karoo Bluetooth beta (**0.10.45-bluetooth-beta / code 71**, candidate p
 The stable link above may still serve 0.10.44 until the new release is published. Check the version
 on the Karoo Segments screen. Phone build 7 hides Bluetooth; use the Wi-Fi fallback with that build.
 
+Send segments and plans **before starting a ride recording**. Jason reports that the extension app
+screens cannot be opened during an active ride; pausing is not the pre-ride send flow.
+
 1. Turn Bluetooth on for both devices and keep them nearby. No shared Wi-Fi or internet is needed
    for a fully Bluetooth transfer.
 2. Open **GritMap > Inbox > Receive from Phone** on the Karoo. Allow Bluetooth/Nearby devices if asked.
