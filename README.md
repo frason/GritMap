@@ -59,10 +59,9 @@ These are advisory training displays, not medical measurements or guarantees of 
 The companion app beta is **iPhone-only** for now. An iPad layout and Android phone app are not
 part of this first test.
 
-To request an invitation, [open a TestFlight beta request](https://github.com/frason/GritMap/issues/new?title=TestFlight%20beta%20request&body=I%20would%20like%20to%20test%20GritMap%20on%20iPhone.%0A%0AKaroo%20model%20(optional):%0APower%20meter%20(optional):%0APolar%20H10%20(optional):).
-Do **not** post your Apple ID or private email address in a public GitHub issue. The maintainer will
-provide private enrollment instructions or replace this request link with the public TestFlight
-link once Apple approves the external-testing group.
+**[Join the TestFlight beta](https://testflight.apple.com/join/rgnsx1PG)** (open it on your iPhone; it asks you to install Apple's
+TestFlight app first). The beta is limited in size, so the link may be full. Then install the Karoo extension with the
+[Karoo install guide](docs/BETA_KAROO_INSTALL.md). Please do **not** post your Apple ID or private email address in a public GitHub issue.
 
 Beta testers should be willing to:
 
