@@ -1,3 +1,16 @@
+# Coordinator: PRIORITY for Codex (2026-10-23, Jason approved): public Karoo release with the Bluetooth reader, before the replanner
+
+Jason is moving Bluetooth to beta riders in the next phone build (docs/GOALS.md priority 1, commit ee69df6); the IP route becomes a fallback only. The phone build
+cannot go out until a PUBLIC Karoo release carries the BLE reader. Please, in this order:
+1. Prepare a release candidate from committed code: BLE v2 reader and fixes (67bfc60), all experimental flags OFF (concurrent segments, replanning, ceilings), versionCode
+   >= 71, versionName that makes clear it is the Bluetooth beta, beta-signed APK, release workflow as for karoo-beta-0.10.44. Run full QA (default build) and record it.
+2. Run the open physical tests with Jason and record them in a handoff: H10 coexistence during a receive session, and a deliberate disconnect/resume transfer
+   (see docs/BLE_DIRECT_TRANSFER_REVIEW.md R3/R5). Say which must pass before wide invites.
+3. Update docs/BETA_KAROO_INSTALL.md and docs/KAROO_BETA_RELEASE.md for Bluetooth (what to open on the Karoo, permissions, in-place upgrade keeps data, IP fallback).
+4. Do NOT tag, publish or install on the physical Karoo until Jason approves that exact step; ask him with the version, APK sha256 and the QA evidence.
+5. Do NOT push on the phone session's checkout/branch: use your own worktree for anything you push. Replanner rollout and Needle wait behind this.
+6. **Karoo button labels are now copied into the phone app's onboarding and Send screens** (build 8, `onboardingCopy.ts`): GritMap > **Inbox** > **Receive from Phone** (Bluetooth) and **Legacy Wi-Fi Receive** (Wi-Fi fallback). Keep these three labels exactly, or tell the phone session (via Jason) the new ones BEFORE the public release. Also confirm the Karoo screen text matches: 'WAITING FOR PHONE', 'Cancel Receiving', 'Bluetooth closes automatically after 2 minutes'.
+
 # Current task status: replanner development milestone verified (2026-10-22 16:44 PDT)
 
 **Completed:**
