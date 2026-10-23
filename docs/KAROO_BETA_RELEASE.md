@@ -22,9 +22,11 @@ checkout unchanged. Local candidate build (JDK17 and Android SDK required):
 before installation, tagging or publication. Obtain approval for each exact step. Preparing/committing
 a branch is not permission to install or release it. Never clear app data or uninstall as part of an upgrade.
 
-Before wide beta invites, both outstanding physical gates must pass on the candidate: H10 RR continuity
-while receiving (not just ANT+ BPM), and a deliberate mid-transfer disconnect followed by reconnect/resume
-from a completed chunk and a successful import receipt. Keep private sensor/ride data out of Git.
+Before wide beta invites, deliberate mid-transfer disconnect followed by reconnect/resume from a completed
+chunk and a successful import receipt must pass on the candidate. On2026-10-23 Jason waived the during-ride
+H10 coexistence test because the extension app screen is unavailable during a ride. Send before recording;
+record that gate as waived, not passed, and do not claim in-ride transfer support or RR continuity during a
+transfer. H10 capture/save verification remains separate. Keep private sensor/ride data out of Git.
 See `BLE_DIRECT_TRANSFER_REVIEW.md` R3/R5 and `KAROO_BLUETOOTH_RC_TESTS.md` for the procedure/evidence.
 The public APK must also be installed through the stable Companion link and checked before wide invites.
 

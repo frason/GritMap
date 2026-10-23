@@ -1,3 +1,9 @@
+# H10 baseline observed; in-ride transfer test waived by Jason (2026-10-23 14:52 PDT)
+
+Installed71 unchanged; phone internal build5 reported. H10 Enhanced connected/capture started; UI showed **60 RR samples at100% validity** before test ride. Native Recording/Paused events observed, but saved RR artifact/count not yet inspected. Await rider ending/saving test ride and leaving H10 Diagnostics open.
+
+**Jason waived the during-ride coexistence test** because extension app screens cannot be opened during a ride. Send before recording; this is **not a passed coexistence test**. Guides updated accordingly. Deliberate disconnect/resume still pending; tagging/publication still require approval. Exact evidence/limits: `handoffs/archive/2026-10-23-1452-codex-h10-baseline-and-inride-test-waiver.md`. Older statements requiring both gates are superseded by this explicit owner decision.
+
 # Bluetooth beta71 installed with approval (2026-10-23 14:15 PDT)
 
 Jason approved exact candidate install. **0.10.45-bluetooth-beta / code71 is now installed** via adb install-r; version verified and app launch passes. SHA256 `d6b6e87e13f7aa73644badeb1bed1a9ec4e5802d2eb2e104342a12304ae0977a` rechecked before install. Original install timestamp retained; no uninstall/clear-data. No source change after250-test/lint/signed-build QA. Phone checkout untouched.

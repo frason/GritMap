@@ -1,8 +1,11 @@
 # Bluetooth release candidate: physical acceptance
 
-Candidate: 0.10.45-bluetooth-beta / code71. **Neither gate has been performed on this candidate.**
-Existing success evidence on code69/70 does not establish these two tests passed. They must both
-pass before wide Bluetooth beta invites. APK install/tag/publication each need Jason's approval.
+Candidate: 0.10.45-bluetooth-beta / code71. Installed after Jason's exact approval.
+
+**Scope update, 2026-10-23:** Jason waived the during-ride coexistence test because the extension
+app screen cannot be accessed during an active ride. Supported instructions now say to send before
+starting a recording. This is a waiver, **not a passed coexistence test**. Deliberate disconnect/resume
+remains unperformed and required before wide Bluetooth invites. Tag/publication still need approval.
 
 ## Before the tests
 
@@ -17,19 +20,19 @@ Bluetooth closes automatically after 2 minutes; Legacy Wi-Fi Receive. The two-mi
 not a claim that a long transfer is cut off once connected. Bluetooth/Nearby devices permission and
 location permission must work on a fresh installation; denial must leave a useful retry/fallback.
 
-## Gate A: H10 coexistence (R5)
+## Gate A: during-ride H10 coexistence (waived by Jason)
 
-1. With Jason's H10 attached and producing usable RR, start a Karoo recording and GritMap enhanced capture.
-   Establish live RR sample counts/quality before opening the Inbox; ANT+ heart rate alone is insufficient.
-2. Open Receive from Phone. Leave discovery open long enough to observe H10 RR updates.
-3. Transfer a synthetic missing segment plus plan/rider; verify the successful Karoo import and phone receipt.
-4. Observe H10 updates during transfer and after the receiver closes; finish/save the recording normally.
-5. Inspect diagnostics and a safe recording export for RR timestamps, gap markers and counts before/during/after.
-   Report any interruption explicitly; do not interpret a stale alpha-1 or ANT+ BPM as BLE RR continuity.
+Jason said this test is unnecessary because the extension screen cannot be accessed while a ride
+is happening. Do not force the app open over a ride to manufacture a supported rider flow.
 
-Pass evidence: successful import/receipt, live RR continuing throughout receive/discovery and data transfer,
-no unexplained capture gap/disconnect, saved recording intact. Failure blocks wide H10/Bluetooth invites.
-The RR recording itself remains private; commit only a redacted result summary.
+Observed on code71: H10 Enhanced connected and capture started; diagnostics showed60 RR samples
+at100% validity before the test ride. Recording/Paused ride states subsequently appeared. No phone
+transfer, saved-artifact inspection or RR-continuity-during-transfer result has been established.
+H10 capture/save verification can continue separately after the test ride ends. Do not infer BLE RR
+continuity from native heart rate or a stale alpha-1 value.
+
+Send segments/plans before starting a ride. The old requirement that both gates must pass is superseded
+by Jason's explicit waiver of this during-ride test; GateB and publication approval remain requirements.
 
 ## Gate B: deliberate disconnect and resume (R3/R5)
 
