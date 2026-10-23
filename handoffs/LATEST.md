@@ -1,3 +1,9 @@
+# H10 test ride capture saved (2026-10-23 15:00 PDT)
+
+Jason ended/saved the ride. Karoo independently logged **h10_capture_saved reason=ride-ended samples=624** at14:57:37.813, immediately after Idle. Separate H10 capture finalization confirmed; raw samples/checksum and complete-recording quality have not been inspected. Earlier60-sample/100% validity reading covers only that live snapshot. Recording list/export remains unfinished.
+
+Installed71 unchanged. In-ride transfer test remains owner-waived; deliberate disconnect/resume remains pending. No tag/publication approved or performed. Evidence and limits: `handoffs/archive/2026-10-23-1500-codex-h10-ride-capture-saved.md`.
+
 # H10 baseline observed; in-ride transfer test waived by Jason (2026-10-23 14:52 PDT)
 
 Installed71 unchanged; phone internal build5 reported. H10 Enhanced connected/capture started; UI showed **60 RR samples at100% validity** before test ride. Native Recording/Paused events observed, but saved RR artifact/count not yet inspected. Await rider ending/saving test ride and leaving H10 Diagnostics open.
