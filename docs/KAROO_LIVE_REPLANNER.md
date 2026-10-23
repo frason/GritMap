@@ -1,6 +1,6 @@
 # Deterministic live replanning
 
-Implemented behind `-PgritmapLiveReplanner=true`, default **false**, 2026-10-22. GOALS priority 8; phone remains the plan author. No device install or public release for this milestone. Concurrent tracking has its own independent flag.
+Implemented behind `-PgritmapLiveReplanner=true` with `-PgritmapPlanCeilings=true` to retain imported ceiling metadata; both default **false**, 2026-10-22. GOALS priority 8; phone remains the plan author. No device install or public release for this milestone. Concurrent tracking has its own independent flag.
 
 ## Behavior
 
@@ -32,3 +32,5 @@ The old W′ display still uses its own FTP estimate; it is not relabeled as the
 Installed Karoo version70 does **not** accept the new metadata. The phone must continue sending the old shape until a receiver build >=71 containing this parser is installed and compatible receiver capability/rollout gating exists. The shared fixture passing is not permission to send the extension to old devices. PR `segmentRecord`, H10 export and Needle activation are separate unfinished work.
 
 Needle readiness and ABI findings: `docs/NEEDLE_READINESS.md`.
+
+Bluetooth release-candidate gate (2026-10-23): `PLAN_CEILINGS_ENABLED` now explicitly defaults false. Valid optional metadata is parsed/validated but discarded unless `-PgritmapPlanCeilings=true`; the original baseline targets remain unchanged. The phone sender must still wait for a compatible opt-in receiver rollout.

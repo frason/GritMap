@@ -25,7 +25,7 @@ class ReplanStorageTest {
 
     @Test fun `shared phone targets and ceilings survive transfer import and reload`() = runBlocking {
         val input=File(root,"docs/fixtures/plan-ceilings-transfer-v1.json").readText()
-        val plan=TransferPackageParser().parse(input).baselinePlan!!
+        val plan=TransferPackageParser(planCeilingsEnabled = true).parse(input).baselinePlan!!
         val source=Json.parseToJsonElement(File(root,"docs/fixtures/plan-ceilings-synthetic.json").readText()).jsonObject
             .getValue("result").jsonObject.getValue("zones").jsonArray
         assertEquals(source.map { it.jsonObject.getValue("targetPowerWatts").jsonPrimitive.int },plan.plan.zones.map { it.targetPowerWatts })
@@ -36,7 +36,7 @@ class ReplanStorageTest {
             db.segmentDao().insertDefinition(SegmentEntity("s","Synthetic",schemaVersion=1,fingerprint=plan.segmentFingerprint),
                 listOf(SegmentReferencePointEntity(segmentId="s",pointIndex=0,lat=0.0,lng=0.0,distanceMeters=0.0,elevationMeters=0.0),
                     SegmentReferencePointEntity(segmentId="s",pointIndex=1,lat=0.1,lng=0.0,distanceMeters=plan.plan.zones.last().endDistanceMeters,elevationMeters=100.0)))
-            TransferPackageRepository(db).importPackage(input)
+            TransferPackageRepository(db, parser = TransferPackageParser(planCeilingsEnabled = true)).importPackage(input)
             val stored=db.pacingDao().baseline("s")!!
             val targets=db.pacingDao().zones(stored.id).map { it.targetPowerWatts }
             assertEquals(plan.replanMetadata,ReplanMetadata.decode(stored.replanMetadataJson,targets,stored.ftpWatts))
