@@ -28,6 +28,7 @@ import { generateRealisticPlan } from "../pacing/generateRealisticPlan";
 import { createWeightAt } from "../db/profileHistory";
 import { loadPlanHistory, PLAN_HISTORY_EFFORTS } from "../pacing/loadPlanHistory";
 import type { CalibrationAttempt } from "../pacing/predictPlanFinish";
+import { goalTimeRange } from "../pacing/goalTimeRange";
 import { describePlanFeasibility } from "./describePlanFeasibility";
 import { describeStagedGoal, suggestNextGoalMs } from "./describeStagedGoal";
 import { predictPlanFinish, type PlanFinishPrediction } from "../pacing/predictPlanFinish";
@@ -381,7 +382,7 @@ export function SegmentDetailScreen() {
     setPacingSendStatus({ text: describeSendResult(result, trimmed), ok: result.ok });
   }
 
-  const goToProfile = () => navigation.navigate("ZonesSettings");
+  const goToProfile = () => navigation.navigate("ZonesSettings", { returnAfterSave: true });
   const sendBlock = (disabled: boolean) => (
     <KarooSendBlock
       hasWeight={athleteProfile.weightKg !== undefined}
@@ -402,6 +403,12 @@ export function SegmentDetailScreen() {
   const goalIsForThisSegment = activeGoal !== undefined && activeGoal.segmentId === segment.segmentId;
   // The rider's fastest accepted effort here: it words the notice, suggests the next goal and measures progress to a long-term goal.
   const fastestEffortMs = historyAttempts.length === 0 ? undefined : Math.min(...historyAttempts.map((attempt) => attempt.durationMs));
+  // What this segment takes at the rider's FTP and the slowest goal that still makes a useful plan: the goal editor's hint and sanity check.
+  const goalRange =
+    athleteProfile.ftpWatts === undefined
+      ? undefined
+      : goalTimeRange({ referencePolyline: segment.referencePolyline, ftpWatts: athleteProfile.ftpWatts, riderWeightKg: athleteProfile.weightKg, attempts: historyAttempts });
+  const typedGoalMs = parseTargetDurationInput(goalMinutesInput, goalSecondsInput);
   const stagedGoalAvailable = fastestEffortMs !== undefined || (goalIsForThisSegment && activeGoal?.longTermDurationMs !== undefined);
 
   if (athleteProfile.ftpWatts === undefined) {
@@ -487,14 +494,30 @@ export function SegmentDetailScreen() {
             accessibilityHint="Fills in a time about one percent faster than your best effort on this segment"
           />
         )}
+        {goalRange === undefined ? null : (
+          <AppText variant="footnote" color="textSecondary">
+            {`At your FTP this segment takes about ${formatDurationMinutesSeconds(goalRange.typicalMs)}. A goal slower than ${formatDurationMinutesSeconds(goalRange.easiestMs)} is easier than a normal effort.`}
+          </AppText>
+        )}
         <View style={styles.goalInputRow}>
           <View style={styles.goalInput}>
-            <TextField label="Minutes" value={goalMinutesInput} onChangeText={setGoalMinutesInput} keyboardType="number-pad" placeholder="40" />
+            <TextField
+              label="Minutes"
+              value={goalMinutesInput}
+              onChangeText={setGoalMinutesInput}
+              keyboardType="number-pad"
+              {...(goalRange === undefined ? {} : { placeholder: String(Math.max(1, Math.round(goalRange.typicalMs / 60_000))) })}
+            />
           </View>
           <View style={styles.goalInput}>
             <TextField label="Seconds" value={goalSecondsInput} onChangeText={setGoalSecondsInput} keyboardType="number-pad" placeholder="00" />
           </View>
         </View>
+        {goalRange !== undefined && typedGoalMs !== undefined && typedGoalMs > goalRange.easiestMs ? (
+          <Notice tone="warning" live>
+            This goal is easier than a normal effort, so the plan would be flat. Try a faster goal.
+          </Notice>
+        ) : null}
         {stagedGoalAvailable ? (
           <>
             <AppText variant="subheadline" color="textSecondary">
@@ -545,6 +568,9 @@ export function SegmentDetailScreen() {
       goalDurationMs: activeGoal.targetDurationMs,
       ...(generated.finish === undefined ? {} : { predictedFinishMs: generated.finish.durationMs }),
       ...(fastestEffortMs === undefined ? {} : { bestEffortMs: fastestEffortMs }),
+      // "Held back" and "what you have held" are only said when the plan's limits come from the rider's own efforts.
+      hasHistory: generated.effortsWithPower > 0,
+      goalBelowNormalEffort: generated.anchorLimited === "low" || (generated.anchorSource === "power-duration-table" && anchorPowerWatts <= ftpWatts * 0.7 + 0.5),
     });
 
     // A staged goal (a long-term goal as well as the one the plan is built for) adds a progress line and a note when the next goal is reached.
@@ -803,7 +829,7 @@ function KarooSendBlock({
         value={address}
         onChangeText={onAddressChange}
         placeholder={`e.g. ${KAROO_ADDRESS_EXAMPLE}`}
-        keyboardType="url"
+        keyboardType="numbers-and-punctuation"
       />
       <Button label={PHONE_SEND_BUTTON} onPress={onSend} loading={sending} disabled={disabled} />
       {status === undefined ? null : (

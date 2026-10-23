@@ -13,7 +13,8 @@ export type SegmentsStackParamList = {
   AttemptReview: { attemptId: string };
   AttemptComparison: { primaryAttemptId: string; comparisonAttemptId: string };
   RegistryBrowse: undefined;
-  ZonesSettings: undefined;
+  /** `returnAfterSave`: opened from a prompt to set FTP or weight, so Save goes back to where the rider came from. */
+  ZonesSettings: { returnAfterSave?: boolean } | undefined;
   HistoricalBand: { segmentId: string; currentAttemptId: string };
   SendToKaroo: { segmentId: string };
   PublishToRegistry: { segmentId: string };

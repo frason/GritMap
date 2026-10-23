@@ -178,7 +178,7 @@ export function PlanVsActualScreen() {
             label: needsFtp ? "Set your FTP" : "Open the segment",
             onPress: () =>
               needsFtp
-                ? navigation.navigate("ZonesSettings")
+                ? navigation.navigate("ZonesSettings", { returnAfterSave: true })
                 : segmentIdForLinks !== undefined && navigation.navigate("SegmentDetail", { segmentId: segmentIdForLinks }),
           },
         ]}

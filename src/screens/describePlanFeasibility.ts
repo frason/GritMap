@@ -26,8 +26,23 @@ export function describePlanFeasibility(input: {
   predictedFinishMs?: number;
   /** The rider's own fastest accepted effort on this segment, when they have one. */
   bestEffortMs?: number;
+  /**
+   * True when the plan's ceilings come from what the rider has actually held on this segment. Without it the wording must not
+   * claim the rider "has held" anything: the plan then uses general limits.
+   */
+  hasHistory?: boolean;
+  /** True when the goal is easier than the plan model's normal range, so the plan is flat (the 70%-of-FTP floor). */
+  goalBelowNormalEffort?: boolean;
 }): PlanFeasibilityLines | undefined {
   const { realistic, goalDurationMs, predictedFinishMs, bestEffortMs } = input;
+  const hasHistory = input.hasHistory === true;
+  if (input.goalBelowNormalEffort === true) {
+    return {
+      tone: "warning",
+      headline: "This goal is easier than a normal effort, so the plan is flat.",
+      detail: "Try a faster goal to get a plan that changes with the climb.",
+    };
+  }
   const goal = formatDurationMinutesSeconds(goalDurationMs);
   const gapMs = predictedFinishMs === undefined ? undefined : predictedFinishMs - goalDurationMs;
   const negligibleMs = Math.max(NEGLIGIBLE_GAP_MS, goalDurationMs * NEGLIGIBLE_GAP_FRACTION);
@@ -50,10 +65,15 @@ export function describePlanFeasibility(input: {
     return {
       tone: "warning",
       headline: `Your ${goal} goal looks out of reach for now.`,
-      detail: `${sentence}${best === undefined ? "" : ` Your best so far is ${best}.`} GritMap plans no more power than you have held on this climb, or than your effort budget allows. That grows as you set new bests.`,
+      detail: `${sentence}${best === undefined ? "" : ` Your best so far is ${best}.`} ${
+        hasHistory
+          ? "GritMap plans no more power than you have held on this climb, or than your effort budget allows. That grows as you set new bests."
+          : "GritMap will tighten this plan once you have ridden the segment."
+      }`,
     };
   }
-  if (realistic.trimmedZoneIndices.length > 0) {
+  // "Held back" is only true when the limits come from the rider's own efforts; with no history say nothing.
+  if (hasHistory && realistic.trimmedZoneIndices.length > 0) {
     return {
       tone: "info",
       headline: "Some targets were held back.",

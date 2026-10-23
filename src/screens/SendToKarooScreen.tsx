@@ -102,7 +102,7 @@ export function SendToKarooScreen() {
         onChangeText={setKarooAddress}
         placeholder={`e.g. ${KAROO_ADDRESS_EXAMPLE}`}
         hint={`Shown on the Karoo's ${KAROO_RECEIVE_SCREEN} screen. GritMap remembers it after a successful send.`}
-        keyboardType="url"
+        keyboardType="numbers-and-punctuation"
         returnKeyType="send"
         onSubmitEditing={handleSend}
       />

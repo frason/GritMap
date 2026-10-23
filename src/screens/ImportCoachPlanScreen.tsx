@@ -81,7 +81,7 @@ export function ImportCoachPlanScreen() {
         icon="speedometer"
         title="Set your FTP first"
         body="A pacing plan is checked against your FTP (no target may be more than 150% of it), so GritMap needs it before it can accept one."
-        actions={[{ label: "Set your FTP", onPress: () => navigation.navigate("ZonesSettings") }]}
+        actions={[{ label: "Set your FTP", onPress: () => navigation.navigate("ZonesSettings", { returnAfterSave: true }) }]}
       />
     );
   }
@@ -207,7 +207,7 @@ export function ImportCoachPlanScreen() {
             prediction={prediction}
             goalDurationMs={goalDurationMs}
             weightMissing={profile.weightKg === undefined}
-            onSetWeight={() => navigation.navigate("ZonesSettings")}
+            onSetWeight={() => navigation.navigate("ZonesSettings", { returnAfterSave: true })}
           />
           {result.warnings.map((warning, index) => (
             <AppText key={index} variant="footnote" color="textSecondary">

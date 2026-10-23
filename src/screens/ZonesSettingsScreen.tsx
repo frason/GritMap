@@ -1,6 +1,7 @@
 import { useCallback, useState } from "react";
 import { ScrollView, StyleSheet, View } from "react-native";
-import { useFocusEffect } from "@react-navigation/native";
+import { useFocusEffect, useNavigation, useRoute, type RouteProp } from "@react-navigation/native";
+import type { SegmentsStackParamList } from "../navigation/types";
 import { useDatabase } from "../db/DatabaseProvider";
 import { getAthleteProfile } from "../db/getAthleteProfile";
 import { addBackdatedWeight, listProfileHistory, removeBackdatedWeight, type ProfileHistoryEntry } from "../db/profileHistory";
@@ -27,6 +28,9 @@ import { formatRideDate } from "./formatRideStats";
  */
 export function ZonesSettingsScreen() {
   const database = useDatabase();
+  const navigation = useNavigation();
+  const route = useRoute<RouteProp<SegmentsStackParamList, "ZonesSettings">>();
+  const returnAfterSave = route.params?.returnAfterSave === true;
   const [ftpInput, setFtpInput] = useState("");
   const [maxHrInput, setMaxHrInput] = useState("");
   const [weightInput, setWeightInput] = useState("");
@@ -103,10 +107,18 @@ export function ZonesSettingsScreen() {
       nowMs: Date.now(),
     });
     setSaved(true);
+    // Opened from a prompt to set FTP or weight: take the rider back to what they were doing.
+    if (returnAfterSave && navigation.canGoBack()) navigation.goBack();
   }
 
   return (
-    <ScrollView style={styles.container} contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
+    <ScrollView
+      style={styles.container}
+      contentContainerStyle={styles.content}
+      keyboardShouldPersistTaps="handled"
+      keyboardDismissMode="interactive"
+      automaticallyAdjustKeyboardInsets
+    >
       <AppText variant="body" color="textSecondary">
         GritMap uses these to build pacing plans, predict your finish time, and show which power and heart-rate zone you were in. They stay on your phone.
       </AppText>
