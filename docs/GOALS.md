@@ -23,6 +23,11 @@ external TestFlight Beta App Review on 2026-10-19; the beta opens when Apple app
 Beta platform: iPhone (TestFlight) plus the GritMap Karoo extension (sideloaded APK). Android phone
 support is not required for the beta.
 
+**What a rider needs (decided 2026-10-23).** GritMap is built for riders with a **power meter and a heart-rate monitor**. Pacing plans are
+power targets, and the live guidance, energy budget and cardiac fields all depend on power and heart rate. Without a power meter GritMap can match
+segments and show progress, but it cannot do what it exists to do. Every rider-facing document and onboarding step must say this plainly, up front,
+before the rider installs anything: the README, the TestFlight description and "What to test" text, the Karoo install guide, and onboarding.
+
 Consequence for every change: nothing may assume Jason's data, devices, FTP, weight, segments or
 tokens. A fresh install with an empty database must work.
 

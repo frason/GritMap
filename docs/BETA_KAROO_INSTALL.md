@@ -1,5 +1,8 @@
 # Install GritMap on a Karoo 3 (beta)
 
+**GritMap needs a power meter and a heart-rate monitor.** Pacing plans are power targets, and the live guidance, energy budget and
+cardiac fields depend on both. Without a power meter, GritMap can match segments and show progress, but it cannot pace you.
+
 This guide is for the GritMap beta on the latest-generation Hammerhead Karoo. You need the
 GritMap APK, the Hammerhead Companion app on your iPhone, and Wi-Fi for the initial install and
 for sending a segment from the GritMap phone app.
@@ -106,9 +109,10 @@ and **GM Cardiac Drift**.
 
 - With no loaded segment or outside a segment, GritMap fields show a waiting/searching state; they
   should not be blank or crash the ride screen.
-- Without a power meter, route matching and segment progress still work. Power-specific guidance
-  waits for power instead of inventing a value.
-- Without heart rate, cardiac fields wait for heart-rate data.
+- A power meter and a heart-rate monitor are required for GritMap to do its job. Without a power
+  meter, route matching and segment progress still work, but power guidance waits for power instead of
+  inventing a value; GritMap cannot pace you without it.
+- Without heart rate, cardiac fields wait for heart-rate data and the cardiac guidance is unavailable.
 - Without a Polar H10, use **GM Cardiac Drift**. The experimental H10 field waits for enhanced RR
   data and is not required for live pacing.
 
