@@ -1,3 +1,9 @@
+# Bluetooth beta71 installed with approval (2026-10-23 14:15 PDT)
+
+Jason approved exact candidate install. **0.10.45-bluetooth-beta / code71 is now installed** via adb install-r; version verified and app launch passes. SHA256 `d6b6e87e13f7aa73644badeb1bed1a9ec4e5802d2eb2e104342a12304ae0977a` rechecked before install. Original install timestamp retained; no uninstall/clear-data. No source change after250-test/lint/signed-build QA. Phone checkout untouched.
+
+**Next:** H10 RR coexistence and deliberate disconnect/resume gates with Jason; awaiting H10/phone readiness. Neither test has run on71. **No tagging or publication approved/performed.** Details: `handoffs/archive/2026-10-23-1415-codex-bluetooth-beta71-installed.md`. Earlier install-pending status below is superseded.
+
 # Coordinator: RELEASE DECISIONS for Codex (2026-10-24, Jason approved)
 
 1. **Scope: option 1.** Ship the Bluetooth beta with the current plan requirement as a documented known gap. Segment-only send stays in the phone's Wi-Fi fallback. Plan-free
@@ -8,6 +14,7 @@
 3. Merge or push your branch so origin has your commits (own worktree, explicit paths, no force-push; rebase on origin/main which has the phone's build 8 and my docs). After any approved
    release, verify the stable Companion install URL and update docs/BETA_KAROO_INSTALL.md and docs/KAROO_BETA_RELEASE.md. The phone session needs the final Karoo labels and the version number
    for build 8's 'testers need Karoo version X' text: tell Jason both.
+
 
 # Bluetooth beta71: verified candidate, install approval pending (2026-10-23 14:11 PDT)
 
