@@ -5,7 +5,7 @@ Candidate: 0.10.45-bluetooth-beta / code71. Installed after Jason's exact approv
 **Scope update, 2026-10-23:** Jason waived the during-ride coexistence test because the extension
 app screen cannot be accessed during an active ride. Supported instructions now say to send before
 starting a recording. This is a waiver, **not a passed coexistence test**. Deliberate disconnect/resume
-remains unperformed and required before wide Bluetooth invites. Tag/publication still need approval.
+was attempted and failed on code71 (details below); a corrected candidate must pass before wide Bluetooth invites. Tag/publication still need approval.
 
 ## Before the tests
 
@@ -35,6 +35,21 @@ Send segments/plans before starting a ride. The old requirement that both gates 
 by Jason's explicit waiver of this during-ride test; GateB and publication approval remain requirements.
 
 ## Gate B: deliberate disconnect and resume (R3/R5)
+
+### Observed on code71, 2026-10-23
+
+- Baseline transfer: MTU517, segment60,833 bytes, plan4,313 bytes, rider114 bytes;
+  imported existing=false in32,963ms at16:16:33.810. This was not interrupted and is not a resume pass.
+- Interrupted attempt: connected16:33:06.129, shell-triggered radio disable16:33:11,
+  sensor service requested enable16:33:12, shell requested enable16:33:14; adapter confirmed ON.
+  Shell helper processes returned137, but Bluetooth manager's enable log confirmed the radio transition.
+- Receiver failed16:33:29.429 with BLE request-characteristic write status1. Phone remained at
+  Sending13%; another connection appeared16:33:40.309, without a ble_resume event or successful import.
+  This later connection alone does not establish continuation of the same session.
+- Gate failed. The full-radio restart is a harsher outage than a single GATT-link disconnect.
+  No publication approval; preserve installed data. Recovery patch and repeat physical validation pending.
+
+### Repeat procedure
 
 1. Use a sufficiently large synthetic missing segment (150–250KiB within contract caps) so multiple completed
    chunks are observed before interruption. Record the last complete offset and current session/package identity.

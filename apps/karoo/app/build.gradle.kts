@@ -24,7 +24,7 @@ android {
         applicationId = "com.gritmap.karoo"
         minSdk = 31
         targetSdk = 31
-        versionCode = providers.gradleProperty("gritmapVersionCode").orNull?.toInt() ?: 71
+        versionCode = providers.gradleProperty("gritmapVersionCode").orNull?.toInt() ?: 72
         versionName = providers.gradleProperty("gritmapVersionName").orNull ?: "0.10.45"
         buildConfigField(
             "boolean",

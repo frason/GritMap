@@ -10,6 +10,8 @@ import kotlinx.coroutines.async
 import kotlinx.coroutines.withTimeoutOrNull
 import kotlinx.coroutines.TimeoutCancellationException
 import kotlinx.coroutines.withTimeout
+import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.ensureActive
 
 class DirectBleTransferReceiver(
     context: Context,
@@ -71,6 +73,7 @@ class DirectBleTransferReceiver(
             Log.i("GritMapLive", "ble_imported existing=$existing durationMs=${(System.nanoTime() - started) / 1_000_000}")
             return result
         } catch (error: Exception) {
+            currentCoroutineContext().ensureActive()
             val currentManifest = manifest
             if (!receiptAttempted && currentManifest != null && connection != null) {
                 runCatching {
@@ -96,32 +99,26 @@ class DirectBleTransferReceiver(
         initial: DirectBleGattClient.Connection,
         onConnection: (DirectBleGattClient.Connection) -> Unit,
     ): ByteArray {
-        val output = ByteArray(descriptor.bytes)
-        var offset = 0
-        var retries = 0
         var connection = initial
-        try {
-            while (offset < descriptor.bytes) {
-                val expected = minOf(manifest.chunkBytes, descriptor.bytes - offset)
-                try {
-                    val chunk = connection.readChunk(name, offset, expected)
-                    chunk.copyInto(output, offset)
-                    offset += chunk.size
-                    retries = 0
-                } catch (error: DirectBleDisconnectedException) {
-                    Log.i("GritMapLive", "ble_resume resource=${name.wireName} offset=$offset")
-                    connection.close()
-                    if (++retries > MAX_RECONNECTS) throw error
-                    connection = gattClient.connect(device).also(onConnection)
-                    val again = manifestParser.parse(connection.readManifest())
-                    require(again.transferId == manifest.transferId) { "Bluetooth transfer changed while reconnecting" }
+        val output = try {
+            readDirectTransferResource(descriptor, manifest.chunkBytes) { offset, expected ->
+                withDirectBleRecovery(
+                    reconnect = {
+                        connection.close()
+                        connection = gattClient.connect(device).also(onConnection)
+                        val again = manifestParser.parse(connection.readManifest())
+                        require(again == manifest) { "Bluetooth transfer changed while reconnecting" }
+                    },
+                    onRetry = { attempt ->
+                        Log.i("GritMapLive", "ble_resume resource=${name.wireName} offset=$offset attempt=$attempt")
+                    },
+                ) {
+                    connection.readChunk(name, offset, expected)
                 }
             }
         } finally {
-            // Keep the most recent connection alive for the next resource and final receipt.
             onConnection(connection)
         }
-        if (sha256(output) != descriptor.sha256) throw DirectTransferHashMismatch("${name.wireName} SHA-256 mismatch")
         Log.i("GritMapLive", "ble_resource resource=${name.wireName} bytes=${output.size}")
         return output
     }
@@ -137,6 +134,7 @@ class DirectBleTransferReceiver(
             requireNotNull(connection) { "Bluetooth disconnected before receipt" }.writeReceipt(receipt)
             return connection
         } catch (first: Exception) {
+            currentCoroutineContext().ensureActive()
             connection?.close()
             val retry = gattClient.connect(device)
             try {
@@ -169,7 +167,6 @@ class DirectBleTransferReceiver(
         .digest(bytes).joinToString("") { "%02x".format(it) }
 
     companion object {
-        private const val MAX_RECONNECTS = 3
         private const val RECEIPT_DEADLINE_MS = 30_000L
     }
 }
