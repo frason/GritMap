@@ -1,19 +1,26 @@
 package com.gritmap.karoo.importing
 
 import android.annotation.SuppressLint
+import android.bluetooth.BluetoothAdapter
+import android.bluetooth.BluetoothManager
 import android.bluetooth.BluetoothDevice
 import android.bluetooth.BluetoothGatt
 import android.bluetooth.BluetoothGattCallback
 import android.bluetooth.BluetoothGattCharacteristic
 import android.bluetooth.BluetoothProfile
 import android.content.Context
+import android.content.BroadcastReceiver
+import android.content.Intent
+import android.content.IntentFilter
 import android.util.Log
 import java.util.UUID
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeoutOrNull
-import kotlinx.coroutines.withTimeout
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.ensureActive
 
 @SuppressLint("MissingPermission")
 class DirectBleGattClient(private val context: Context) {
@@ -35,6 +42,17 @@ class DirectBleGattClient(private val context: Context) {
         private var gatt: BluetoothGatt? = null
         private val events = DirectBleEventGate<GattEvent>()
         private val disconnected = CompletableDeferred<Unit>()
+        private var radioReceiverRegistered = false
+        private val radioReceiver = object : BroadcastReceiver() {
+            override fun onReceive(context: Context?, intent: Intent?) {
+                if (intent?.action == BluetoothAdapter.ACTION_STATE_CHANGED &&
+                    intent.getIntExtra(BluetoothAdapter.EXTRA_STATE, BluetoothAdapter.ERROR) != BluetoothAdapter.STATE_ON
+                ) {
+                    disconnected.complete(Unit)
+                    events.fail(DirectBleDisconnectedException("Bluetooth radio unavailable"))
+                }
+            }
+        }
         var negotiatedMtu: Int = 23
             private set
 
@@ -61,11 +79,19 @@ class DirectBleGattClient(private val context: Context) {
         }
 
         internal suspend fun open() {
+            val adapter = context.getSystemService(BluetoothManager::class.java).adapter
+            val ready = withTimeoutOrNull(8_000L) {
+                while (adapter?.isEnabled != true) delay(200L)
+                true
+            } ?: false
+            if (!ready) throw DirectBleDisconnectedException("Bluetooth radio unavailable")
+            context.registerReceiver(radioReceiver, IntentFilter(BluetoothAdapter.ACTION_STATE_CHANGED))
+            radioReceiverRegistered = true
             events.expect("connect") { it is GattEvent.Connection }
             gatt = device.connectGatt(context, false, callback, BluetoothDevice.TRANSPORT_LE)
             val connected = await() as? GattEvent.Connection ?: error("Unexpected BLE connection event")
-            check(connected.status == BluetoothGatt.GATT_SUCCESS && connected.state == BluetoothProfile.STATE_CONNECTED) {
-                "BLE connection failed (${connected.status})"
+            if (connected.status != BluetoothGatt.GATT_SUCCESS || connected.state != BluetoothProfile.STATE_CONNECTED) {
+                throw DirectBleDisconnectedException("BLE connection failed (${connected.status})")
             }
             events.expect("MTU") { it is GattEvent.Mtu }
             if (requireNotNull(gatt).requestMtu(PREFERRED_MTU)) {
@@ -104,9 +130,11 @@ class DirectBleGattClient(private val context: Context) {
 
         private suspend fun read(uuid: UUID): ByteArray {
             events.expect("read $uuid") { it is GattEvent.Read && it.uuid == uuid }
-            check(requireNotNull(gatt).readCharacteristic(requireCharacteristic(uuid))) { "Could not start BLE read" }
+            if (!requireNotNull(gatt).readCharacteristic(requireCharacteristic(uuid))) {
+                throw DirectBleDisconnectedException("Could not start BLE read")
+            }
             val event = await() as? GattEvent.Read ?: error("Unexpected BLE read event")
-            if (event.status != BluetoothGatt.GATT_SUCCESS) throw GattStatusException(event.status, "BLE read $uuid failed")
+            checkStatus(event.status, "BLE read $uuid failed")
             check(event.uuid == uuid) { "BLE read returned wrong characteristic" }
             return event.value
         }
@@ -117,9 +145,11 @@ class DirectBleGattClient(private val context: Context) {
             characteristic.value = value
             characteristic.writeType = BluetoothGattCharacteristic.WRITE_TYPE_DEFAULT
             events.expect("write $uuid") { it is GattEvent.Write && it.uuid == uuid }
-            check(requireNotNull(gatt).writeCharacteristic(characteristic)) { "Could not start BLE write" }
+            if (!requireNotNull(gatt).writeCharacteristic(characteristic)) {
+                throw DirectBleDisconnectedException("Could not start BLE write")
+            }
             val event = await() as? GattEvent.Write ?: error("Unexpected BLE write event")
-            if (event.status != BluetoothGatt.GATT_SUCCESS) throw GattStatusException(event.status, "BLE write $uuid failed")
+            checkStatus(event.status, "BLE write $uuid failed")
             check(event.uuid == uuid) { "BLE write returned wrong characteristic" }
         }
 
@@ -128,11 +158,25 @@ class DirectBleGattClient(private val context: Context) {
                 "Direct Bluetooth transfer is unsupported"
             }
 
-        private suspend fun await(): GattEvent = withTimeout(OPERATION_TIMEOUT_MS) { events.await() }
+        private fun checkStatus(status: Int, message: String) {
+            if (status == BluetoothGatt.GATT_SUCCESS) return
+            if (isRecoverableGattStatus(status)) throw DirectBleDisconnectedException("$message ($status)")
+            throw GattStatusException(status, message)
+        }
+
+        private suspend fun await(): GattEvent =
+            withTimeoutOrNull(OPERATION_TIMEOUT_MS) { events.await() } ?: run {
+                currentCoroutineContext().ensureActive()
+                throw DirectBleDisconnectedException("BLE operation timed out")
+            }
 
         private fun complete(event: GattEvent) = events.complete(event)
 
         suspend fun close() = withContext(NonCancellable) {
+            if (radioReceiverRegistered) {
+                context.unregisterReceiver(radioReceiver)
+                radioReceiverRegistered = false
+            }
             val current = gatt ?: return@withContext
             try {
                 runCatching { current.disconnect() }
@@ -156,7 +200,7 @@ class DirectBleGattClient(private val context: Context) {
 
     companion object {
         const val PREFERRED_MTU = 517
-        private const val OPERATION_TIMEOUT_MS = 15_000L
+        private const val OPERATION_TIMEOUT_MS = 8_000L
         val SERVICE_UUID: UUID = UUID.fromString("e7a4e868-0a21-45d6-ac63-5812c740ba12")
         val MANIFEST_UUID: UUID = UUID.fromString("a9c5876c-8f5f-48be-aae7-eb47ef573c41")
         val REQUEST_UUID: UUID = UUID.fromString("59e28123-c142-4b89-acba-57d76e483b72")

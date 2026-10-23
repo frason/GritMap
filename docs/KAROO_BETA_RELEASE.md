@@ -1,6 +1,10 @@
 # Publishing a GritMap Karoo beta
 
-## Bluetooth candidate: 0.10.45-bluetooth-beta / code 71
+## Bluetooth candidate: 0.10.45-bluetooth-beta / code 72
+
+Code71 failed the physical radio-interruption test. A local corrected candidate uses
+`0.10.45-bluetooth-resume1` / code72; repeat physical acceptance is required before release.
+Installed71 remains unchanged until Jason approves the exact new APK.
 
 This is a release candidate, not an announcement that it has been installed or published. The numeric
 release base is 0.10.45; the workflow builds `0.10.45-bluetooth-beta` from tag `karoo-beta-0.10.45`.
@@ -15,7 +19,7 @@ checkout unchanged. Local candidate build (JDK17 and Android SDK required):
 ```sh
 ./gradlew :app:testDebugUnitTest :app:lintDebug :app:assembleBeta \
   -PgritmapBetaSigningProperties=/absolute/path/to/beta-signing.properties \
-  -PgritmapVersionCode=71 -PgritmapVersionName=0.10.45-bluetooth-beta --no-daemon
+  -PgritmapVersionCode=72 -PgritmapVersionName=0.10.45-bluetooth-beta --no-daemon
 ```
 
 **Approval gates:** present the exact version, APK SHA-256, source commit and QA results to Jason
