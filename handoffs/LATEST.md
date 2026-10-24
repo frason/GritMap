@@ -1,3 +1,9 @@
+# Normal beta73 installed-segment skip PASSED (2026-10-23 23:26 PDT)
+
+Normal73 logged **existing=true**, plan5778/rider114 bytes hash-verified, import/receipt success in5420ms. Jason reports~10s. Segment was skipped, confirmed by logs; no diagnostic drop. Normal installed source46eb5be/hashc371496a8d32d80949dc3986dec4ee8e0975fd2eb5f666c278c63d7bbd62fd3e unchanged.
+
+Next: one different small missing segment on normal73, then separate exact release approval. Diagnostic controlled-link pass remains recorded; full-radio failures unresolved. No tag/publication. Details: `handoffs/archive/2026-10-23-232618-codex-normal73-segment-skip-pass.md`.
+
 # Normal Bluetooth beta73 installed with approval (2026-10-23 23:22 PDT)
 
 **0.10.45-bluetooth-beta/code73 installed in place** over diagnostic73. Exact SHA256c371496a8d32d80949dc3986dec4ee8e0975fd2eb5f666c278c63d7bbd62fd3e rechecked; version/launch pass, original install timestamp retained. Automatic fault injection is0/off. No source changes after263-test/lint/signed-build QA.
