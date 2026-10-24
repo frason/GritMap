@@ -1,3 +1,9 @@
+# BLE recovery code72 installed with approval (2026-10-23 17:30 PDT)
+
+**0.10.45-bluetooth-resume1 /72 installed successfully** after exact approval. APK SHA256 rechecked; version and MainActivity launch verified. Original install timestamp retained; no uninstall/clear-data. Source0312e10 and prior257-test/lint/signed-build QA unchanged.
+
+Next: repeat physical interruption test; code72 has no physical resume pass yet. Two-minute receive-timeout mismatch remains to assess before public release. No tag/publication approved or performed. Evidence: `handoffs/archive/2026-10-23-1730-codex-ble-resume72-installed.md`.
+
 # BLE recovery fix: code72 verified, install approval pending (2026-10-23 16:50 PDT)
 
 Code71 physical interruption **failed** (BLE write status1; phone Sending13%). Corrected source **0312e10** retries bounded transport failures, notices radio shutdown, preserves completed chunks and verifies the entire manifest on reconnect. **257 tests, debug/beta lint, signed/minified build pass.**
