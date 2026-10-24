@@ -1,3 +1,9 @@
+# Code72 physical radio-recovery test failed (2026-10-23 17:59 PDT)
+
+Installed72 entered **ble_resume offset122368** twice, reconnected, then failed manifest read status2 (not permitted). Jason reports phone stopped41%. No completed resource/import/receipt; **not a pass**. Radio restored/verifiedON. Monitor buffering delayed the intended interruption to~65s after connection; fix monitoring before another test.
+
+Next: controlled GATT-only drop, preserving same-central/session ownership; investigate manifest refusal without weakening security. Correct whole-transfer two-minute timeout before public release. No source/install/tag/publication changes. Exact evidence: `handoffs/archive/2026-10-23-1759-codex-code72-radio-recovery-test-failed.md`.
+
 # BLE recovery code72 installed with approval (2026-10-23 17:30 PDT)
 
 **0.10.45-bluetooth-resume1 /72 installed successfully** after exact approval. APK SHA256 rechecked; version and MainActivity launch verified. Original install timestamp retained; no uninstall/clear-data. Source0312e10 and prior257-test/lint/signed-build QA unchanged.
