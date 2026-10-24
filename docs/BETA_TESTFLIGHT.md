@@ -76,8 +76,8 @@ Apple processes the build (usually 10-30 minutes) and emails you. In App Store C
   version goes through Beta App Review** (usually under a day). Invite by email, or enable a **public link** (up to 10,000
   testers) and share that. Later builds of the same version usually skip review.
 - In "What to Test" and the beta description, say what GritMap needs, first: **a Hammerhead Karoo 3, a power meter on your bike and a heart-rate monitor.**
-  Then: follow the in-app steps, send them the Karoo install guide, and update the Karoo extension to the version that receives over Bluetooth
-  (build 8 sends over Bluetooth first; an older Karoo extension needs the Wi-Fi fallback on the Send to Karoo screen). Ask testers to report whether
+  Then: follow the in-app steps, send them the Karoo install guide, and **testers need Karoo extension 0.10.45 (version code 73) or newer**
+  (tag `karoo-beta-0.10.45`); build 8 sends over Bluetooth first, and an older Karoo extension needs the Wi-Fi fallback on the Send to Karoo screen. Ask testers to report whether
   "Imported on your Karoo" appeared after a Bluetooth send.
 
 ### 8. Beta App Review information (TestFlight -> Test Information)

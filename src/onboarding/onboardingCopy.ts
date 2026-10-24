@@ -4,6 +4,9 @@
  * written alongside) cannot drift apart. Change a name here only together with the Karoo app.
  */
 export const KAROO_APP_NAME = "GritMap";
+/** The first public Karoo extension that can receive over Bluetooth (tag karoo-beta-0.10.45). Older ones need the Wi-Fi fallback. */
+export const KAROO_MIN_VERSION_NAME = "0.10.45";
+export const KAROO_MIN_VERSION_CODE = 73;
 /** The Karoo button (GritMap, Inbox) that opens the Bluetooth receiver. */
 export const KAROO_RECEIVE_SCREEN = "Receive from Phone";
 /** The button on a segment, on the phone, that sends the segment and its plan. */
@@ -82,8 +85,8 @@ export const FTP_SOURCE_NOTE = "Your FTP is the number your power meter and rece
 /** Steps for the main way to send: Bluetooth, straight from the phone to the Karoo, no Wi-Fi or address needed. */
 export const KAROO_STEPS: readonly { title: string; body: string }[] = [
   {
-    title: `Update ${KAROO_APP_NAME} on your Karoo`,
-    body: `Follow the Karoo install guide you were sent. When it worked, ${KAROO_APP_NAME} appears in your Karoo's app list.`,
+    title: `Update ${KAROO_APP_NAME} on your Karoo to ${KAROO_MIN_VERSION_NAME} (version code ${KAROO_MIN_VERSION_CODE}) or newer`,
+    body: `Follow the Karoo install guide you were sent. Older versions cannot receive over Bluetooth; use the Wi-Fi steps below.`,
   },
   {
     title: `On the Karoo, open ${KAROO_APP_NAME}, then ${KAROO_INBOX}, then tap ${KAROO_RECEIVE_SCREEN}`,
@@ -117,7 +120,7 @@ export const WIFI_FALLBACK_STEPS: readonly { title: string; body: string }[] = [
 
 /** Why a rider might be waiting on a Karoo that cannot receive over Bluetooth (an older GritMap on the Karoo). */
 export const OLDER_KAROO_HINT =
-  `Still waiting. If your Karoo has an older ${KAROO_APP_NAME} version, it cannot receive over Bluetooth: update it, or send over Wi-Fi instead.`;
+  `Still waiting. Your Karoo needs ${KAROO_APP_NAME} ${KAROO_MIN_VERSION_NAME} (version code ${KAROO_MIN_VERSION_CODE}) or newer to receive over Bluetooth. Update it, or send over Wi-Fi instead.`;
 
 export const FTP_HELP =
   "FTP is the most power you can hold for about an hour. If you do not know yours, a recent power test or your bike computer's estimate is fine. You can change it later.";
