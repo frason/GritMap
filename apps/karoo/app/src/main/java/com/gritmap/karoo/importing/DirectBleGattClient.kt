@@ -120,6 +120,15 @@ class DirectBleGattClient(private val context: Context) {
             return value
         }
 
+        /** Test-only caller drops this GATT link and requires the actual disconnect callback. */
+        internal suspend fun disconnectForTest() {
+            requireNotNull(gatt).disconnect()
+            check(withTimeoutOrNull(2_000L) { disconnected.await(); true } == true) {
+                "Test link disconnect callback not received"
+            }
+            Log.i("GritMapLive", "ble_test_disconnected callback=true")
+        }
+
         suspend fun writeReceipt(bytes: ByteArray, retry: Boolean = false) {
             try {
                 write(STATUS_UUID, bytes)

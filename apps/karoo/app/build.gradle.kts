@@ -24,13 +24,18 @@ android {
         applicationId = "com.gritmap.karoo"
         minSdk = 31
         targetSdk = 31
-        versionCode = providers.gradleProperty("gritmapVersionCode").orNull?.toInt() ?: 72
+        versionCode = providers.gradleProperty("gritmapVersionCode").orNull?.toInt() ?: 73
         versionName = providers.gradleProperty("gritmapVersionName").orNull ?: "0.10.45"
         buildConfigField(
             "boolean",
             "DIRECT_BLE_V2_ENABLED",
             providers.gradleProperty("gritmapDirectBleV2").orNull ?: "true",
         )
+
+        val testDisconnectBytes = providers.gradleProperty("gritmapBleTestDisconnectAfterBytes")
+            .orNull?.toInt() ?: 0
+        require(testDisconnectBytes == 0 || testDisconnectBytes in 4096..524288)
+        buildConfigField("int", "BLE_TEST_DISCONNECT_AFTER_BYTES", testDisconnectBytes.toString())
 
         buildConfigField("boolean", "PLAN_CEILINGS_ENABLED",
             providers.gradleProperty("gritmapPlanCeilings").orNull ?: "false")
