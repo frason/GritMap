@@ -1,3 +1,9 @@
+# Normal beta73 new/skip paths PASSED; discuss plan-free PR sending (2026-10-23 23:35 PDT)
+
+Normal73 new segment12754 bytes + plan2075/rider114 hash-verified/imported with receipt, existing=false in9962ms. Prior normal skip existing=true passed in5420ms. Diagnostic controlled-link resume also passed; full-radio failures remain unresolved. Source46eb5be / normal SHA256c371496a8d32d80949dc3986dec4ee8e0975fd2eb5f666c278c63d7bbd62fd3e installed unchanged;263 Kotlin+2 monitor tests/lint/signed build pass. **No tag/publication approval/action.**
+
+**Jason asks to discuss:** sending a segment should not require creating a plan; no plan should use PR timing. Existing GOALS priority7 already specifies PR fallback (no PR: elapsed/progress), currently post-beta. Current BLE manifest/sender still requires a plan. Discuss whether to bring segment-only/PR sending forward separately from concurrency; no implementation/contract/priority change yet. Do not present this current limitation as accepted product behavior. Full evidence and discussion: `handoffs/archive/2026-10-23-233538-codex-normal73-missing-pass-and-pr-discussion.md`.
+
 # Normal beta73 installed-segment skip PASSED (2026-10-23 23:26 PDT)
 
 Normal73 logged **existing=true**, plan5778/rider114 bytes hash-verified, import/receipt success in5420ms. Jason reports~10s. Segment was skipped, confirmed by logs; no diagnostic drop. Normal installed source46eb5be/hashc371496a8d32d80949dc3986dec4ee8e0975fd2eb5f666c278c63d7bbd62fd3e unchanged.
