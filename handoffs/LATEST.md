@@ -1,3 +1,9 @@
+# Release73 APPROVED; tag pushed; Actions running (2026-10-24)
+
+Jason approved exact tag/publication. **karoo-beta-0.10.45** pushed at **0e95e8443c5bdfd1f4ed0e8ddfd8224cf697f292**. Release workflow **40073513782** running at that source: https://github.com/frason/GritMap/actions/runs/40073513782. No public asset verification yet; do not claim completion or start duplicate release.
+
+Next: await CI, verify public APK/version/signature/flags/checksum and stable latest URL, then Companion installation before wide invites. Installed normal73 unchanged. Details: `handoffs/archive/2026-10-24-release73-approved-tag-pushed.md`.
+
 # Release73 evidence ready; exact tag/publication approval pending (2026-10-23 client session)
 
 Updated coordinator decision applied: **ship Bluetooth with plan required as a known gap**, segment-only via Wi-Fi; plan-free Bluetooth/PR timing together later. Rebasing used NEW branch **codex/karoo-bluetooth-release-73** on origin/main ab2ecb7, preserving the old published beta branch and all archives, no force-push. Phone working checkout untouched.
