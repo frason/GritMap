@@ -1,3 +1,9 @@
+# Normal Bluetooth beta73 installed with approval (2026-10-23 23:22 PDT)
+
+**0.10.45-bluetooth-beta/code73 installed in place** over diagnostic73. Exact SHA256c371496a8d32d80949dc3986dec4ee8e0975fd2eb5f666c278c63d7bbd62fd3e rechecked; version/launch pass, original install timestamp retained. Automatic fault injection is0/off. No source changes after263-test/lint/signed-build QA.
+
+Next normal transfer/installed-segment skip validation; controlled-link diagnostic pass remains recorded but normal artifact not yet transfer-tested. **No tag/publication approved/performed.** Exact evidence/next action: `handoffs/archive/2026-10-23-232213-codex-normal-beta73-installed.md`.
+
 # Controlled BLE reconnect/resume physical test PASSED (2026-10-23 23:17 PDT)
 
 Diagnostic73 actually disconnected its GATT link after8192 bytes, retried at the same offset, verified the complete same manifest after reconnect, then hash-verified segment298148/plan5778/rider114 bytes and logged one new import plus successful receipt in174327ms. **Jason confirmed phone success.** Radio remainsON; no full-radio toggle. This is a controlled-link pass; earlier full-radio restart failures remain unresolved.
