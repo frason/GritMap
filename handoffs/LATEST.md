@@ -1,3 +1,9 @@
+# Controlled BLE link test ready; code73 install approval pending (2026-10-23 18:13 PDT)
+
+**Setup implemented and verified**, source46eb5be. Normal config: **263 tests, debug/beta lint and signed optimized build pass**; two Python monitor tests pass. Separate signed diagnostic APK **0.10.45-bluetooth-linktest1/code73** drops only the transfer GATT link once after8192 bytes and requires the actual disconnect callback. Radio/H10 stay untouched; ownership checks remain strict. Monitor buffering fixed. Discovery2min now separate from bounded10min transfer.
+
+Diagnostic APK `/tmp/gritmap-karoo-0.10.45-bluetooth-linktest1-73/gritmap-karoo.apk`, SHA256 `c62ad47e80144c51fba5f08e4c35e7fbe214e12f61fd3bb56db44078f6a54e17`. **Not installed**; installed72 remains unchanged. Ask exact installation approval, then monitor/send a missing segment >8192 bytes; no radio toggle is needed. No physical pass/tag/publication. Normal public variant uses injection0 and must be separately validated; never publish diagnostic APK. Full artifacts/commands/limits: `handoffs/archive/2026-10-23-181312-codex-link73-test-setup-verified.md`. Earlier review-only checkpoint superseded.
+
 # Controlled disconnect setup checkpoint (2026-10-23 18:04 PDT)
 
 Jason requested a handoff update while setup began. **Source review only so far: GATT-only disconnect control and replacement monitor are not yet implemented/built/installed.** Installed72 remains unchanged; physical gate still failed (41%, manifest read refused). No new device action/tag/publication.
