@@ -1,3 +1,9 @@
+# Controlled disconnect setup checkpoint (2026-10-23 18:04 PDT)
+
+Jason requested a handoff update while setup began. **Source review only so far: GATT-only disconnect control and replacement monitor are not yet implemented/built/installed.** Installed72 remains unchanged; physical gate still failed (41%, manifest read refused). No new device action/tag/publication.
+
+Continue with isolated link-only test control, monitor buffering fix and receive-timeout correction; preserve session ownership/app data. New candidate needs QA and exact install approval. Current evidence, authorization and next action: `handoffs/archive/2026-10-23-180433-codex-controlled-disconnect-setup-checkpoint.md`. Earlier code72 test details remain below.
+
 # Code72 physical radio-recovery test failed (2026-10-23 17:59 PDT)
 
 Installed72 entered **ble_resume offset122368** twice, reconnected, then failed manifest read status2 (not permitted). Jason reports phone stopped41%. No completed resource/import/receipt; **not a pass**. Radio restored/verifiedON. Monitor buffering delayed the intended interruption to~65s after connection; fix monitoring before another test.
