@@ -43,6 +43,9 @@ tokens. A fresh install with an empty database must work.
 
 ## Priorities, in order
 
+**Working order since 2026-10-24: 1, then 4 (plans, brought forward: it is the product's biggest feature), then 2 (redesign, built around plans) with 3
+(Open Segments), then 9 (in-app AI, later phase), then 5, 6, 7, 8.** Numbers are kept so existing references still work.
+
 1. **Beta-ready loop (submitted for review 2026-10-19).** Tagged, reproducible Karoo build; EAS/TestFlight setup;
    first-run onboarding (FTP, weight, connecting to the Karoo, empty states); full loop walked on a fresh
    install. Includes:
@@ -52,11 +55,14 @@ tokens. A fresh install with an empty database must work.
      only as a fallback, offered from the Send-to-Karoo screen when Bluetooth does not work, and the IP send is removed from the segment page. This needs a
      public Karoo release that includes the BLE reader (versionCode 71 or higher) and a new TestFlight build with Bluetooth enabled.
 2. **Full phone redesign.** Apply the design system to every remaining screen and replace
-   one-off layouts.
+   one-off layouts. Decided 2026-10-24: true **light and dark modes** in the Pulse (GritSet) visual language, built from the screens in the Figma file
+   `cyaMDDfLBKFc4NNK1SUUnb`; navigation centred on **segments, plans and rides** with Open Segments as a first-class area; the home screen is organised
+   around the rider's segments (and their staged goals), not one goal; explanations move behind info bubbles, except first-run and Karoo-setup steps.
+   Redesign doc: the "Grip Map App Redesign" Claude doc (owner Jason).
 3. **Open Segments usable by strangers.** Browse and pull popular segments; publish your own
    without needing a personal GitHub token.
-4. **Pacing plans as a first-class phone feature.** A plans view that is not buried in Segment
-   Detail, built on what exists (generated plans, coach-plan import, predicted finish).
+4. **Pacing plans as a first-class phone feature (brought forward 2026-10-24).** A plans view that is not buried in Segment
+   Detail, built on what exists (generated plans, coach-plan import, predicted finish, realistic targets, staged goals).
 5. **Progress over time per segment.** Extend the historical trend view (#68).
 6. **Deeper post-ride analysis.** Extend plan vs actual per zone toward why a zone was missed
    (power fade, HR drift, terrain).
@@ -72,6 +78,10 @@ tokens. A fresh install with an empty database must work.
    smoothing; an infeasible goal returns the best achievable time and the gap. The Karoo replans the remaining quarter-miles at each boundary from what
    the rider actually did (deadband, within the same ceilings). Needle assists the live layer only, clamped to the ceilings, with silent fallback to the
    deterministic replanner. Phone: ceilings and plan. Karoo: replanning and Needle. Ceilings travel in the plan contract.
+9. **AI in the app, woven into the pages the rider is already on** (decided 2026-10-24, later phase; Jason wants it prioritised over AI on the Karoo). No
+   isolated chat screen: a docked panel the rider can open from any page and pin content into. **Blocked on a hosting and privacy decision** that nothing in
+   the repo covers: today `docs/PRIVACY.md` and the App Privacy answers say nothing leaves the phone, and an AI service would receive ride and plan data.
+   Needs its own design note (provider, what data is sent, consent, cost, offline behaviour) before any build. The layout work in priority 2 reserves room for it.
 
 **Parallel Karoo track, active (must not block the beta loop): H10 / cardiac physiology.** The GM
 H10 Cardiac field ships in the beta as an optional, experimental, advisory field. Riders without an
@@ -111,7 +121,7 @@ move toward that, not around it:
 
 ## Non-goals and deferred items
 
-- AI-generated pacing plans inside GritMap: deferred. Pasting an external AI's plan through the
+- AI-generated pacing plans inside GritMap: deferred; in-app AI as a whole is priority 9 (later phase). Pasting an external AI's plan through the
   coach-plan contract (`source: "ai-coach"`) stays supported.
 - Needle / on-device AI recommendations on the Karoo: **no longer deferred only for the realistic-targets and live-replanning work** (decided 2026-10-20, see priority 8). Needle stays advisory and clamped by the deterministic engine; other Needle uses remain deferred.
 - H10-driven automatic pacing changes: deferred until validated, and a separate decision.
