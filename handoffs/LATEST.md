@@ -1,3 +1,11 @@
+# Coordinator: DESIGN NOTE request for Codex (2026-10-24, Jason approved): Karoo inventory for an "On Karoo" mark
+
+Jason wants the phone to show **"On Karoo"** next to a segment (and, if cheap, the plan version the Karoo holds and whether it is older than the phone's). Today the phone only knows what it SENT
+(`plan_sends` and Bluetooth receipts), not what the Karoo HAS. Write a short DESIGN NOTE only, no implementation: a read-only inventory the phone can request over the existing Bluetooth link
+(or another safe route): per segment fingerprint, whether present, plan fingerprint/version/FTP, installed time. Cover size (hundreds of segments), privacy (nothing new off-device; no encryption in
+BLE v2, so keep it to fingerprints and versions, no names/GPS if possible), the Bluetooth roles (the phone is the peripheral today; the Karoo the central: who requests?), deletion on the Karoo,
+and fixtures for both sides. This is lower priority than the Bluetooth hardening and the PR/plan-free work; say where you would sequence it. Do not change the BLE contract yet.
+
 # Coordinator: NEEDLE moved to the backlog (2026-10-24, Jason decided)
 
 Jason heard Needle may not work well on the Karoo and could drain the battery. **Stop all Needle work** (no artifact selection, no benchmark, no advisory integration). Keep the existing code

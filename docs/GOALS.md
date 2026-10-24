@@ -111,8 +111,9 @@ move toward that, not around it:
   already has it, or else sent in chunks or fetched from Open Segments. The Karoo writes back an
   imported/rejected receipt. No IP to type, works with no signal, and nothing passes through a server. The
   earlier token-plus-HTTPS "capsule" design is shelved: it needed hosting and put private plans on a server.
-- Then: the phone can read what the Karoo already has (segments, plans, versions) to avoid
-  duplicates and stale plans.
+- Then (decided 2026-10-24, shown in the redesign): the phone can read what the Karoo already has (segments, plans, versions) to avoid
+  duplicates and stale plans, and shows an **"On Karoo"** mark next to each segment (with the plan version, and a warning when the Karoo's plan is older). Until the
+  contract exists the phone can only show "Last sent" from its own send records. Needs a read-only inventory contract with fixtures on both sides; Codex writes a design note first.
 - Later: completed attempts and live summaries flow back from the Karoo automatically, replacing
   manual FIT import.
 - Every payload goes through a versioned shared contract with a fixture tested on both sides.
