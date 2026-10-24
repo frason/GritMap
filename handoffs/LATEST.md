@@ -1,3 +1,11 @@
+# Release73 evidence ready; exact tag/publication approval pending (2026-10-23 client session)
+
+Updated coordinator decision applied: **ship Bluetooth with plan required as a known gap**, segment-only via Wi-Fi; plan-free Bluetooth/PR timing together later. Rebasing used NEW branch **codex/karoo-bluetooth-release-73** on origin/main ab2ecb7, preserving the old published beta branch and all archives, no force-push. Phone working checkout untouched.
+
+**Proposed tag:** karoo-beta-0.10.45 at exact source **0e95e8443c5bdfd1f4ed0e8ddfd8224cf697f292**. Version0.10.45-bluetooth-beta/code73. Normal APK SHA256 **c371496a8d32d80949dc3986dec4ee8e0975fd2eb5f666c278c63d7bbd62fd3e**, byte-identical to installed/physically tested normal73.263 tests,2 monitor tests,lint,signed build/signature/flags pass; BLE on, injection/concurrent/replanning/ceilings off. Install guide and versioned release notes state known gaps; workflow publishes those notes. **No tag/publication approval or action.**
+
+Normal missing/skip pass; controlled-link diagnostic pass; full-radio recovery unresolved, H10 coexistence waived, RR export unfinished. Tell phone session via Jason: testers need0.10.45-bluetooth-beta/code73; labels Inbox > Receive from Phone / Legacy Wi-Fi Receive unchanged. Ask separate exact tag/publication approval; then verify published asset and stable Companion install before invites. Full evidence, certificate/labels/artifact paths and next steps: `handoffs/archive/2026-10-23-release73-approval-evidence-0e95e84.md`.
+
 # Normal beta73 new/skip paths PASSED; discuss plan-free PR sending (2026-10-23 23:35 PDT)
 
 Normal73 new segment12754 bytes + plan2075/rider114 hash-verified/imported with receipt, existing=false in9962ms. Prior normal skip existing=true passed in5420ms. Diagnostic controlled-link resume also passed; full-radio failures remain unresolved. Source46eb5be / normal SHA256c371496a8d32d80949dc3986dec4ee8e0975fd2eb5f666c278c63d7bbd62fd3e installed unchanged;263 Kotlin+2 monitor tests/lint/signed build pass. **No tag/publication approval/action.**
