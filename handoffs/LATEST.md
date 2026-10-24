@@ -1,3 +1,9 @@
+# Public beta73 Companion installation CONFIRMED; release validation complete (2026-10-24)
+
+Jason confirmed **Installed; segments retained** after the public stable-link Share Link > Hammerhead update/version check. Final Companion route validated by owner; ADB unavailable afterward, so no fresh independent package/timestamp/hash claim. Public **0.10.45-bluetooth-beta/code73**, tagkaroo-beta-0.10.45, source0e95e84, public SHA25673aa7e2f497243b4022f3012edb20eda6fe53cbbea5cf9a822350d11ac36ca69 and reviewed signature/checksum/stable URL remain verified.
+
+Phone/Claude can use public version73 and unchanged Inbox > Receive from Phone / Legacy Wi-Fi Receive labels for build8. No phone build/upload performed here. Known plan requirement/full-radio/H10/export limits unchanged. Details and qualification: `handoffs/archive/2026-10-24-companion-public73-install-confirmed.md`.
+
 # Bluetooth beta73 PUBLISHED; public asset verified; Companion check pending (2026-10-24)
 
 Approved release **karoo-beta-0.10.45 /0.10.45-bluetooth-beta/code73** is public: https://github.com/frason/GritMap/releases/tag/karoo-beta-0.10.45. Exact source0e95e8443c5bdfd1f4ed0e8ddfd8224cf697f292, CI40073513782 success. Stable latest URL returns verified APK; public SHA256 **73aa7e2f497243b4022f3012edb20eda6fe53cbbea5cf9a822350d11ac36ca69**, signature/version/checksum pass. CI hash differs from local only in native compiler/build-id metadata; executable code/data and all other APK entries match.

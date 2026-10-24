@@ -18,8 +18,9 @@ Published with approval as [karoo-beta-0.10.45](https://github.com/frason/GritMa
 URL returned HTTP200 and the verified public APK versionName0.10.45-bluetooth-beta/versionCode73.
 Public SHA256 `73aa7e2f497243b4022f3012edb20eda6fe53cbbea5cf9a822350d11ac36ca69` matches SHA256SUMS.txt; signer matches the persistent beta identity.
 The CI APK differs from the local candidate only in native compiler-identification/build-id metadata;
-all other ZIP entries and all other native ELF sections match. Final Companion Share Link installation
-and retained-data verification are still pending; do not widen invites before that check.
+all other ZIP entries and all other native ELF sections match. Jason confirmed the final public Companion Share Link in-place update and retained segments on2026-10-24.
+ADB was unavailable afterward; this final installation/retention check is owner-confirmed, not a fresh
+independent package or private-database inspection.
 Use the persistent beta signing identity. Default beta configuration must have Bluetooth enabled and
 CONCURRENT_SEGMENTS_ENABLED, LIVE_REPLANNER_ENABLED and PLAN_CEILINGS_ENABLED all false.
 The workflow checks the generated beta BuildConfig before publishing. No Needle model is activated.
