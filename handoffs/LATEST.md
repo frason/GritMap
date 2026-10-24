@@ -1,3 +1,9 @@
+# Bluetooth beta73 PUBLISHED; public asset verified; Companion check pending (2026-10-24)
+
+Approved release **karoo-beta-0.10.45 /0.10.45-bluetooth-beta/code73** is public: https://github.com/frason/GritMap/releases/tag/karoo-beta-0.10.45. Exact source0e95e8443c5bdfd1f4ed0e8ddfd8224cf697f292, CI40073513782 success. Stable latest URL returns verified APK; public SHA256 **73aa7e2f497243b4022f3012edb20eda6fe53cbbea5cf9a822350d11ac36ca69**, signature/version/checksum pass. CI hash differs from local only in native compiler/build-id metadata; executable code/data and all other APK entries match.
+
+**Remaining before wide invites:** Jason's Companion Share Link installation/retained-segment check, already requested and awaiting answer. HTTP verification is not installation validation. Phone build8 can now reference public0.10.45-bluetooth-beta/code73; exact labels unchanged. Plan requirement documented as approved gap; plan-free Bluetooth/PR later. Full-radio recovery unresolved; H10 coexistence waived and export unfinished. Full evidence/current external state: `handoffs/archive/2026-10-24-bluetooth-beta73-published-verified-companion-pending.md`.
+
 # Release73 APPROVED; tag pushed; Actions running (2026-10-24)
 
 Jason approved exact tag/publication. **karoo-beta-0.10.45** pushed at **0e95e8443c5bdfd1f4ed0e8ddfd8224cf697f292**. Release workflow **40073513782** running at that source: https://github.com/frason/GritMap/actions/runs/40073513782. No public asset verification yet; do not claim completion or start duplicate release.

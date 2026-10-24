@@ -1,6 +1,6 @@
 # Publishing a GritMap Karoo beta
 
-## Bluetooth candidate: 0.10.45-bluetooth-beta / code 73
+## Published Bluetooth beta: 0.10.45-bluetooth-beta / code 73
 
 Normal code73 is installed and has passed missing-segment and installed-segment transfer checks.
 The separate diagnostic73 variant passed a real controlled GATT-link disconnect/resume test.
@@ -13,8 +13,13 @@ in the phone's Wi-Fi fallback. Plan-free Bluetooth and PR timing ship together l
 State this known gap in the install guide and release notes. The reviewed release notes live in
 `docs/releases/KAROO_BLUETOOTH_BETA_0.10.45.md`; the workflow publishes them.
 
-The candidate is not published. Numeric release base0.10.45 maps to tag `karoo-beta-0.10.45`,
-versionName `0.10.45-bluetooth-beta` and versionCode73.
+Published with approval as [karoo-beta-0.10.45](https://github.com/frason/GritMap/releases/tag/karoo-beta-0.10.45) from exact source
+0e95e8443c5bdfd1f4ed0e8ddfd8224cf697f292. Actions run40073513782 passed. The stable latest download
+URL returned HTTP200 and the verified public APK versionName0.10.45-bluetooth-beta/versionCode73.
+Public SHA256 `73aa7e2f497243b4022f3012edb20eda6fe53cbbea5cf9a822350d11ac36ca69` matches SHA256SUMS.txt; signer matches the persistent beta identity.
+The CI APK differs from the local candidate only in native compiler-identification/build-id metadata;
+all other ZIP entries and all other native ELF sections match. Final Companion Share Link installation
+and retained-data verification are still pending; do not widen invites before that check.
 Use the persistent beta signing identity. Default beta configuration must have Bluetooth enabled and
 CONCURRENT_SEGMENTS_ENABLED, LIVE_REPLANNER_ENABLED and PLAN_CEILINGS_ENABLED all false.
 The workflow checks the generated beta BuildConfig before publishing. No Needle model is activated.
