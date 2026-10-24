@@ -49,6 +49,13 @@ by Jason's explicit waiver of this during-ride test; GateB and publication appro
 - Gate failed. The full-radio restart is a harsher outage than a single GATT-link disconnect.
   No publication approval; preserve installed data. Recovery patch0312e10/code72 passes257 tests/lint/signed build; installation approval and repeat physical validation pending.
 
+### Code72 radio-restart repeat, 2026-10-23
+
+- Connected17:56:23.912. A buffered monitor delayed interruption to~17:57:29 (not intended5s).
+- Resume offset122368 attempt1 at17:57:29.514, attempt2 at17:57:43.864; connected17:57:45.856.
+- Manifest read failed status2/read-not-permitted at17:57:53.980. Phone stopped41%; no import/receipt.
+- Radio restoredON. Still failed. Next isolate with a GATT-only disconnect; do not weaken ownership.
+
 ### Repeat procedure
 
 1. Use a sufficiently large synthetic missing segment (150–250KiB within contract caps) so multiple completed
