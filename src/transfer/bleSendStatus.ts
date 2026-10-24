@@ -128,7 +128,7 @@ export function shouldHintOlderKaroo(state: BleSendState, waitedMs: number): boo
   return state.phase === "advertising" && waitedMs >= OLDER_KAROO_HINT_AFTER_MS;
 }
 
-/** Phases after which the rider should be offered the Wi-Fi route (anything that is not a clean success or a fresh start). */
+/** Whether the Wi-Fi route is offered: always, except while a Bluetooth transfer is under way or has just succeeded. */
 export function offersWifiFallback(state: BleSendState): boolean {
-  return state.phase !== "idle" && state.phase !== "preparing" && state.phase !== "imported" && state.phase !== "connected" && state.phase !== "sending";
+  return state.phase !== "preparing" && state.phase !== "imported" && state.phase !== "connected" && state.phase !== "sending";
 }

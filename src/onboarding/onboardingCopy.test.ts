@@ -2,8 +2,9 @@ import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 
 import {
-  FTP_SOURCE_NOTE,
+  FTP_HINT_SHORT,
   KAROO_ADDRESS_EXAMPLE,
+  KAROO_SEND_SCREEN_STEPS,
   KAROO_BLUETOOTH_WINDOW_MINUTES,
   KAROO_INBOX,
   KAROO_MIN_VERSION_CODE,
@@ -28,7 +29,7 @@ const everyString = [
   ...WIFI_FALLBACK_STEPS.flatMap((step) => [step.title, step.body]),
   ...WHAT_YOU_NEED.items,
   WHAT_YOU_NEED.body,
-  FTP_SOURCE_NOTE,
+  FTP_HINT_SHORT,
   OLDER_KAROO_HINT,
 ];
 
@@ -65,6 +66,18 @@ describe("onboarding copy", () => {
     const steps = KAROO_STEPS.map((step) => step.title).join(" ");
     assert.ok(steps.includes(`${KAROO_MIN_VERSION_NAME} (version code ${KAROO_MIN_VERSION_CODE}) or newer`));
     assert.ok(OLDER_KAROO_HINT.includes(`${KAROO_MIN_VERSION_NAME} (version code ${KAROO_MIN_VERSION_CODE}) or newer`));
+  });
+
+  it("on the Send to Karoo screen the third step does not tell the rider to open a segment (they are already there)", () => {
+    assert.equal(KAROO_SEND_SCREEN_STEPS.length, KAROO_STEPS.length);
+    assert.equal(KAROO_SEND_SCREEN_STEPS[2]!.title, "On your phone, tap Start Bluetooth send");
+    assert.doesNotMatch(KAROO_SEND_SCREEN_STEPS.map((step) => step.title).join(" "), /open a segment/);
+    assert.equal(KAROO_SEND_SCREEN_STEPS[0], KAROO_STEPS[0]);
+  });
+
+  it("keeps the FTP hint to one short sentence pair and the Wi-Fi address step free of 'box below'", () => {
+    assert.ok(FTP_HINT_SHORT.length <= 100, String(FTP_HINT_SHORT.length));
+    assert.doesNotMatch(WIFI_FALLBACK_STEPS.map((step) => `${step.title} ${step.body}`).join(" "), /box below/);
   });
 
   it("says plainly what a rider needs: Karoo 3, power meter, heart-rate monitor", () => {

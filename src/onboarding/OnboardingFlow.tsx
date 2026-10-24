@@ -20,8 +20,7 @@ import { spacing } from "../theme/spacing";
 import { useColors } from "../theme/useColors";
 import { AppText, Button, Card, SegmentedControl, TextField } from "../theme/components";
 import {
-  FTP_HELP,
-  FTP_SOURCE_NOTE,
+  FTP_HINT_SHORT,
   KAROO_STEPS,
   ONBOARDING_STEPS,
   SEGMENT_WAYS,
@@ -237,19 +236,6 @@ function WelcomeStep() {
       <AppText variant="body" color="textSecondary">
         GritMap plans how to pace a climb, guides you through it live on your Karoo, and shows you afterwards how it went.
       </AppText>
-      {WELCOME_POINTS.map((point) => (
-        <Card key={point.title}>
-          <View style={styles.pointRow}>
-            <Icon name={point.icon} size={26} color="brand" />
-            <View style={styles.pointText}>
-              <AppText variant="headline">{point.title}</AppText>
-              <AppText variant="subheadline" color="textSecondary">
-                {point.body}
-              </AppText>
-            </View>
-          </View>
-        </Card>
-      ))}
       <Card>
         <View accessible accessibilityLabel={`${WHAT_YOU_NEED.title}. ${WHAT_YOU_NEED.intro} ${WHAT_YOU_NEED.items.join(", ")}. ${WHAT_YOU_NEED.body}`}>
           <AppText variant="headline">{WHAT_YOU_NEED.title}</AppText>
@@ -264,6 +250,19 @@ function WelcomeStep() {
           </AppText>
         </View>
       </Card>
+      {WELCOME_POINTS.map((point) => (
+        <Card key={point.title}>
+          <View style={styles.pointRow}>
+            <Icon name={point.icon} size={26} color="brand" />
+            <View style={styles.pointText}>
+              <AppText variant="headline">{point.title}</AppText>
+              <AppText variant="subheadline" color="textSecondary">
+                {point.body}
+              </AppText>
+            </View>
+          </View>
+        </Card>
+      ))}
     </View>
   );
 }
@@ -289,7 +288,7 @@ function NumbersStep(props: {
         value={props.ftpInput}
         onChangeText={props.onFtpChange}
         placeholder="e.g. 250"
-        hint={`${FTP_HELP} ${FTP_SOURCE_NOTE}`}
+        hint={FTP_HINT_SHORT}
         keyboardType="number-pad"
         {...(props.ftpError === undefined ? {} : { error: props.ftpError })}
       />

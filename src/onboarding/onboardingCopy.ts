@@ -79,8 +79,8 @@ export const WHAT_YOU_NEED = {
   body: "Pacing plans are power targets, so without a power meter GritMap can show your rides and segments but cannot pace or judge your effort.",
 } as const;
 
-/** Said next to FTP so the rider knows where the number comes from. */
-export const FTP_SOURCE_NOTE = "Your FTP is the number your power meter and recent rides point to.";
+/** The one short line under the FTP box in onboarding. */
+export const FTP_HINT_SHORT = "The most power you can hold for about an hour. Your power meter or a recent test will tell you.";
 
 /** Steps for the main way to send: Bluetooth, straight from the phone to the Karoo, no Wi-Fi or address needed. */
 export const KAROO_STEPS: readonly { title: string; body: string }[] = [
@@ -96,11 +96,22 @@ export const KAROO_STEPS: readonly { title: string; body: string }[] = [
     title: `On your phone, open a segment and tap ${PHONE_SEND_BUTTON}`,
     body: "Then tap Start Bluetooth send and keep GritMap open and the phone near the Karoo. iOS asks for Bluetooth permission the first time.",
   },
+  // (The Send to Karoo screen shows these same steps with the third one reworded: see KAROO_SEND_SCREEN_STEPS.)
   {
     title: "Check the Karoo",
     body: `The phone says "Imported on your Karoo" once the Karoo confirms. If it only says "Sent; check your Karoo", open the Karoo's segment list.`,
   },
 ];
+
+/** The same steps for the Send to Karoo screen itself, where the rider is already on the screen the third step names. */
+export const KAROO_SEND_SCREEN_STEPS: readonly { title: string; body: string }[] = KAROO_STEPS.map((step, index) =>
+  index === 2
+    ? {
+        title: "On your phone, tap Start Bluetooth send",
+        body: "Keep GritMap open and the phone near the Karoo. iOS asks for Bluetooth permission the first time.",
+      }
+    : step,
+);
 
 /** What to do when Bluetooth does not work. The Wi-Fi route needs both devices on the same network. */
 export const WIFI_FALLBACK_STEPS: readonly { title: string; body: string }[] = [
@@ -113,8 +124,8 @@ export const WIFI_FALLBACK_STEPS: readonly { title: string; body: string }[] = [
     body: `Older ${KAROO_APP_NAME} versions call it ${KAROO_RECEIVE_SCREEN}. The Karoo shows an address like ${KAROO_ADDRESS_EXAMPLE}. It stops listening after ${KAROO_RECEIVE_WINDOW_MINUTES} minutes.`,
   },
   {
-    title: "Type that address in the box below and tap send",
-    body: "GritMap remembers the address after that.",
+    title: "Type that address in GritMap and tap send",
+    body: "Use the Karoo address box on the segment's Send to Karoo screen, under Bluetooth not working? Use Wi-Fi. GritMap remembers it after that.",
   },
 ];
 

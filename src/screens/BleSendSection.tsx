@@ -27,7 +27,7 @@ const ADVERTISE_MS = 120_000;
  * After 30 seconds with no Karoo connecting it says the Karoo may be too old, and whenever Bluetooth is not
  * going well it offers `onUseWifi` (the Wi-Fi route) as the way out.
  */
-export function BleSendSection({ segment, onUseWifi }: { segment: SegmentDetail; onUseWifi: () => void }) {
+export function BleSendSection({ segment, onUseWifi, wifiOpen }: { segment: SegmentDetail; onUseWifi: () => void; wifiOpen: boolean }) {
   const database = useDatabase();
   const [state, setState] = useState<BleSendState>({ phase: "idle" });
   const offeringRef = useRef(false);
@@ -150,7 +150,7 @@ export function BleSendSection({ segment, onUseWifi }: { segment: SegmentDetail;
       ) : (
         <Button label="Start Bluetooth send" icon="bluetooth" onPress={handleStart} loading={state.phase === "preparing"} />
       )}
-      {offersWifiFallback(state) ? <Button label="Bluetooth not working? Use Wi-Fi" variant="tertiary" fullWidth={false} onPress={onUseWifi} /> : null}
+      {offersWifiFallback(state) && !wifiOpen ? <Button label="Bluetooth not working? Use Wi-Fi" variant="tertiary" fullWidth={false} onPress={onUseWifi} /> : null}
     </Card>
   );
 }
