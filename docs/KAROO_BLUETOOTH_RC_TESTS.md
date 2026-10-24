@@ -5,7 +5,7 @@ Candidate: 0.10.45-bluetooth-beta / code71. Installed after Jason's exact approv
 **Scope update, 2026-10-23:** Jason waived the during-ride coexistence test because the extension
 app screen cannot be accessed during an active ride. Supported instructions now say to send before
 starting a recording. This is a waiver, **not a passed coexistence test**. Deliberate disconnect/resume
-was attempted and failed on code71 (details below); a corrected candidate must pass before wide Bluetooth invites. Tag/publication still need approval.
+failed full-radio tests on71/72, then passed a controlled GATT-only disconnect on diagnostic73 (details below). Normal public candidate validation and release approval remain required before wide invites. Tag/publication still need approval.
 
 ## Before the tests
 
@@ -101,3 +101,13 @@ APK for install approval. The diagnostic binary is not the public release binary
 and validate the final public candidate with injection0 and obtain separate release approval.
 Discovery is limited to two minutes; a found phone gets a separate bounded ten-minute transfer window.
 A connected transfer timeout is reported as a transfer timeout, not as no phone found.
+
+## Controlled-link physical pass on diagnostic73
+
+Observed10-23: connected23:12:23.268 (MTU517), actual link drop/callback after8192 bytes at23:12:27;
+resume attempts1/2/3 retained offset8192; reconnected23:12:45.042 and verified the same complete
+manifest23:12:45.080. Hash-verified segment298148 bytes, plan5778 and rider114, then imported
+existing=false at23:15:15.763 in174327ms with acknowledged success receipt. Jason confirmed phone success.
+Bluetooth independently remainedON. This proves controlled link recovery on the diagnostic variant,
+not full-radio restart recovery or H10 continuity. Normal injection0 APK still needs approved installation
+and normal-transfer/skip validation; public release remains separately gated.

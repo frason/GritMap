@@ -1,3 +1,9 @@
+# Controlled BLE reconnect/resume physical test PASSED (2026-10-23 23:17 PDT)
+
+Diagnostic73 actually disconnected its GATT link after8192 bytes, retried at the same offset, verified the complete same manifest after reconnect, then hash-verified segment298148/plan5778/rider114 bytes and logged one new import plus successful receipt in174327ms. **Jason confirmed phone success.** Radio remainsON; no full-radio toggle. This is a controlled-link pass; earlier full-radio restart failures remain unresolved.
+
+Installed build is still **0.10.45-bluetooth-linktest1/code73 (diagnostic)**. Next obtain exact approval to replace it in place with normal **0.10.45-bluetooth-beta/code73**, injection0, SHA256c371496a8d32d80949dc3986dec4ee8e0975fd2eb5f666c278c63d7bbd62fd3e; then validate normal send/skip. Source46eb5be,263 Kotlin+2 monitor tests/lint/signed builds pass. No publication approval/tag/release. Full evidence/limits: `handoffs/archive/2026-10-23-231738-codex-controlled-ble-resume-physical-pass.md`.
+
 # Approved diagnostic73 installed (2026-10-23 18:29 PDT)
 
 **0.10.45-bluetooth-linktest1/code73 installed in place**, exact SHA256 rechecked; version/launch verified and original install timestamp retained. No source change after QA. This diagnostic build automatically drops only the transfer GATT link once after8192 segment bytes; radio remains on.
