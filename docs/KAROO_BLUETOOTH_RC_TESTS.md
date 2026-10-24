@@ -111,3 +111,12 @@ existing=false at23:15:15.763 in174327ms with acknowledged success receipt. Jaso
 Bluetooth independently remainedON. This proves controlled link recovery on the diagnostic variant,
 not full-radio restart recovery or H10 continuity. Normal injection0 APK still needs approved installation
 and normal-transfer/skip validation; public release remains separately gated.
+
+## Normal injection0 code73 transfer validation
+
+Installed-segment skip:10-23 23:24:11.528 existing=true, plan5778/rider114 bytes hash-verified,
+import/receipt acknowledged in5420ms. New/missing segment:23:33:41.182 existing=false,
+segment12754/plan2075/rider114 bytes hash-verified, import/receipt acknowledged in9962ms, MTU517.
+No diagnostic drop in either normal test. Controlled-link recovery separately passed on diagnostic73.
+Exact normal APK SHA256c371496a8d32d80949dc3986dec4ee8e0975fd2eb5f666c278c63d7bbd62fd3e.
+Publication still requires separate approval; no stable public download/Companion validation yet.
