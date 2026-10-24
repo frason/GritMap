@@ -118,4 +118,4 @@ jobs:
             "$RUNNER_TEMP/gritmap-release/SHA256SUMS.txt" \
             --title "GritMap Karoo ${{ steps.version.outputs.name }} Bluetooth beta" \
             --latest \
-            --generate-notes
+            --notes-file "$GITHUB_WORKSPACE/docs/releases/KAROO_BLUETOOTH_BETA_0.10.45.md"

@@ -61,9 +61,13 @@ beta updates use the same signing identity and should install in place.
 ## Send a segment and plan over Bluetooth
 
 Bluetooth sending requires **both** the upcoming Bluetooth-enabled GritMap iPhone beta and the
-matching Karoo Bluetooth beta (**0.10.45-bluetooth-beta / code 71**, candidate pending approval).
+matching Karoo Bluetooth beta (**0.10.45-bluetooth-beta / code 73**, not yet published).
 The stable link above may still serve 0.10.44 until the new release is published. Check the version
 on the Karoo Segments screen. Phone build 7 hides Bluetooth; use the Wi-Fi fallback with that build.
+
+**Current beta gap:** Bluetooth sends a segment with a pacing plan, so create or select a plan
+before sending. To send only a segment, use the **Legacy Wi-Fi Receive** fallback below.
+Plan-free Bluetooth sending and PR timing are planned together for a later release.
 
 Send segments and plans **before starting a ride recording**. Jason reports that the extension app
 screens cannot be opened during an active ride; pausing is not the pre-ride send flow.

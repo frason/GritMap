@@ -2,13 +2,19 @@
 
 ## Bluetooth candidate: 0.10.45-bluetooth-beta / code 73
 
-Code71 and72 failed full-radio restart recovery tests. Installed72 remains unchanged while
-code73's diagnostic link-only candidate is prepared. Normal public builds require
-BLE_TEST_DISCONNECT_AFTER_BYTES=0; CI asserts this. Diagnostic property/acceptance steps are in
-KAROO_BLUETOOTH_RC_TESTS.md. Never publish the fault-injection variant as the public beta.
+Normal code73 is installed and has passed missing-segment and installed-segment transfer checks.
+The separate diagnostic73 variant passed a real controlled GATT-link disconnect/resume test.
+Earlier full-radio restart tests failed; do not claim recovery from every radio restart.
+Normal public builds require BLE_TEST_DISCONNECT_AFTER_BYTES=0; CI asserts this. Never publish the
+diagnostic variant. H10 in-ride coexistence was owner-waived, not passed, and RR export is unfinished.
 
-This is a release candidate, not an announcement that it has been installed or published. The numeric
-release base is 0.10.45; the workflow builds `0.10.45-bluetooth-beta` from tag `karoo-beta-0.10.45`.
+**Approved release scope:** Bluetooth requires a pacing plan in this beta. Segment-only sending stays
+in the phone's Wi-Fi fallback. Plan-free Bluetooth and PR timing ship together later (GOALS priority7).
+State this known gap in the install guide and release notes. The reviewed release notes live in
+`docs/releases/KAROO_BLUETOOTH_BETA_0.10.45.md`; the workflow publishes them.
+
+The candidate is not published. Numeric release base0.10.45 maps to tag `karoo-beta-0.10.45`,
+versionName `0.10.45-bluetooth-beta` and versionCode73.
 Use the persistent beta signing identity. Default beta configuration must have Bluetooth enabled and
 CONCURRENT_SEGMENTS_ENABLED, LIVE_REPLANNER_ENABLED and PLAN_CEILINGS_ENABLED all false.
 The workflow checks the generated beta BuildConfig before publishing. No Needle model is activated.
