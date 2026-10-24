@@ -73,7 +73,9 @@ base64 -i /absolute/path/to/gritmap-beta.jks | tr -d '\n'
 
 ## Release procedure
 
-1. Ensure `versionCode` and `versionName` defaults in `apps/karoo/app/build.gradle.kts` are increased.
+1. Ensure `versionCode` and `versionName` defaults in `apps/karoo/app/build.gradle.kts` are increased,
+   and prepare `docs/releases/KAROO_BLUETOOTH_BETA_<version>.md` for that exact tag. The workflow uses
+   this reviewed file as its release notes; it does not reuse a previous version's notes.
 2. Commit and verify the exact release source on the dedicated release branch. Get Jason’s approval before
    installing, tagging or publishing; after approval, make the reviewed source available to the release workflow.
 3. Create an annotated tag matching the version exactly:
