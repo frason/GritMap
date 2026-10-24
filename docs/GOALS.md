@@ -76,8 +76,7 @@ tokens. A fresh install with an empty database must work.
 8. **Realistic plan targets and live replanning** (decided 2026-10-20). Plans must never target above what the rider has actually sustained on a
    quarter-mile (history ceiling, with a %FTP fallback and an energy-budget check); capped effort is redistributed to easier grades, with adjacent-step
    smoothing; an infeasible goal returns the best achievable time and the gap. The Karoo replans the remaining quarter-miles at each boundary from what
-   the rider actually did (deadband, within the same ceilings). Needle assists the live layer only, clamped to the ceilings, with silent fallback to the
-   deterministic replanner. Phone: ceilings and plan. Karoo: replanning and Needle. Ceilings travel in the plan contract.
+   the rider actually did (deadband, within the same ceilings). Needle is NOT part of this (moved to the backlog 2026-10-24, see Non-goals). Phone: ceilings and plan. Karoo: replanning. Ceilings travel in the plan contract.
 9. **AI in the app, woven into the pages the rider is already on** (decided 2026-10-24, later phase; Jason wants it prioritised over AI on the Karoo). No
    isolated chat screen: a docked panel the rider can open from any page and pin content into. **Blocked on a hosting and privacy decision** that nothing in
    the repo covers: today `docs/PRIVACY.md` and the App Privacy answers say nothing leaves the phone, and an AI service would receive ride and plan data.
@@ -123,7 +122,7 @@ move toward that, not around it:
 
 - AI-generated pacing plans inside GritMap: deferred; in-app AI as a whole is priority 9 (later phase). Pasting an external AI's plan through the
   coach-plan contract (`source: "ai-coach"`) stays supported.
-- Needle / on-device AI recommendations on the Karoo: **no longer deferred only for the realistic-targets and live-replanning work** (decided 2026-10-20, see priority 8). Needle stays advisory and clamped by the deterministic engine; other Needle uses remain deferred.
+- Needle / on-device AI recommendations on the Karoo: **backlog** (decided 2026-10-24). Jason has heard it may not perform well on the Karoo and may drain the battery, and no Karoo latency, memory or battery measurement exists (`docs/NEEDLE_READINESS.md` estimates 1 to 2 days for a benchmark proof and 2 to 4 more for advisory integration). Revisit only after a benchmark and a real need. The deterministic replanner (priority 8) does not depend on it.
 - H10-driven automatic pacing changes: deferred until validated, and a separate decision.
 - Automatic Karoo → phone ride sync: deferred past the beta (manual FIT import is fine), but
   planned. See Phone ↔ Karoo sharing.

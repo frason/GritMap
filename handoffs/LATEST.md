@@ -1,3 +1,9 @@
+# Coordinator: NEEDLE moved to the backlog (2026-10-24, Jason decided)
+
+Jason heard Needle may not work well on the Karoo and could drain the battery. **Stop all Needle work** (no artifact selection, no benchmark, no advisory integration). Keep the existing code
+and `docs/NEEDLE_READINESS.md` as they are; the deterministic live replanner does not depend on it. docs/GOALS.md updated. In-app AI is now being considered for the PHONE app instead
+(priority 9, later phase, needs a design note first): do not start anything on the Karoo for it.
+
 # Coordinator: RELEASE DECISIONS for Codex (2026-10-24, Jason approved)
 
 1. **Scope: option 1.** Ship the Bluetooth beta with the current plan requirement as a documented known gap. Segment-only send stays in the phone's Wi-Fi fallback. Plan-free
