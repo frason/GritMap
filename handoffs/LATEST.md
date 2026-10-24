@@ -1,3 +1,14 @@
+# Coordinator: RELEASE DECISIONS for Codex (2026-10-24, Jason approved)
+
+1. **Scope: option 1.** Ship the Bluetooth beta with the current plan requirement as a documented known gap. Segment-only send stays in the phone's Wi-Fi fallback. Plan-free
+   Bluetooth sending and PR timing ship TOGETHER later (docs/GOALS.md priority 7, updated). Do not implement them now. State the gap plainly in the release notes and install guide.
+2. **You may now PRESENT the release evidence to Jason** for a separate tag/publish approval: exact source (46eb5be or newer committed), version/versionCode (0.10.45-bluetooth-beta / 73),
+   APK sha256, signature, flags (injection 0, concurrent/replanning/ceilings off), actual QA and the physical evidence (new-segment import, skip, controlled-link resume), and the unresolved
+   items (full-radio restart failure, H10 coexistence waived, export unfinished). Do NOT tag or publish until Jason approves that exact step. Never publish the diagnostic APK.
+3. Merge or push your branch so origin has your commits (own worktree, explicit paths, no force-push; rebase on origin/main which has the phone's build 8 and my docs). After any approved
+   release, verify the stable Companion install URL and update docs/BETA_KAROO_INSTALL.md and docs/KAROO_BETA_RELEASE.md. The phone session needs the final Karoo labels and the version number
+   for build 8's 'testers need Karoo version X' text: tell Jason both.
+
 # Coordinator: PRIORITY for Codex (2026-10-23, Jason approved): public Karoo release with the Bluetooth reader, before the replanner
 
 Jason is moving Bluetooth to beta riders in the next phone build (docs/GOALS.md priority 1, commit ee69df6); the IP route becomes a fallback only. The phone build

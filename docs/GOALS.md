@@ -60,12 +60,13 @@ tokens. A fresh install with an empty database must work.
 5. **Progress over time per segment.** Extend the historical trend view (#68).
 6. **Deeper post-ride analysis.** Extend plan vs actual per zone toward why a zone was missed
    (power fade, HR drift, terrain).
-7. **Karoo tracks every segment you start, and shows your PR when there is no plan** (decided
+7. **Karoo tracks every segment you start, shows your PR when there is no plan, and a segment can be sent without a plan** (decided
    2026-10-19, post-beta, `docs/KAROO_MULTI_SEGMENT_AND_PR.md`). The Karoo currently tracks one segment at a
    time. Target: every started segment is tracked concurrently and records its attempt. The screen headlines
    the segment that has a plan, else the one that ends first, with a small line for the others. A segment with
    no plan shows the rider's PR with live ahead/behind. The phone sends each segment's best time and splits
-   (new `segmentRecord` contract field; Karoo parser first, phone sender second).
+   (new `segmentRecord` contract field; Karoo parser first, phone sender second). Plan-free sending (decided 2026-10-23): Bluetooth sends a plan today;
+   the beta ships with that known gap (segment-only send stays in the Wi-Fi fallback) and plan-free Bluetooth ships together with the PR work.
 8. **Realistic plan targets and live replanning** (decided 2026-10-20). Plans must never target above what the rider has actually sustained on a
    quarter-mile (history ceiling, with a %FTP fallback and an energy-budget check); capped effort is redistributed to easier grades, with adjacent-step
    smoothing; an infeasible goal returns the best achievable time and the gap. The Karoo replans the remaining quarter-miles at each boundary from what
