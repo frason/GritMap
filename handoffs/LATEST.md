@@ -1,3 +1,9 @@
+# Approved diagnostic73 installed (2026-10-23 18:29 PDT)
+
+**0.10.45-bluetooth-linktest1/code73 installed in place**, exact SHA256 rechecked; version/launch verified and original install timestamp retained. No source change after QA. This diagnostic build automatically drops only the transfer GATT link once after8192 segment bytes; radio remains on.
+
+Next: await Jason ready, start the read-only monitor, send a missing segment >8192 bytes, and check callback/offset/full-manifest/hash/import/receipt evidence. **No physical pass yet; no tag/publication.** Do not publish diagnostic variant; normal injection0 candidate needs separate validation/approval. Evidence: `handoffs/archive/2026-10-23-182942-codex-link73-diagnostic-installed.md`.
+
 # Controlled BLE link test ready; code73 install approval pending (2026-10-23 18:13 PDT)
 
 **Setup implemented and verified**, source46eb5be. Normal config: **263 tests, debug/beta lint and signed optimized build pass**; two Python monitor tests pass. Separate signed diagnostic APK **0.10.45-bluetooth-linktest1/code73** drops only the transfer GATT link once after8192 bytes and requires the actual disconnect callback. Radio/H10 stay untouched; ownership checks remain strict. Monitor buffering fixed. Discovery2min now separate from bounded10min transfer.
