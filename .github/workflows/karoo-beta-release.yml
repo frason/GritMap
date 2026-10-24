@@ -83,6 +83,7 @@ jobs:
           grep -F 'boolean CONCURRENT_SEGMENTS_ENABLED = false;' "$CONFIG"
           grep -F 'boolean LIVE_REPLANNER_ENABLED = false;' "$CONFIG"
           grep -F 'boolean PLAN_CEILINGS_ENABLED = false;' "$CONFIG"
+          grep -F 'int BLE_TEST_DISCONNECT_AFTER_BYTES = 0;' "$CONFIG"
 
       - name: Verify and stage release assets
         working-directory: apps/karoo

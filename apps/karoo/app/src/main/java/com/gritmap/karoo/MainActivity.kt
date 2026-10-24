@@ -308,6 +308,9 @@ class MainActivity : ComponentActivity() {
                                         BleTransferReceiveResult.TimedOut ->
                                             "No phone found in 2 minutes. Try again or use Legacy Wi-Fi Receive."
                                     }
+                                } catch (error: kotlinx.coroutines.TimeoutCancellationException) {
+                                    LiveDiagnostics.record(this@MainActivity, "ble_transfer_failed", "error=timeout")
+                                    status = "Bluetooth transfer timed out. Try again or use Legacy Wi-Fi Receive."
                                 } catch (_: CancellationException) {
                                     status = "Bluetooth receive cancelled"
                                 } catch (error: Exception) {

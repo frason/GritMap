@@ -3,6 +3,7 @@ package com.gritmap.karoo.importing
 import android.bluetooth.BluetoothDevice
 import android.content.Context
 import android.util.Log
+import com.gritmap.karoo.BuildConfig
 import java.net.URL
 import java.security.MessageDigest
 import kotlinx.coroutines.coroutineScope
@@ -24,6 +25,7 @@ class DirectBleTransferReceiver(
 ) {
     suspend fun receive(device: BluetoothDevice): TransferImportResult {
         val started = System.nanoTime()
+        val linkTest = DirectBleLinkTest(BuildConfig.BLE_TEST_DISCONNECT_AFTER_BYTES)
         var connection: DirectBleGattClient.Connection? = null
         var manifest: DirectTransferManifest? = null
         var receiptAttempted = false
@@ -34,9 +36,9 @@ class DirectBleTransferReceiver(
             // Keep one GATT connection across resources. Fetch the segment before the plan
             // so the phone's plan-served receipt deadline does not include a large download.
             suspend fun resource(name: DirectTransferResourceName, descriptor: DirectTransferResource): ByteArray =
-                readResource(device, manifest, name, descriptor, requireNotNull(connection)) { connection = it }
+                readResource(device, manifest, name, descriptor, requireNotNull(connection), linkTest) { connection = it }
             val segment = if (existing) null else {
-                val publicSegment = if (manifest.segment.isPublic) {
+                val publicSegment = if (manifest.segment.isPublic && BuildConfig.BLE_TEST_DISCONNECT_AFTER_BYTES == 0) {
                     val url = URL("https://raw.githubusercontent.com/frason/GritMap/main/registry/segments/${manifest.segmentFingerprint}.json")
                     // HTTP uses blocking IO. Keep the phone session alive even if a socket
                     // takes longer than a coroutine timeout to return.
@@ -97,17 +99,19 @@ class DirectBleTransferReceiver(
         name: DirectTransferResourceName,
         descriptor: DirectTransferResource,
         initial: DirectBleGattClient.Connection,
+        linkTest: DirectBleLinkTest,
         onConnection: (DirectBleGattClient.Connection) -> Unit,
     ): ByteArray {
         var connection = initial
         val output = try {
             readDirectTransferResource(descriptor, manifest.chunkBytes) { offset, expected ->
-                withDirectBleRecovery(
+                val chunk = withDirectBleRecovery(
                     reconnect = {
                         connection.close()
                         connection = gattClient.connect(device).also(onConnection)
                         val again = manifestParser.parse(connection.readManifest())
                         require(again == manifest) { "Bluetooth transfer changed while reconnecting" }
+                        Log.i("GritMapLive", "ble_resume_verified resource=${name.wireName} offset=$offset")
                     },
                     onRetry = { attempt ->
                         Log.i("GritMapLive", "ble_resume resource=${name.wireName} offset=$offset attempt=$attempt")
@@ -115,6 +119,11 @@ class DirectBleTransferReceiver(
                 ) {
                     connection.readChunk(name, offset, expected)
                 }
+                if (linkTest.afterChunk(name, offset + chunk.size)) {
+                    Log.i("GritMapLive", "ble_test_disconnect resource=${name.wireName} completed=${offset + chunk.size}")
+                    connection.disconnectForTest()
+                }
+                chunk
             }
         } finally {
             onConnection(connection)

@@ -77,3 +77,27 @@ exactly one imported plan/segment and receipt. Failure blocks wide Bluetooth inv
 Keep APK/source/hash and redacted evidence with the handoff. Obtain Jason's separate approval before tagging
 or publication. After release, validate the stable download link using Companion's Share Link installation
 and verify the installed code/name with existing segments/settings retained. Only then expand invites.
+
+## Controlled link-only diagnostic candidate
+
+Use code73 diagnostic variant `0.10.45-bluetooth-linktest1`, built explicitly with
+`-PgritmapBleTestDisconnectAfterBytes=8192`. The flag defaults to0 and public release CI asserts0.
+This variant drops only the active transfer GATT link once after8192 fully read segment bytes,
+requires the real disconnected callback, then lets normal receiver recovery run. No radio toggle,
+session reset, ownership relaxation or H10 disconnect is requested. Diagnostic transfers use BLE
+instead of the public-segment HTTPS optimization so the test actually exercises a segment link.
+Use a missing segment larger than8192 bytes; installed segments take the skip path and cannot
+exercise this injection. A new receive session gets a fresh one-shot test controller.
+
+Monitor with `python3 -B scripts/monitor-karoo-ble.py --adb /opt/homebrew/bin/adb --serial <serial>`.
+It reads lines directly with a bounded lifetime and has no radio-control commands. Look for
+ble_test_disconnect completed=8192, ble_test_disconnected callback=true, ble_resume offset=8192,
+ble_resume_verified offset=8192, completed/hash-verified resources, import and phone receipt.
+Do not count a test without the real callback, matched manifest and successful import/receipt.
+
+Normal-build QA must run without the test property (one test asserts the default is0). Build the
+diagnostic APK separately after that QA and verify its flag/version/signature/hash. Present the exact
+APK for install approval. The diagnostic binary is not the public release binary: afterward build
+and validate the final public candidate with injection0 and obtain separate release approval.
+Discovery is limited to two minutes; a found phone gets a separate bounded ten-minute transfer window.
+A connected transfer timeout is reported as a transfer timeout, not as no phone found.

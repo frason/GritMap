@@ -7,7 +7,6 @@ import io.hammerhead.karooext.KarooSystemService
 import io.hammerhead.karooext.models.ReleaseBluetooth
 import io.hammerhead.karooext.models.RequestBluetooth
 import kotlinx.coroutines.CompletableDeferred
-import kotlinx.coroutines.TimeoutCancellationException
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.withTimeout
@@ -43,18 +42,12 @@ class BleTransferReceiveSession(
             karooSystem.dispatch(RequestBluetooth(BLUETOOTH_RESOURCE_ID))
             check(waitForAdapter()) { "Bluetooth did not become available" }
 
-            return try {
-                withTimeout(timeoutMs) {
-                    while (true) {
-                        val device = scanForPhone() ?: continue
-                        return@withTimeout BleTransferReceiveResult.Imported(receiver.receive(device))
-                    }
-                    @Suppress("UNREACHABLE_CODE")
-                    BleTransferReceiveResult.TimedOut
-                }
-            } catch (_: TimeoutCancellationException) {
-                BleTransferReceiveResult.TimedOut
-            }
+            return discoverThenTransfer(
+                discoveryTimeoutMs = timeoutMs,
+                transferTimeoutMs = TRANSFER_TIMEOUT_MS,
+                discover = ::scanForPhone,
+                transfer = { device -> BleTransferReceiveResult.Imported(receiver.receive(device)) },
+            ) ?: BleTransferReceiveResult.TimedOut
         } finally {
             karooSystem.dispatch(ReleaseBluetooth(BLUETOOTH_RESOURCE_ID))
             karooSystem.disconnect()
@@ -86,6 +79,7 @@ class BleTransferReceiveSession(
 
     companion object {
         const val DEFAULT_RECEIVE_TIMEOUT_MS = 2 * 60_000L
+        private const val TRANSFER_TIMEOUT_MS = 10 * 60_000L
         private const val BLUETOOTH_RESOURCE_ID = "gritmap-transfer-manual"
         private const val KAROO_CONNECT_TIMEOUT_MS = 5_000L
         private const val BLUETOOTH_READY_RETRIES = 10
