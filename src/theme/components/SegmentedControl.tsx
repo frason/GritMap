@@ -36,12 +36,12 @@ export function SegmentedControl<T extends string>({ options, value, onChange, a
             style={[
               styles.option,
               {
-                backgroundColor: selected ? palette.brandFill : palette.surface,
-                borderColor: selected ? palette.brandFill : palette.borderStrong,
+                backgroundColor: selected ? palette.cta : palette.surface,
+                borderColor: selected ? palette.cta : palette.borderStrong,
               },
             ]}
           >
-            <AppText variant="headline" style={{ color: selected ? palette.textOnBrand : palette.textPrimary }}>
+            <AppText variant="headline" style={{ color: selected ? palette.textOnCta : palette.textPrimary }}>
               {option.label}
             </AppText>
           </Pressable>

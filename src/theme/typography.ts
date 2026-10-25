@@ -23,7 +23,11 @@ export const typography = {
   body: { fontSize: 17, lineHeight: 22, fontWeight: "400", maxFontSizeMultiplier: 2 },
   callout: { fontSize: 16, lineHeight: 21, fontWeight: "400", maxFontSizeMultiplier: 2 },
   subheadline: { fontSize: 15, lineHeight: 20, fontWeight: "400", maxFontSizeMultiplier: 2 },
+  /** Semibold subheadline: row titles, chip-sized labels, small emphasis (Figma: Type/subheadlineEmphasized). */
+  subheadlineEmphasized: { fontSize: 15, lineHeight: 20, fontWeight: "600", maxFontSizeMultiplier: 2 },
   footnote: { fontSize: 13, lineHeight: 18, fontWeight: "400", maxFontSizeMultiplier: 2 },
+  /** Semibold footnote: chips and small badges (Figma: Type/footnoteEmphasized). */
+  footnoteEmphasized: { fontSize: 13, lineHeight: 18, fontWeight: "600", maxFontSizeMultiplier: 2 },
   caption1: { fontSize: 12, lineHeight: 16, fontWeight: "400", maxFontSizeMultiplier: 2 },
   caption2: { fontSize: 11, lineHeight: 13, fontWeight: "400", maxFontSizeMultiplier: 2 },
 } as const satisfies Record<string, TypographyStyle>;

@@ -14,7 +14,7 @@ type Props = {
   icon?: IconName;
 };
 
-/** A navigation-bar button with a 44 x 44 pt touch target, in the brand color. */
+/** A navigation-bar button with a 44 x 44 pt touch target, in the interactive colour. */
 export function HeaderButton({ onPress, accessibilityLabel, accessibilityHint, label, icon }: Props) {
   return (
     <Pressable
@@ -24,9 +24,9 @@ export function HeaderButton({ onPress, accessibilityLabel, accessibilityHint, l
       {...(accessibilityHint === undefined ? {} : { accessibilityHint })}
       style={({ pressed }) => [styles.button, { opacity: pressed ? 0.6 : 1 }]}
     >
-      {icon === undefined ? null : <Icon name={icon} size={22} color={label === undefined ? "textPrimary" : "brand"} />}
+      {icon === undefined ? null : <Icon name={icon} size={22} color={label === undefined ? "textPrimary" : "ctaText"} />}
       {label === undefined ? null : (
-        <AppText variant="headline" color="brand">
+        <AppText variant="headline" color="ctaText">
           {label}
         </AppText>
       )}

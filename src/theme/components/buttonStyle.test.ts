@@ -31,10 +31,27 @@ describe("resolveButtonColors", () => {
   }
 
   it("fills only the primary and destructive variants", () => {
-    assert.equal(resolveButtonColors(lightColors, "primary", false).background, lightColors.brandFill);
+    assert.equal(resolveButtonColors(lightColors, "primary", false).background, lightColors.cta);
     assert.equal(resolveButtonColors(lightColors, "secondary", false).background, "transparent");
     assert.equal(resolveButtonColors(lightColors, "tertiary", false).background, "transparent");
   });
+});
+
+describe("pressed state", () => {
+  for (const [name, palette] of [["light", lightColors], ["dark", darkColors]] as const) {
+    it(`${name}: a pressed primary button is the darker fill and its label still meets 4.5:1`, () => {
+      const pressed = resolveButtonColors(palette, "primary", false, true);
+      assert.equal(pressed.background, palette.ctaPressed);
+      assert.ok(contrastRatio(pressed.text, pressed.background) >= 4.5);
+    });
+
+    it(`${name}: pressing does not change the other variants or a disabled button`, () => {
+      for (const variant of ["secondary", "tertiary", "destructive"] as const) {
+        assert.deepEqual(resolveButtonColors(palette, variant, false, true), resolveButtonColors(palette, variant, false, false));
+      }
+      assert.deepEqual(resolveButtonColors(palette, "primary", true, true), resolveButtonColors(palette, "primary", true, false));
+    });
+  }
 });
 
 describe("buttonAccessibility", () => {

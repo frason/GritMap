@@ -8,7 +8,7 @@ export function LoadingState({ label = "Loading…" }: { label?: string }) {
   const palette = useColors();
   return (
     <View style={styles.container} accessible accessibilityRole="progressbar" accessibilityLabel={label}>
-      <ActivityIndicator color={palette.brand} size="large" />
+      <ActivityIndicator color={palette.ctaText} size="large" />
       <AppText variant="subheadline" color="textSecondary">
         {label}
       </AppText>

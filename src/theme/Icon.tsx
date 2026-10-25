@@ -10,7 +10,7 @@ type Props = {
 };
 
 // Thin wrapper so screens pick an icon and a color token by semantic name
-// (e.g. <Icon name="route" color="brand" />) instead of an Ionicons glyph and
+// (e.g. <Icon name="route" color="ctaText" />) instead of an Ionicons glyph and
 // a hex value. Icons are decorative by default: the text beside them carries the meaning, so
 // they are hidden from VoiceOver rather than read out as "image".
 export function Icon({ name, color = "textPrimary", size = 24 }: Props) {

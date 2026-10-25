@@ -53,7 +53,7 @@ export function TextField({
 }: Props) {
   const palette = useColors();
   const [focused, setFocused] = useState(false);
-  const borderColor = error !== undefined ? palette.statusDanger : focused ? palette.brand : palette.borderStrong;
+  const borderColor = error !== undefined ? palette.statusDanger : focused ? palette.ctaText : palette.borderStrong;
 
   return (
     <View style={styles.container}>

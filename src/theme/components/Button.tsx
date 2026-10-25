@@ -36,6 +36,7 @@ export function Button({
   const palette = useColors();
   const inactive = disabled || loading;
   const colors = resolveButtonColors(palette, variant, disabled);
+  const pressedFill = resolveButtonColors(palette, variant, disabled, true).background;
   const filled = variant === "primary" || variant === "destructive";
 
   return (
@@ -53,9 +54,9 @@ export function Button({
         styles.base,
         {
           minHeight: filled ? PRIMARY_BUTTON_HEIGHT : MIN_TOUCH_TARGET,
-          backgroundColor: colors.background,
+          backgroundColor: pressed ? pressedFill : colors.background,
           borderColor: colors.border,
-          opacity: pressed ? 0.8 : 1,
+          opacity: pressed && variant !== "primary" ? 0.8 : 1,
           alignSelf: fullWidth ? "stretch" : "flex-start",
         },
       ]}
@@ -64,7 +65,7 @@ export function Button({
         {loading ? (
           <ActivityIndicator color={colors.text} />
         ) : icon === undefined ? null : (
-          <Icon name={icon} size={20} color={variant === "primary" && !disabled ? "textOnBrand" : variant === "destructive" && !disabled ? "statusDanger" : disabled ? "disabledText" : "brand"} />
+          <Icon name={icon} size={20} color={variant === "primary" && !disabled ? "textOnCta" : variant === "destructive" && !disabled ? "statusDanger" : disabled ? "disabledText" : "ctaText"} />
         )}
         <AppText variant="headline" style={{ color: colors.text }} align="center">
           {label}
@@ -76,7 +77,7 @@ export function Button({
 
 const styles = StyleSheet.create({
   base: {
-    borderRadius: radius.md,
+    borderRadius: radius.lg,
     borderWidth: 1.5,
     paddingHorizontal: spacing.space16,
     paddingVertical: spacing.space12,

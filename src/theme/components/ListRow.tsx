@@ -12,7 +12,7 @@ type Props = {
   title: string;
   subtitle?: string;
   icon?: IconName;
-  /** The icon's color token; brand unless the row reports a state (a warning, a selection). */
+  /** The icon's color token; the interactive colour unless the row reports a state (a warning, a selection). */
   iconColor?: ColorToken;
   /** Marks the row as chosen (a multi-select list): highlighted and announced as selected. */
   selected?: boolean;
@@ -26,7 +26,7 @@ type Props = {
 };
 
 /** A tappable (or static) row: icon, title and subtitle, optional value, chevron. At least 44 pt tall. */
-export function ListRow({ title, subtitle, icon, iconColor = "brand", selected, value, onPress, showChevron = true, accessibilityHint, testID }: Props) {
+export function ListRow({ title, subtitle, icon, iconColor = "ctaText", selected, value, onPress, showChevron = true, accessibilityHint, testID }: Props) {
   const palette = useColors();
   const content = (
     <View style={styles.row}>
@@ -66,7 +66,7 @@ export function ListRow({ title, subtitle, icon, iconColor = "brand", selected, 
       style={({ pressed }) => [
         styles.container,
         { borderColor: palette.border, opacity: pressed ? 0.7 : 1 },
-        selected === true ? { backgroundColor: palette.brandSubtle } : null,
+        selected === true ? { backgroundColor: palette.ctaSubtle } : null,
       ]}
     >
       {content}

@@ -5,7 +5,7 @@ import { MIN_TOUCH_TARGET, PRIMARY_BUTTON_HEIGHT } from "./layout.ts";
 import { MIN_BODY_FONT_SIZE, typography } from "./typography.ts";
 
 describe("type scale", () => {
-  const order = ["largeTitle", "title1", "title2", "title3", "headline", "body", "callout", "subheadline", "footnote", "caption1", "caption2"] as const;
+  const order = ["largeTitle", "title1", "title2", "title3", "headline", "body", "callout", "subheadline", "subheadlineEmphasized", "footnote", "footnoteEmphasized", "caption1", "caption2"] as const;
 
   it("is ordered from largest to smallest and never grows back", () => {
     for (let i = 1; i < order.length; i += 1) {
@@ -24,6 +24,15 @@ describe("type scale", () => {
 
   it("lets larger styles cap lower than body text, since they are already big", () => {
     assert.ok(typography.largeTitle.maxFontSizeMultiplier < typography.body.maxFontSizeMultiplier);
+  });
+
+  it("pairs each emphasized style with its regular size, only heavier", () => {
+    for (const base of ["subheadline", "footnote"] as const) {
+      const emphasized = typography[`${base}Emphasized` as const];
+      assert.equal(emphasized.fontSize, typography[base].fontSize);
+      assert.equal(emphasized.lineHeight, typography[base].lineHeight);
+      assert.equal(emphasized.fontWeight, "600");
+    }
   });
 
   it("matches the iOS text-style sizes at the default Dynamic Type setting", () => {

@@ -12,13 +12,13 @@ export interface ButtonColors {
  * The colors for a button in a given variant and state, from the active palette. Pure, so the
  * contrast of every variant (including disabled) is covered by a test in both palettes.
  *
- * - primary: filled brand, for the one action a screen wants taken.
+ * - primary: filled with the call-to-action colour (darker while pressed), for the one action a screen wants taken.
  * - secondary: outlined, for an alternative.
  * - tertiary: text only, for low-emphasis actions such as "Skip".
  * - destructive: tinted red, for removing something. Tinted rather than solid red because white on
  *   the dark palette's red does not meet contrast.
  */
-export function resolveButtonColors(palette: ColorPalette, variant: ButtonVariant, disabled: boolean): ButtonColors {
+export function resolveButtonColors(palette: ColorPalette, variant: ButtonVariant, disabled: boolean, pressed = false): ButtonColors {
   if (disabled) {
     return {
       background: variant === "tertiary" ? "transparent" : palette.disabledBackground,
@@ -28,11 +28,11 @@ export function resolveButtonColors(palette: ColorPalette, variant: ButtonVarian
   }
   switch (variant) {
     case "primary":
-      return { background: palette.brandFill, border: "transparent", text: palette.textOnBrand };
+      return { background: pressed ? palette.ctaPressed : palette.cta, border: "transparent", text: palette.textOnCta };
     case "secondary":
-      return { background: "transparent", border: palette.brand, text: palette.brand };
+      return { background: "transparent", border: palette.ctaText, text: palette.ctaText };
     case "tertiary":
-      return { background: "transparent", border: "transparent", text: palette.brand };
+      return { background: "transparent", border: "transparent", text: palette.ctaText };
     case "destructive":
       return { background: palette.statusDangerSubtle, border: "transparent", text: palette.statusDanger };
   }

@@ -9,13 +9,15 @@ type Props = {
   onPress?: () => void;
   accessibilityLabel?: string;
   accessibilityHint?: string;
+  /** A card on a card, a sheet or a menu: one step lighter than a normal card in dark mode. */
+  raised?: boolean;
   style?: ViewStyle;
 };
 
 /** A raised group of related content on the screen background. */
-export function Card({ children, onPress, accessibilityLabel, accessibilityHint, style }: Props) {
+export function Card({ children, onPress, accessibilityLabel, accessibilityHint, raised = false, style }: Props) {
   const palette = useColors();
-  const base = [styles.card, { backgroundColor: palette.surface, borderColor: palette.border }, style];
+  const base = [styles.card, { backgroundColor: raised ? palette.surfaceRaised : palette.surface, borderColor: palette.border }, style];
   if (onPress === undefined) return <View style={base}>{children}</View>;
   return (
     <Pressable
