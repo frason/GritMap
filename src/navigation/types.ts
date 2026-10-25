@@ -10,6 +10,8 @@ export type RidesStackParamList = {
 export type SegmentsStackParamList = {
   SegmentList: undefined;
   SegmentDetail: { segmentId: string };
+  /** The redesigned segment page; reached from the list while SEGMENT_PAGE_ENABLED is on. */
+  SegmentPage: { segmentId: string };
   AttemptReview: { attemptId: string };
   AttemptComparison: { primaryAttemptId: string; comparisonAttemptId: string };
   RegistryBrowse: undefined;

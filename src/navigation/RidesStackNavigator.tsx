@@ -3,7 +3,7 @@ import { RideDetailScreen } from "../screens/RideDetailScreen";
 import { RideListScreen } from "../screens/RideListScreen";
 import { ImportScreen } from "../screens/ImportScreen";
 import { DefineSegmentScreen } from "../screens/DefineSegmentScreen";
-import { HeaderButton } from "../theme/components";
+import { RidesHeader } from "./tabHeaders";
 import type { RidesStackParamList } from "./types";
 
 const Stack = createNativeStackNavigator<RidesStackParamList>();
@@ -14,12 +14,7 @@ export function RidesStackNavigator() {
       <Stack.Screen
         name="RideList"
         component={RideListScreen}
-        options={({ navigation }) => ({
-          title: "Rides",
-          headerRight: () => (
-            <HeaderButton label="Import" accessibilityLabel="Import rides" onPress={() => navigation.navigate("Import")} />
-          ),
-        })}
+        options={{ title: "Rides", header: (props) => <RidesHeader {...props} /> }}
       />
       <Stack.Screen name="RideDetail" component={RideDetailScreen} options={{ title: "" }} />
       <Stack.Screen

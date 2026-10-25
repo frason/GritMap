@@ -1,6 +1,7 @@
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import { SegmentListScreen } from "../screens/SegmentListScreen";
 import { SegmentDetailScreen } from "../screens/SegmentDetailScreen";
+import { SegmentPageScreen } from "../screens/SegmentPageScreen";
 import { AttemptReviewScreen } from "../screens/AttemptReviewScreen";
 import { AttemptComparisonScreen } from "../screens/AttemptComparisonScreen";
 import { RegistryBrowseScreen } from "../screens/RegistryBrowseScreen";
@@ -10,7 +11,7 @@ import { SendToKarooScreen } from "../screens/SendToKarooScreen";
 import { PublishToRegistryScreen } from "../screens/PublishToRegistryScreen";
 import { ImportCoachPlanScreen } from "../screens/ImportCoachPlanScreen";
 import { PlanVsActualScreen } from "../screens/PlanVsActualScreen";
-import { HeaderButton } from "../theme/components";
+import { SegmentsHeader } from "./tabHeaders";
 import type { SegmentsStackParamList } from "./types";
 
 const Stack = createNativeStackNavigator<SegmentsStackParamList>();
@@ -21,22 +22,10 @@ export function SegmentsStackNavigator() {
       <Stack.Screen
         name="SegmentList"
         component={SegmentListScreen}
-        options={({ navigation }) => ({
-          title: "Segments",
-          headerLeft: () => (
-            <HeaderButton
-              label="Profile"
-              accessibilityLabel="Your profile"
-              accessibilityHint="Your FTP, weight and heart rate"
-              onPress={() => navigation.navigate("ZonesSettings")}
-            />
-          ),
-          headerRight: () => (
-            <HeaderButton label="Open Segments" accessibilityLabel="Open Segments" onPress={() => navigation.navigate("RegistryBrowse")} />
-          ),
-        })}
+        options={{ title: "Segments", header: (props) => <SegmentsHeader {...props} /> }}
       />
       <Stack.Screen name="SegmentDetail" component={SegmentDetailScreen} options={{ title: "" }} />
+      <Stack.Screen name="SegmentPage" component={SegmentPageScreen} options={{ title: "" }} />
       <Stack.Screen name="AttemptReview" component={AttemptReviewScreen} options={{ title: "Review Effort" }} />
       <Stack.Screen
         name="AttemptComparison"
