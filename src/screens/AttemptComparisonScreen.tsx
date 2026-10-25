@@ -166,26 +166,9 @@ export function AttemptComparisonScreen() {
         {overall}
       </AppText>
 
-      <Section title="Time in each zone" description="How the effort was spread across your training zones. Longer coloured bars mean more time there.">
-        <ZoneCard
-          title="Power zones"
-          breakdown={zoneBreakdown.primary.power}
-          comparisonBreakdown={zoneBreakdown.comparison.power}
-          missingHint="Set your FTP to see power zones"
-          onSetThreshold={() => navigation.navigate("ZonesSettings")}
-        />
-        <ZoneCard
-          title="Heart-rate zones"
-          breakdown={zoneBreakdown.primary.heartRate}
-          comparisonBreakdown={zoneBreakdown.comparison.heartRate}
-          missingHint="Set your max heart rate to see heart-rate zones"
-          onSetThreshold={() => navigation.navigate("ZonesSettings")}
-        />
-      </Section>
-
       <Section
         title="Ahead or behind"
-        description="How far ahead or behind the other effort you were at each point along the segment. Above the zero line you were behind; below it you were ahead. A break in a line means there was no data at that point."
+        description="Above the zero line you were behind the other effort; below it you were ahead."
       >
         <Card>
           <ChannelSection
@@ -200,7 +183,7 @@ export function AttemptComparisonScreen() {
         </Card>
       </Section>
 
-      <Section title="Along the segment" description="This effort against the other, from the start of the segment to the finish. A break in a line means that effort had no data there.">
+      <Section title="Along the segment" description="Start to finish. A break in a line means no data there.">
         <Card>
           <ChannelSection
             title="Power"
@@ -233,6 +216,23 @@ export function AttemptComparisonScreen() {
             noData="No elevation was recorded in either effort."
           />
         </Card>
+      </Section>
+
+      <Section title="Time in each zone" description="Longer bars mean more time in that zone.">
+        <ZoneCard
+          title="Power zones"
+          breakdown={zoneBreakdown.primary.power}
+          comparisonBreakdown={zoneBreakdown.comparison.power}
+          missingHint="Set your FTP to see power zones"
+          onSetThreshold={() => navigation.navigate("ZonesSettings")}
+        />
+        <ZoneCard
+          title="Heart-rate zones"
+          breakdown={zoneBreakdown.primary.heartRate}
+          comparisonBreakdown={zoneBreakdown.comparison.heartRate}
+          missingHint="Set your max heart rate to see heart-rate zones"
+          onSetThreshold={() => navigation.navigate("ZonesSettings")}
+        />
       </Section>
     </ScreenScroll>
   );

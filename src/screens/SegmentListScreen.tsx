@@ -1,28 +1,31 @@
 import type { BottomTabNavigationProp } from "@react-navigation/bottom-tabs";
+import { SEGMENT_PAGE_ENABLED } from "../plans/featureFlag";
 import { useCallback, useState } from "react";
 import { Alert, FlatList, Pressable, StyleSheet, View } from "react-native";
 import { useFocusEffect, useNavigation } from "@react-navigation/native";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { useDatabase } from "../db/DatabaseProvider";
-import { listSegments, type SegmentSummary } from "../db/listSegments";
+import type { SegmentSummary } from "../db/listSegments";
+import { loadSegmentCards, type SegmentCardData } from "../plans/loadSegmentCards";
+import { SegmentCard } from "../plans/SegmentCard";
 import { deleteSegment } from "../db/deleteSegment";
 import type { RootTabParamList, SegmentsStackParamList } from "../navigation/types";
-import { colors } from "../theme/colors";
 import { Icon } from "../theme/Icon";
 import { MIN_TOUCH_TARGET } from "../theme/layout";
 import { spacing } from "../theme/spacing";
-import { EmptyState, ListRow } from "../theme/components";
-import { describeSegmentRow } from "./describeSegmentRow";
+import { useColors } from "../theme/useColors";
+import { EmptyState } from "../theme/components";
 
 type Navigation = NativeStackNavigationProp<SegmentsStackParamList>;
 
 export function SegmentListScreen() {
   const database = useDatabase();
   const navigation = useNavigation<Navigation>();
-  const [segments, setSegments] = useState<SegmentSummary[]>([]);
+  const colors = useColors();
+  const [cards, setCards] = useState<SegmentCardData[]>([]);
 
   const refresh = useCallback(() => {
-    setSegments(listSegments(database));
+    setCards(loadSegmentCards(database));
   }, [database]);
 
   // Re-query on focus so a segment saved (or deleted) elsewhere shows up immediately.
@@ -47,9 +50,9 @@ export function SegmentListScreen() {
     ]);
   }
 
-  if (segments.length === 0) {
+  if (cards.length === 0) {
     return (
-      <View style={styles.container}>
+      <View style={[styles.container, { backgroundColor: colors.background }]}>
         <EmptyState
           icon="mapPin"
           title="No segments yet"
@@ -71,24 +74,22 @@ export function SegmentListScreen() {
 
   return (
     <FlatList
-      style={styles.container}
+      style={[styles.container, { backgroundColor: colors.background }]}
       contentContainerStyle={styles.list}
-      data={segments}
-      keyExtractor={(segment) => segment.segmentId}
-      renderItem={({ item }) => (
+      data={cards}
+      keyExtractor={(card) => card.summary.segmentId}
+      renderItem={({ item: card }) => (
         <View style={styles.row}>
           <View style={styles.rowMain}>
-            <ListRow
-              icon="mapPin"
-              title={item.name}
-              subtitle={describeSegmentRow(item)}
-              onPress={() => navigation.navigate("SegmentDetail", { segmentId: item.segmentId })}
+            <SegmentCard
+              data={card}
+              onPress={() => navigation.navigate(SEGMENT_PAGE_ENABLED ? "SegmentPage" : "SegmentDetail", { segmentId: card.summary.segmentId })}
             />
           </View>
           <Pressable
-            onPress={() => handleDelete(item)}
+            onPress={() => handleDelete(card.summary)}
             accessibilityRole="button"
-            accessibilityLabel={`Delete ${item.name}`}
+            accessibilityLabel={`Delete ${card.summary.name}`}
             style={styles.deleteButton}
           >
             <Icon name="trash" color="statusDanger" size={20} />
@@ -102,9 +103,8 @@ export function SegmentListScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: colors.background,
   },
-  list: { paddingHorizontal: spacing.space20 },
+  list: { paddingHorizontal: spacing.space16, paddingVertical: spacing.space12, gap: spacing.space12 },
   row: { flexDirection: "row", alignItems: "center" },
   rowMain: { flex: 1 },
   deleteButton: {

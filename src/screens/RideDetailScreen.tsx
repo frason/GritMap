@@ -8,10 +8,10 @@ import { getRideDetail, type RideDetail } from "../db/getRideDetail";
 import { getRideTrack, type RideTrackPoint } from "../db/getRideTrack";
 import { listAttemptsForRide, type RideAttemptSummary } from "../db/listAttemptsForRide";
 import type { RidesStackParamList, RootTabParamList } from "../navigation/types";
-import { AppText, Button, Card, ErrorState, ListRow, LoadingState, Notice, ScreenScroll, Section, StatRow, StatTile } from "../theme/components";
+import { AppText, BottomSheet, Button, Card, ErrorState, ListRow, LoadingState, Notice, ScreenScroll, Section, StatRow, StatTile } from "../theme/components";
 import { rideHasPower } from "../db/rideHasPower";
 import { NO_POWER_RIDE_NOTE } from "./describeNoPower";
-import { radius, spacing } from "../theme/spacing";
+import { spacing } from "../theme/spacing";
 import { useColors } from "../theme/useColors";
 import { RouteMapView } from "./RouteMapView";
 import {
@@ -79,83 +79,74 @@ export function RideDetailScreen() {
   const canCreateSegment = track.length >= 2;
 
   return (
-    <ScreenScroll>
-      <View style={styles.heading}>
-        <AppText variant="title2" accessibilityRole="header">
-          {ride.startTimestampMs !== undefined ? formatRideDate(ride.startTimestampMs) : "Ride"}
-        </AppText>
-        <AppText variant="subheadline" color="textSecondary">
-          Imported from {ride.originalFilename}
-        </AppText>
+    <View style={[styles.root, { backgroundColor: palette.background }]}>
+      <View style={StyleSheet.absoluteFill} accessible accessibilityLabel="Map of this ride's route">
+        <RouteMapView points={track} />
       </View>
-
-      {hasPower ? null : <Notice tone="info">{NO_POWER_RIDE_NOTE}</Notice>}
-
-      <StatRow>
-        <StatTile value={formatDistanceMiles(ride.totalDistanceMeters)} label="Distance" />
-        <StatTile value={formatDurationHoursMinutes(ride.durationMs)} label="Duration" />
-        <StatTile value={formatElevationFeet(ride.totalAscentMeters)} label="Elevation" />
-      </StatRow>
-
-      <Section title="Route">
-        <View
-          accessible
-          accessibilityLabel="Map of this ride's route"
-          style={[styles.routeMap, { backgroundColor: palette.surface, borderColor: palette.border }]}
-        >
-          <RouteMapView points={track} />
+      <BottomSheet label="Ride details. Swipe up or down to resize.">
+        <View style={styles.heading}>
+          <AppText variant="title2" accessibilityRole="header">
+            {ride.startTimestampMs !== undefined ? formatRideDate(ride.startTimestampMs) : "Ride"}
+          </AppText>
+          <AppText variant="subheadline" color="textSecondary">
+            {`${formatDistanceMiles(ride.totalDistanceMeters)} \u00b7 ${formatDurationHoursMinutes(ride.durationMs)}`}
+          </AppText>
         </View>
-      </Section>
 
-      <Section
-        title="Segments found in this ride"
-        description="A segment is a stretch of road you want to ride again and track. GritMap looks for your segments in every ride you import."
-      >
-        {attempts.length === 0 ? (
-          <Card>
-            <AppText variant="headline">No segments found yet</AppText>
-            <AppText variant="subheadline" color="textSecondary">
-              None of your segments overlap this ride. Create one from this ride below, or open Open Segments on the Segments tab
-              to add one that others have shared.
-            </AppText>
-          </Card>
-        ) : (
-          <View>
-            {attempts.map((attempt) => {
-              const confirmed = attempt.manuallyApproved || attempt.decision === "accept";
-              return (
-                <ListRow
-                  key={attempt.attemptId}
-                  icon={confirmed ? "checkCircle" : "alertTriangle"}
-                  title={attempt.segmentName}
-                  subtitle={`${formatDurationHoursMinutes(attempt.endTimestampMs - attempt.startTimestampMs)} · ${
-                    confirmed ? (attempt.manuallyApproved ? "Approved by you" : "Matched") : "Needs your review"
-                  } · ${Math.round(attempt.confidenceScore * 100)}% match`}
-                  onPress={() => openAttemptReview(attempt.attemptId)}
-                  accessibilityHint="Opens the details of this effort"
-                />
-              );
-            })}
-          </View>
+        {hasPower ? null : <Notice tone="info">{NO_POWER_RIDE_NOTE}</Notice>}
+
+        <StatRow>
+          <StatTile value={formatDistanceMiles(ride.totalDistanceMeters)} label="Distance" />
+          <StatTile value={formatDurationHoursMinutes(ride.durationMs)} label="Duration" />
+          <StatTile value={formatElevationFeet(ride.totalAscentMeters)} label="Elevation" />
+        </StatRow>
+
+        <Section title="Segments found in this ride">
+          {attempts.length === 0 ? (
+            <Card>
+              <AppText variant="headline">No segments found yet</AppText>
+              <AppText variant="subheadline" color="textSecondary">
+                None of your segments overlap this ride. Create one from it below, or browse Open Segments on the Segments tab.
+              </AppText>
+            </Card>
+          ) : (
+            <View>
+              {attempts.map((attempt) => {
+                const confirmed = attempt.manuallyApproved || attempt.decision === "accept";
+                return (
+                  <ListRow
+                    key={attempt.attemptId}
+                    icon={confirmed ? "checkCircle" : "alertTriangle"}
+                    title={attempt.segmentName}
+                    subtitle={`${formatDurationHoursMinutes(attempt.endTimestampMs - attempt.startTimestampMs)} · ${
+                      confirmed ? (attempt.manuallyApproved ? "Approved by you" : "Matched") : "Needs your review"
+                    } · ${Math.round(attempt.confidenceScore * 100)}% match`}
+                    onPress={() => openAttemptReview(attempt.attemptId)}
+                    accessibilityHint="Opens the details of this effort"
+                  />
+                );
+              })}
+            </View>
+          )}
+        </Section>
+
+        <Button
+          label="Create a segment from this ride"
+          onPress={() => navigation.navigate("DefineSegment", { rideId: route.params.rideId })}
+          disabled={!canCreateSegment}
+          {...(canCreateSegment ? {} : { accessibilityHint: "Not available: this ride has no usable GPS data" })}
+        />
+        {canCreateSegment ? null : (
+          <AppText variant="footnote" color="textSecondary" align="center">
+            This ride has no usable GPS data, so a segment can't be created from it.
+          </AppText>
         )}
-      </Section>
-
-      <Button
-        label="Create a segment from this ride"
-        onPress={() => navigation.navigate("DefineSegment", { rideId: route.params.rideId })}
-        disabled={!canCreateSegment}
-        {...(canCreateSegment ? {} : { accessibilityHint: "Not available: this ride has no usable GPS data" })}
-      />
-      {canCreateSegment ? null : (
-        <AppText variant="footnote" color="textSecondary" align="center">
-          This ride has no usable GPS data, so a segment can't be created from it.
-        </AppText>
-      )}
-    </ScreenScroll>
+      </BottomSheet>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
+  root: { flex: 1 },
   heading: { gap: spacing.space4 },
-  routeMap: { height: 220, borderRadius: radius.lg, borderWidth: 1, overflow: "hidden" },
 });

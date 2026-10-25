@@ -1,42 +1,45 @@
 import { useCallback, useState } from "react";
-import { FlatList, StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import { FlatList, StyleSheet, View } from "react-native";
 import { useFocusEffect, useNavigation } from "@react-navigation/native";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { useDatabase } from "../db/DatabaseProvider";
+import { listPlanSendMarks } from "../db/listPlanSendMarks";
 import { listRides, type RideSummary } from "../db/listRides";
 import type { RidesStackParamList } from "../navigation/types";
-import { colors } from "../theme/colors";
-import { Icon } from "../theme/Icon";
-import { radius, spacing } from "../theme/spacing";
-import { formatDistanceMiles, formatDurationHoursMinutes, formatRideDate } from "./formatRideStats";
+import type { RideSegmentHighlight } from "../plans/karooMarks";
+import { loadRideHighlights } from "../plans/loadRideHighlights";
+import { RideMapCard } from "../plans/RideMapCard";
+import { spacing } from "../theme/spacing";
+import { useColors } from "../theme/useColors";
 import { EmptyState } from "../theme/components";
-import { RidePreviewThumbnail } from "./RidePreviewThumbnail";
 
 type Navigation = NativeStackNavigationProp<RidesStackParamList>;
+
+type RideCard = { ride: RideSummary; highlights: RideSegmentHighlight[] };
 
 export function RideListScreen() {
   const database = useDatabase();
   const navigation = useNavigation<Navigation>();
-  const [rides, setRides] = useState<RideSummary[]>([]);
+  const colors = useColors();
+  const [cards, setCards] = useState<RideCard[]>([]);
 
   // Re-query on focus (not just mount) so a ride imported and then navigated back from
   // shows up immediately, without needing a separate cross-screen refresh mechanism.
   useFocusEffect(
     useCallback(() => {
-      setRides(listRides(database));
+      const sent = new Set(listPlanSendMarks(database).map((mark) => mark.segmentId));
+      setCards(listRides(database).map((ride) => ({ ride, highlights: loadRideHighlights(database, ride.rideId, sent) })));
     }, [database]),
   );
 
-  if (rides.length === 0) {
+  if (cards.length === 0) {
     return (
-      <View style={styles.container}>
+      <View style={[styles.container, { backgroundColor: colors.background }]}>
         <EmptyState
           icon="route"
           title="No rides yet"
           body="Import a ride file (.fit or .gpx) from your bike computer. You can then make segments from it and see how you did on each one."
-          actions={[
-            { label: "Import a ride", onPress: () => navigation.navigate("Import"), icon: "download" },
-          ]}
+          actions={[{ label: "Import a ride", onPress: () => navigation.navigate("Import"), icon: "download" }]}
         />
       </View>
     );
@@ -44,102 +47,18 @@ export function RideListScreen() {
 
   return (
     <FlatList
-      style={styles.container}
-      data={rides}
-      keyExtractor={(ride) => ride.rideId}
+      style={[styles.container, { backgroundColor: colors.background }]}
+      contentContainerStyle={styles.list}
+      data={cards}
+      keyExtractor={(card) => card.ride.rideId}
       renderItem={({ item }) => (
-        <RideRow
-          ride={item}
-          onPress={() => navigation.navigate("RideDetail", { rideId: item.rideId })}
-        />
+        <RideMapCard ride={item.ride} highlights={item.highlights} onPress={() => navigation.navigate("RideDetail", { rideId: item.ride.rideId })} />
       )}
     />
   );
 }
 
-function RideRow({ ride, onPress }: { ride: RideSummary; onPress: () => void }) {
-  const title = ride.startTimestampMs !== undefined
-    ? formatRideDate(ride.startTimestampMs)
-    : ride.originalFilename;
-  return (
-    <TouchableOpacity style={styles.row} onPress={onPress}>
-      <View style={styles.routeChip}>
-        {ride.previewPolyline !== undefined && ride.previewPolyline.length >= 2 ? (
-          <RidePreviewThumbnail points={ride.previewPolyline} size={40} />
-        ) : (
-          <Icon name="route" color="brand" size={20} />
-        )}
-      </View>
-      <View style={styles.rowText}>
-        <Text style={styles.rowTitle}>{title}</Text>
-        <Text style={styles.rowSubtitle} numberOfLines={1}>
-          {formatDistanceMiles(ride.totalDistanceMeters)} ·{" "}
-          {formatDurationHoursMinutes(ride.durationMs)} · {ride.originalFilename}
-        </Text>
-      </View>
-      <Icon name="chevronRight" color="textSecondary" size={18} />
-    </TouchableOpacity>
-  );
-}
-
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: colors.background,
-  },
-  emptyState: {
-    flex: 1,
-    alignItems: "center",
-    justifyContent: "center",
-    gap: spacing.space16,
-    paddingHorizontal: spacing.space24,
-    backgroundColor: colors.background,
-  },
-  emptyTitle: {
-    fontSize: 15,
-    color: colors.textSecondary,
-    textAlign: "center",
-  },
-  emptyButton: {
-    backgroundColor: colors.brand,
-    borderRadius: radius.md,
-    paddingVertical: spacing.space12,
-    paddingHorizontal: spacing.space24,
-  },
-  emptyButtonLabel: {
-    color: colors.textOnBrand,
-    fontSize: 15,
-    fontWeight: "600",
-  },
-  row: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: spacing.space12,
-    paddingVertical: spacing.space16,
-    paddingHorizontal: spacing.space20,
-    backgroundColor: colors.surface,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border,
-  },
-  routeChip: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: colors.brandSubtle,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  rowText: {
-    flex: 1,
-    gap: spacing.space4 - 2,
-  },
-  rowTitle: {
-    fontSize: 15,
-    fontWeight: "600",
-    color: colors.textPrimary,
-  },
-  rowSubtitle: {
-    fontSize: 13,
-    color: colors.textSecondary,
-  },
+  container: { flex: 1 },
+  list: { padding: spacing.space16, gap: spacing.space12 },
 });

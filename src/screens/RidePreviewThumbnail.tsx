@@ -1,11 +1,15 @@
 import { View } from "react-native";
 import Svg, { Polyline } from "react-native-svg";
-import { colors } from "../theme/colors";
+import { useColors } from "../theme/useColors";
 import type { RidePreviewPoint } from "../db/listRides";
 
 export interface RidePreviewThumbnailProps {
   points: readonly RidePreviewPoint[];
   size?: number;
+  /** A wide or tall box instead of a square; the route is fitted inside and centred. */
+  width?: number;
+  height?: number;
+  strokeWidth?: number;
 }
 
 /**
@@ -21,7 +25,8 @@ export interface RidePreviewThumbnailProps {
  * cos(meanLatitude) correction narrows the longitude span first, since a degree of
  * longitude covers less real distance than a degree of latitude away from the equator.
  */
-export function RidePreviewThumbnail({ points, size = 40 }: RidePreviewThumbnailProps) {
+export function RidePreviewThumbnail({ points, size = 40, width = size, height = size, strokeWidth = 1.5 }: RidePreviewThumbnailProps) {
+  const palette = useColors();
   if (points.length < 2) return null;
 
   const lats = points.map((point) => point.lat);
@@ -36,27 +41,26 @@ export function RidePreviewThumbnail({ points, size = 40 }: RidePreviewThumbnail
   const latSpan = maxLat - minLat || 1e-6;
   const lngSpan = (maxLng - minLng) * lngCorrection || 1e-6;
 
-  const padding = size * 0.12;
-  const drawable = size - padding * 2;
-  const scale = Math.min(drawable / lngSpan, drawable / latSpan);
+  const padding = Math.min(width, height) * 0.12;
+  const scale = Math.min((width - padding * 2) / lngSpan, (height - padding * 2) / latSpan);
   const drawnWidth = lngSpan * scale;
   const drawnHeight = latSpan * scale;
-  const offsetX = (size - drawnWidth) / 2;
-  const offsetY = (size - drawnHeight) / 2;
+  const offsetX = (width - drawnWidth) / 2;
+  const offsetY = (height - drawnHeight) / 2;
 
   const toX = (lng: number) => offsetX + (lng - minLng) * lngCorrection * scale;
-  const toY = (lat: number) => size - (offsetY + (lat - minLat) * scale);
+  const toY = (lat: number) => height - (offsetY + (lat - minLat) * scale);
 
   const polylinePoints = points.map((point) => `${toX(point.lng)},${toY(point.lat)}`).join(" ");
 
   return (
     <View>
-      <Svg width={size} height={size} viewBox={`0 0 ${size} ${size}`}>
+      <Svg width={width} height={height} viewBox={`0 0 ${width} ${height}`}>
         <Polyline
           points={polylinePoints}
           fill="none"
-          stroke={colors.brand}
-          strokeWidth={1.5}
+          stroke={palette.ctaText}
+          strokeWidth={strokeWidth}
           strokeLinecap="round"
           strokeLinejoin="round"
         />

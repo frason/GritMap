@@ -10,15 +10,18 @@ import { setActiveGoal } from "../db/setActiveGoal";
 import { listSegments, type SegmentSummary } from "../db/listSegments";
 import { listAttemptsForSegment, type AttemptSummary } from "../db/listAttemptsForSegment";
 import { listRides, type RideSummary } from "../db/listRides";
+import { getAthleteProfile } from "../db/getAthleteProfile";
+import { SetupChecklist } from "../onboarding/SetupChecklist";
+import { setupSteps, shouldShowSetupChecklist, type SetupProgress, type SetupStepKey } from "../onboarding/setupSteps";
+import { loadRideHighlights } from "../plans/loadRideHighlights";
+import { loadSegmentCards, type SegmentCardData } from "../plans/loadSegmentCards";
+import type { RideSegmentHighlight } from "../plans/karooMarks";
+import { RideMapCard } from "../plans/RideMapCard";
+import { SegmentCard } from "../plans/SegmentCard";
 import type { RootTabParamList } from "../navigation/types";
 import { spacing } from "../theme/spacing";
 import { useColors } from "../theme/useColors";
-import {
-  formatDistanceMiles,
-  formatDurationHoursMinutes,
-  formatDurationMinutesSeconds,
-  formatRideDate,
-} from "./formatRideStats";
+import { formatDurationMinutesSeconds } from "./formatRideStats";
 import { AppText, Button, Card, EmptyState, ListRow, Notice, ScreenScroll, Section, TextField } from "../theme/components";
 import { parseTargetDurationInput } from "./parseTargetDuration";
 
@@ -30,7 +33,10 @@ export function HomeScreen() {
   const [segments, setSegments] = useState<SegmentSummary[]>([]);
   const [goal, setGoal] = useState<ActiveGoal | undefined>(undefined);
   const [attempts, setAttempts] = useState<AttemptSummary[]>([]);
-  const [recentRides, setRecentRides] = useState<RideSummary[]>([]);
+  const [lastRide, setLastRide] = useState<RideSummary | undefined>(undefined);
+  const [lastRideHighlights, setLastRideHighlights] = useState<RideSegmentHighlight[]>([]);
+  const [sentCards, setSentCards] = useState<SegmentCardData[]>([]);
+  const [setup, setSetup] = useState<SetupProgress>({ hasFtp: true, hasSegment: true, hasRide: true, hasSent: true });
   const [editingGoal, setEditingGoal] = useState(false);
 
   const refresh = useCallback(() => {
@@ -39,10 +45,28 @@ export function HomeScreen() {
     setSegments(currentSegments);
     setGoal(currentGoal);
     setAttempts(currentGoal === undefined ? [] : listAttemptsForSegment(database, currentGoal.segmentId));
-    setRecentRides(listRides(database).slice(0, 5));
+    const newest = listRides(database)[0];
+    const cards = loadSegmentCards(database);
+    setLastRide(newest);
+    setSetup({
+      hasFtp: getAthleteProfile(database).ftpWatts !== undefined,
+      hasSegment: currentSegments.length > 0,
+      hasRide: newest !== undefined,
+      hasSent: cards.some((card) => card.sent),
+    });
+    setSentCards(cards.filter((card) => card.sent));
+    const sentSegmentIds = new Set(cards.filter((card) => card.sent).map((card) => card.summary.segmentId));
+    setLastRideHighlights(newest === undefined ? [] : loadRideHighlights(database, newest.rideId, sentSegmentIds));
   }, [database]);
 
   useFocusEffect(refresh);
+
+  function handleSetupAction(key: SetupStepKey) {
+    if (key === "ftp") navigation.navigate("SegmentsTab", { screen: "ZonesSettings", initial: false });
+    else if (key === "segment") navigation.navigate("SegmentsTab", { screen: "RegistryBrowse", initial: false });
+    else if (key === "ride") navigation.navigate("RidesTab", { screen: "Import", initial: false });
+    else navigation.navigate("SegmentsTab", { screen: "SegmentList", initial: false });
+  }
 
   function handleSaveGoal(segmentId: string, targetDurationMs: number) {
     setActiveGoal(database, { segmentId, targetDurationMs, nowMs: Date.now() });
@@ -50,27 +74,10 @@ export function HomeScreen() {
     refresh();
   }
 
-  if (segments.length === 0) {
+  if (shouldShowSetupChecklist(setup)) {
     return (
       <HomeFrame>
-        <EmptyState
-          icon="flag"
-          title="Pick a segment to chase"
-          body="Add a segment, set a goal time, and GritMap builds you a pacing plan. Your progress toward the goal shows up here."
-          actions={[
-            {
-              label: "Browse Open Segments",
-              onPress: () => navigation.navigate("SegmentsTab", { screen: "RegistryBrowse", initial: false }),
-              icon: "search",
-            },
-            {
-              label: "Import a ride",
-              onPress: () => navigation.navigate("RidesTab", { screen: "Import", initial: false }),
-              variant: "secondary",
-              icon: "download",
-            },
-          ]}
-        />
+        <SetupChecklist steps={setupSteps(setup)} onAction={handleSetupAction} />
       </HomeFrame>
     );
   }
@@ -132,6 +139,25 @@ export function HomeScreen() {
   return (
     <HomeFrame>
       <ScreenScroll>
+        {lastRide === undefined ? null : (
+          <RideMapCard
+            ride={lastRide}
+            highlights={lastRideHighlights}
+            onPress={() => navigation.navigate("RidesTab", { screen: "RideDetail", initial: false, params: { rideId: lastRide.rideId } })}
+          />
+        )}
+        {sentCards.length === 0 ? null : (
+          <Section title="Sent from this phone" description="Segments you have sent to a Karoo. The mark shows when this phone last sent each one.">
+            {sentCards.map((card) => (
+              <SegmentCard
+                key={card.summary.segmentId}
+                data={card}
+                compact
+                onPress={() => navigation.navigate("SegmentsTab", { screen: "SegmentPage", initial: false, params: { segmentId: card.summary.segmentId } })}
+              />
+            ))}
+          </Section>
+        )}
         <View style={styles.goalHeader}>
           <View style={styles.goalHeaderText}>
             <AppText variant="title2" accessibilityRole="header">
@@ -178,38 +204,19 @@ export function HomeScreen() {
             onPress={handleCompareCta}
           />
         </Card>
-
-        <Section title="Recent rides">
-          {recentRides.length === 0 ? (
-            <AppText variant="subheadline" color="textSecondary">
-              No rides imported yet.
-            </AppText>
-          ) : (
-            <View>
-              {recentRides.map((ride) => (
-                <ListRow
-                  key={ride.rideId}
-                  title={ride.startTimestampMs === undefined ? ride.originalFilename : formatRideDate(ride.startTimestampMs)}
-                  subtitle={`${formatDistanceMiles(ride.totalDistanceMeters)} · ${formatDurationHoursMinutes(ride.durationMs)}`}
-                  onPress={() => navigation.navigate("RidesTab", { screen: "RideDetail", initial: false, params: { rideId: ride.rideId } })}
-                />
-              ))}
-            </View>
-          )}
-        </Section>
       </ScreenScroll>
     </HomeFrame>
   );
 }
 
 /**
- * Home has no navigation bar (the tab navigator hides it), so nothing else keeps its content out
- * from under the status bar and Dynamic Island: this frame applies the top safe-area inset.
+ * Home's header (title and icon bar) is drawn by the tab navigator and already clears the status bar
+ * and Dynamic Island, so this frame adds no top inset of its own.
  */
 function HomeFrame({ children }: { children: ReactNode }) {
   const palette = useColors();
   return (
-    <SafeAreaView edges={["top"]} style={[styles.frame, { backgroundColor: palette.background }]}>
+    <SafeAreaView edges={[]} style={[styles.frame, { backgroundColor: palette.background }]}>
       {children}
     </SafeAreaView>
   );
