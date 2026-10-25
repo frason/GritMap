@@ -1,7 +1,9 @@
-import { ScrollView, StyleSheet, View } from "react-native";
+import { useState } from "react";
+import { ScrollView, StyleSheet, View, type LayoutChangeEvent, type NativeScrollEvent, type NativeSyntheticEvent } from "react-native";
 import Svg, { Line, Polyline, Rect, Text as SvgText } from "react-native-svg";
 import type { ColorPalette } from "../theme/colors";
 import { AppText } from "../theme/components";
+import { Icon } from "../theme/Icon";
 import { spacing } from "../theme/spacing";
 import { typography } from "../theme/typography";
 import { useColors } from "../theme/useColors";
@@ -39,13 +41,17 @@ const LABEL_FONT_SIZE = typography.caption1.fontSize;
 /** Wider than this and the chart scrolls sideways on a phone. */
 const SCROLL_HINT_MIN_WIDTH = 340;
 
-/** Differ in lightness, not just hue (easier to tell apart than red/green at a glance). */
+/** True while part of the chart is still off the right edge, so a cue can say "there is more". */
+export function moreToTheRight(contentWidth: number, viewportWidth: number, scrollX: number): boolean {
+  return viewportWidth > 0 && contentWidth - viewportWidth - scrollX > 4;
+}
+
+/** Rest, hold and push use the intensity tokens, so the chart follows the app's palette in light and dark. */
 function classificationColors(palette: ColorPalette): Record<PacingClassification, { fill: string; accent: string }> {
   return {
-    REST: { fill: palette.statusInfoSubtle, accent: palette.statusInfo },
-    // The page background, not the card's white, so a Hold band is still visibly a band.
-    HOLD: { fill: palette.background, accent: palette.textSecondary },
-    PUSH: { fill: palette.statusWarningSubtle, accent: palette.statusWarning },
+    REST: { fill: palette.intensityRestSubtle, accent: palette.intensityRest },
+    HOLD: { fill: palette.intensityHoldSubtle, accent: palette.intensityHold },
+    PUSH: { fill: palette.intensityPushSubtle, accent: palette.intensityPush },
   };
 }
 
@@ -62,6 +68,8 @@ function classificationColors(palette: ColorPalette): Record<PacingClassificatio
 export function ElevationProfileChart({ referencePolyline, zones, height = 150 }: ElevationProfileChartProps) {
   const palette = useColors();
   const CLASSIFICATION_COLORS = classificationColors(palette);
+  const [viewportWidth, setViewportWidth] = useState(0);
+  const [scrollX, setScrollX] = useState(0);
   const points = referencePolyline.filter((point) => point.elevationMeters !== undefined);
   if (points.length < 2) return null;
 
@@ -105,7 +113,13 @@ export function ElevationProfileChart({ referencePolyline, zones, height = 150 }
 
   return (
     <View style={styles.container} accessible accessibilityLabel={summary}>
-      <ScrollView horizontal showsHorizontalScrollIndicator={zoneWindows.length > 6}>
+      <View onLayout={(event: LayoutChangeEvent) => setViewportWidth(event.nativeEvent.layout.width)}>
+      <ScrollView
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        scrollEventThrottle={32}
+        onScroll={(event: NativeSyntheticEvent<NativeScrollEvent>) => setScrollX(event.nativeEvent.contentOffset.x)}
+      >
         <Svg width={chartWidth} height={height} viewBox={`0 0 ${chartWidth} ${height}`}>
           {zones !== undefined &&
             zones.map((zone, index) => (
@@ -156,11 +170,17 @@ export function ElevationProfileChart({ referencePolyline, zones, height = 150 }
             })}
         </Svg>
       </ScrollView>
+      {moreToTheRight(chartWidth, viewportWidth, scrollX) && (
+        <View pointerEvents="none" style={[styles.cue, { backgroundColor: palette.surface, borderColor: palette.border }]}>
+          <Icon name="chevronRight" size={16} color="textSecondary" />
+        </View>
+      )}
+      </View>
       {zones !== undefined && (
         <>
           <View style={styles.legend}>
             <LegendDot color={CLASSIFICATION_COLORS.REST.accent} label="Rest: ease off" />
-            <LegendDot color={CLASSIFICATION_COLORS.HOLD.accent} label="Hold: steady" />
+            <LegendDot color={CLASSIFICATION_COLORS.HOLD.accent} label="Hold: ride steady" />
             <LegendDot color={CLASSIFICATION_COLORS.PUSH.accent} label="Push: ride harder" />
           </View>
           <AppText variant="caption1" color="textSecondary">
@@ -198,6 +218,18 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: spacing.space4,
+  },
+  cue: {
+    position: "absolute",
+    right: 4,
+    top: "40%",
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    borderWidth: StyleSheet.hairlineWidth,
+    alignItems: "center",
+    justifyContent: "center",
+    opacity: 0.92,
   },
   legendDot: {
     width: 8,
