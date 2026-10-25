@@ -10,6 +10,8 @@ export interface RouteMapViewProps {
   /** Not supported on web -- MapLibre's native module doesn't resolve here (see below). */
   editableRange?: unknown;
   /** Not supported on web -- there's no map here to report a viewport from. */
+  /** Not supported on web. */
+  recenterSignal?: number;
   onViewportChange?: (bounds: { west: number; south: number; east: number; north: number }) => void;
 }
 

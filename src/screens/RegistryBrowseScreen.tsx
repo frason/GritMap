@@ -10,7 +10,9 @@ import { describeRegistryError, registryErrorKind } from "../registry/describeRe
 import { fetchRegistrySegment, listRegistrySegments, type RegistryEntry } from "../registry/registryClient";
 import { summarizeRegistrySegment, type RegistrySegmentSummary } from "../registry/summarizeRegistrySegment";
 import type { SegmentsStackParamList } from "../navigation/types";
-import { AppText, Button, Card, EmptyState, ErrorState, LoadingState, Notice, ScreenScroll } from "../theme/components";
+import { AppText, Button, Card, Chip, EmptyState, ErrorState, LoadingState, Notice, ScreenScroll, TextField } from "../theme/components";
+import { filterByName } from "../registry/filterByName";
+import { SEGMENT_PAGE_ENABLED } from "../plans/featureFlag";
 import { spacing } from "../theme/spacing";
 import { useColors } from "../theme/useColors";
 import { formatDistanceMiles, formatElevationFeet } from "./formatRideStats";
@@ -34,6 +36,8 @@ export function RegistryBrowseScreen() {
   const database = useDatabase();
   const navigation = useNavigation<Navigation>();
   const palette = useColors();
+  const [query, setQuery] = useState("");
+  const openSegment = (segmentId: string) => navigation.navigate(SEGMENT_PAGE_ENABLED ? "SegmentPage" : "SegmentDetail", { segmentId });
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [loadError, setLoadError] = useState<{ message: string; kind: ReturnType<typeof registryErrorKind> } | undefined>(undefined);
@@ -120,7 +124,7 @@ export function RegistryBrowseScreen() {
 
     setRowStatus((current) => ({ ...current, [entry.fingerprint]: { kind: "idle" } }));
     setOwned((current) => ({ ...current, [entry.fingerprint]: result.segmentId }));
-    navigation.navigate("SegmentDetail", { segmentId: result.segmentId });
+    openSegment(result.segmentId);
   }
 
   if (loading) {
@@ -158,7 +162,10 @@ export function RegistryBrowseScreen() {
     );
   }
 
-  const sorted = [...visible].sort((a, b) => {
+  const sorted = filterByName(visible, query, (entry) => {
+    const summary = summaries[entry.fingerprint];
+    return typeof summary === "object" ? summary.name : undefined;
+  }).sort((a, b) => {
     const left = summaries[a.fingerprint];
     const right = summaries[b.fingerprint];
     const leftName = typeof left === "object" ? left.name : undefined;
@@ -168,11 +175,10 @@ export function RegistryBrowseScreen() {
   });
 
   return (
-    <ScreenScroll refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => refresh(true)} tintColor={palette.brand} />}>
-      <AppText variant="subheadline" color="textSecondary">
-        Segments shared by other riders, free for anyone. Add one to your Segments to get a pacing plan for it and see your times on it.
-      </AppText>
+    <ScreenScroll refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => refresh(true)} tintColor={palette.ctaText} />}>
+      <TextField label="Search by name" value={query} onChangeText={setQuery} placeholder="Climb, loop, road name" autoCorrect={false} returnKeyType="search" />
 
+      {sorted.length === 0 && query.trim().length > 0 ? <Notice tone="info">{`No Open Segments match "${query.trim()}".`}</Notice> : null}
       {unavailable > 0 ? (
         <Card>
           <Notice tone="warning">
@@ -196,9 +202,10 @@ export function RegistryBrowseScreen() {
           <Card key={entry.fingerprint}>
             <View style={styles.text} accessible accessibilityLabel={[name, ...facts, segmentId === undefined ? undefined : "Already in your segments"].filter(Boolean).join(", ")}>
               <AppText variant="headline">{name}</AppText>
-              <AppText variant="subheadline" color="textSecondary">
-                {facts.length === 0 ? "Shared by another rider" : `${facts.join(" · ")} · shared by another rider`}
-              </AppText>
+              <View style={styles.chips}>
+                {facts.length === 0 ? <Chip label="Shared by another rider" tone="neutral" /> : facts.map((fact) => <Chip key={fact} label={fact} tone="neutral" />)}
+                {segmentId === undefined ? null : <Chip label="In your segments" tone="success" icon="check" />}
+              </View>
             </View>
             {status.kind === "error" ? <Notice tone="error" live>{status.message}</Notice> : null}
             {segmentId === undefined ? (
@@ -214,7 +221,7 @@ export function RegistryBrowseScreen() {
               <Button
                 label="Already added. Open it"
                 variant="tertiary"
-                onPress={() => navigation.navigate("SegmentDetail", { segmentId })}
+                onPress={() => openSegment(segmentId)}
                 accessibilityHint={`Opens ${name}`}
               />
             )}
@@ -237,5 +244,6 @@ export function RegistryBrowseScreen() {
 }
 
 const styles = StyleSheet.create({
-  text: { gap: spacing.space2 },
+  text: { gap: spacing.space8 },
+  chips: { flexDirection: "row", flexWrap: "wrap", gap: spacing.space8 },
 });

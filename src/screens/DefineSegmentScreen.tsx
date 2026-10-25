@@ -1,9 +1,10 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
-import { StyleSheet, View } from "react-native";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { PanResponder, Pressable, StyleSheet, View, type LayoutChangeEvent } from "react-native";
 import { useNavigation, useRoute, type RouteProp } from "@react-navigation/native";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import type { BottomTabNavigationProp } from "@react-navigation/bottom-tabs";
 import * as Crypto from "expo-crypto";
+import { SEGMENT_PAGE_ENABLED } from "../plans/featureFlag";
 import { useDatabase } from "../db/DatabaseProvider";
 import { getRideTrack, type RideTrackPoint } from "../db/getRideTrack";
 import { insertSegment } from "../db/insertSegment";
@@ -11,28 +12,25 @@ import { runMatcherForSegment } from "../matcher/runMatcher";
 import { computeSegmentFingerprint } from "../segments/segmentFingerprint";
 import { resamplePolyline } from "../segments/resamplePolyline";
 import { computeCumulativeTrackDistance, nearestByDistance } from "../segments/cumulativeTrackDistance";
-import { clampRangeEnd, clampRangeStart } from "../segments/clampSegmentRange";
+import { nudgePin, placePin, xToDistance, zoomWindow, ZOOM_RETURN_MS, type EditMode } from "../segments/segmentEditView";
 import { nearestTrackPointByLatLng } from "../segments/nearestTrackPoint";
-import { computeVisibleDistanceRange } from "../segments/computeVisibleDistanceRange";
 import type { RidesStackParamList, RootTabParamList } from "../navigation/types";
 import {
   AppText,
   Button,
-  Card,
+  ScreenScroll,
   EmptyState,
   ErrorState,
   LoadingState,
   Notice,
-  ScreenScroll,
   SegmentedControl,
-  Section,
   TextField,
 } from "../theme/components";
 import { radius, spacing } from "../theme/spacing";
 import { useColors } from "../theme/useColors";
 import { formatDistanceMiles } from "./formatRideStats";
 import { RouteMapView } from "./RouteMapView";
-import { DistanceRangeScrubber } from "./DistanceRangeScrubber";
+import { Icon } from "../theme/Icon";
 import { RideElevationChart, type RideElevationChartRange } from "./RideElevationChart";
 
 /** Fixed per docs/MVP.md's "Segment definition" contract -- not yet user-configurable. */
@@ -60,13 +58,16 @@ export function DefineSegmentScreen() {
   const [startDistanceMeters, setStartDistanceMeters] = useState(0);
   const [endDistanceMeters, setEndDistanceMeters] = useState<number | undefined>(undefined);
   const [saving, setSaving] = useState(false);
-  // Which pin the next map tap moves (issue #58) -- tapping a pin also selects it. Shown as
-  // "Start"/"Finish" tabs at the top of the screen; only the active tab's pin responds to a
-  // map tap.
-  const [activeHandle, setActiveHandle] = useState<"start" | "end">("start");
-  // Zooms RideElevationChart to match the map's own zoom -- undefined (full ride) until the
-  // user pans/zooms the map at least once.
-  const [visibleRange, setVisibleRange] = useState<RideElevationChartRange | undefined>(undefined);
+  // Start and Finish are modes: only the open mode shows its distance and arrows, and a map tap or an
+  // elevation touch moves that mode's pin. The other mode folds to one line.
+  const [activeHandle, setActiveHandle] = useState<EditMode>("start");
+  // While the rider drags or steps a pin the elevation chart zooms to it; three seconds after the last touch it
+  // returns to the whole ride.
+  const [zoomCenterMeters, setZoomCenterMeters] = useState<number | undefined>(undefined);
+  const zoomTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+  // Bumped by the locate button so the map recentres on the open pin.
+  const [recenterSignal, setRecenterSignal] = useState(0);
+  const [chartWidth, setChartWidth] = useState(0);
 
   const loadTrack = useCallback(() => {
     try {
@@ -96,29 +97,40 @@ export function DefineSegmentScreen() {
       ? { startPointIndex: startPoint.pointIndex, endPointIndex: endPoint.pointIndex }
       : undefined;
 
-  function handleRangeChange(range: { startDistanceMeters: number; endDistanceMeters: number }) {
+  useEffect(() => () => clearTimeout(zoomTimer.current), []);
+
+  function applyRange(range: { startDistanceMeters: number; endDistanceMeters: number }, mode: EditMode) {
     setStartDistanceMeters(range.startDistanceMeters);
     setEndDistanceMeters(range.endDistanceMeters);
+    setZoomCenterMeters(mode === "start" ? range.startDistanceMeters : range.endDistanceMeters);
+    clearTimeout(zoomTimer.current);
+    zoomTimer.current = setTimeout(() => setZoomCenterMeters(undefined), ZOOM_RETURN_MS);
   }
 
-  function handleViewportChange(bounds: { west: number; south: number; east: number; north: number }) {
-    const range = computeVisibleDistanceRange(distanceIndexed, bounds);
-    // Panned away from the route entirely -- keep whatever range the chart last showed
-    // rather than collapsing it to nothing.
-    if (range !== undefined) {
-      setVisibleRange({ startDistanceMeters: range.minDistanceMeters, endDistanceMeters: range.maxDistanceMeters });
-    }
-  }
+  const currentRange = { startDistanceMeters, endDistanceMeters: resolvedEndDistanceMeters };
+  const zoomed = zoomCenterMeters === undefined ? undefined : zoomWindow(zoomCenterMeters, totalDistanceMeters);
+  const chartDomain = zoomed ?? { startDistanceMeters: 0, endDistanceMeters: totalDistanceMeters };
 
   function handleMapTap(latLng: { lat: number; lng: number }) {
     const nearest = nearestTrackPointByLatLng(distanceIndexed, latLng);
     if (nearest === undefined) return;
-    if (activeHandle === "start") {
-      setStartDistanceMeters(clampRangeStart(nearest.distanceMeters, resolvedEndDistanceMeters));
-    } else {
-      setEndDistanceMeters(clampRangeEnd(nearest.distanceMeters, startDistanceMeters, totalDistanceMeters));
-    }
+    applyRange(placePin(activeHandle, nearest.distanceMeters, currentRange, totalDistanceMeters), activeHandle);
   }
+
+  // Touching or dragging the elevation chart puts the open pin under the finger.
+  const chartPan = PanResponder.create({
+    onStartShouldSetPanResponder: () => true,
+    onMoveShouldSetPanResponder: () => true,
+    onPanResponderGrant: (event) => touchChart(event.nativeEvent.locationX),
+    onPanResponderMove: (event) => touchChart(event.nativeEvent.locationX),
+  });
+  const touchChartRef = useRef<(x: number) => void>(() => {});
+  function touchChart(x: number) {
+    touchChartRef.current(x);
+  }
+  touchChartRef.current = (x: number) => {
+    applyRange(placePin(activeHandle, xToDistance(x, chartWidth, chartDomain), currentRange, totalDistanceMeters), activeHandle);
+  };
 
   async function handleSave() {
     setSaveError(undefined);
@@ -165,7 +177,7 @@ export function DefineSegmentScreen() {
       navigation.popToTop();
       navigation
         .getParent<BottomTabNavigationProp<RootTabParamList>>()
-        ?.navigate("SegmentsTab", { screen: "SegmentDetail", initial: false, params: { segmentId } });
+        ?.navigate("SegmentsTab", { screen: SEGMENT_PAGE_ENABLED ? "SegmentPage" : "SegmentDetail", initial: false, params: { segmentId } });
     } catch (error) {
       setSaveError(`GritMap couldn't save this segment. ${error instanceof Error ? error.message : String(error)}`);
     } finally {
@@ -194,19 +206,38 @@ export function DefineSegmentScreen() {
   }
 
   const selectedLengthMeters = resolvedEndDistanceMeters - startDistanceMeters;
-  const handleLabel = activeHandle === "start" ? "Start" : "Finish";
+  const miles = (meters: number) => formatDistanceMiles(meters);
 
   return (
-    <ScreenScroll>
-      <Card>
-        <AppText variant="headline">Pick the part of this ride to track</AppText>
-        <AppText variant="subheadline" color="textSecondary">
-          A segment is a stretch of road you want to ride again, like one climb. Choose where it starts and where it finishes.
-          GritMap then looks for it in all your rides and keeps your times.
-        </AppText>
-      </Card>
+    <ScreenScroll padded={false}>
+      <View style={[styles.mapContainer, { backgroundColor: palette.surface }]}>
+        <RouteMapView
+          points={track}
+          highlightRange={highlightRange}
+          recenterSignal={recenterSignal}
+          editableRange={
+            startPoint !== undefined && endPoint !== undefined
+              ? {
+                  startLatLng: startPoint,
+                  endLatLng: endPoint,
+                  activeHandle,
+                  onSelectHandle: setActiveHandle,
+                  onMapTap: handleMapTap,
+                }
+              : undefined
+          }
+        />
+        <Pressable
+          onPress={() => setRecenterSignal((n) => n + 1)}
+          accessibilityRole="button"
+          accessibilityLabel={`Centre the map on the ${activeHandle === "start" ? "start" : "finish"}`}
+          style={[styles.locate, { backgroundColor: palette.surface, borderColor: palette.border }]}
+        >
+          <Icon name="mapPin" color="ctaText" size={22} />
+        </Pressable>
+      </View>
 
-      <Section title="1. Choose the Start or the Finish">
+      <View style={styles.panel}>
         <SegmentedControl
           accessibilityLabel="Which end of the segment to move"
           options={[
@@ -216,53 +247,40 @@ export function DefineSegmentScreen() {
           value={activeHandle}
           onChange={setActiveHandle}
         />
-      </Section>
 
-      <Section
-        title="2. Tap the map"
-        description={`Tap the route on the map to put the ${handleLabel.toLowerCase()} there. You can pinch to zoom in first.`}
-      >
         <View
-          style={[styles.mapContainer, { backgroundColor: palette.surface, borderColor: palette.border }]}
+          style={styles.chartBox}
+          onLayout={(event: LayoutChangeEvent) => setChartWidth(event.nativeEvent.layout.width)}
+          {...chartPan.panHandlers}
+          accessible={false}
         >
-          <RouteMapView
-            points={track}
-            highlightRange={highlightRange}
-            editableRange={
-              startPoint !== undefined && endPoint !== undefined
-                ? {
-                    startLatLng: startPoint,
-                    endLatLng: endPoint,
-                    activeHandle,
-                    onSelectHandle: setActiveHandle,
-                    onMapTap: handleMapTap,
-                  }
-                : undefined
-            }
-            onViewportChange={handleViewportChange}
-          />
+          <RideElevationChart points={distanceIndexed} selectedRange={currentRange} visibleRange={zoomed} />
         </View>
-        <RideElevationChart
-          points={distanceIndexed}
-          selectedRange={{ startDistanceMeters, endDistanceMeters: resolvedEndDistanceMeters }}
-          visibleRange={visibleRange}
-        />
-      </Section>
 
-      <Section title="Or drag the handles" description="Fine-tune the start and finish. The highlighted part of the chart is your segment.">
-        <DistanceRangeScrubber
-          totalDistanceMeters={totalDistanceMeters}
-          startDistanceMeters={startDistanceMeters}
-          endDistanceMeters={resolvedEndDistanceMeters}
-          onChange={handleRangeChange}
-          elevationAtDistance={(distanceMeters) => nearestByDistance(distanceIndexed, distanceMeters)?.elevationMeters}
-        />
-        <AppText variant="subheadline" accessibilityLiveRegion="polite">
+        {activeHandle === "start" ? (
+          <PinRow
+            label="Start"
+            valueLabel={miles(startDistanceMeters)}
+            showArrows
+            onNudge={(direction) => applyRange(nudgePin("start", direction, currentRange, totalDistanceMeters), "start")}
+          />
+        ) : (
+          <PinRow label="Start" valueLabel={miles(startDistanceMeters)} onOpen={() => setActiveHandle("start")} />
+        )}
+        {activeHandle === "end" ? (
+          <PinRow
+            label="Finish"
+            valueLabel={miles(resolvedEndDistanceMeters)}
+            showArrows
+            onNudge={(direction) => applyRange(nudgePin("end", direction, currentRange, totalDistanceMeters), "end")}
+          />
+        ) : (
+          <PinRow label="Finish" valueLabel={miles(resolvedEndDistanceMeters)} onOpen={() => setActiveHandle("end")} />
+        )}
+        <AppText variant="subheadline" color="textSecondary" accessibilityLiveRegion="polite">
           Segment length: {formatDistanceMiles(selectedLengthMeters)}
         </AppText>
-      </Section>
 
-      <Section title="3. Name it and save">
         <TextField
           label="Segment name"
           value={name}
@@ -271,7 +289,6 @@ export function DefineSegmentScreen() {
             setNameError(undefined);
           }}
           placeholder="For example, Northgate climb"
-          hint="Pick something you will recognise in your list."
           autoCapitalize="words"
           autoCorrect
           returnKeyType="done"
@@ -283,16 +300,64 @@ export function DefineSegmentScreen() {
           </Notice>
         )}
         <Button label="Save segment" onPress={handleSave} loading={saving} />
-      </Section>
+      </View>
     </ScreenScroll>
   );
 }
 
+/**
+ * One end of the segment on one line. The open one shows its distance with earlier / later arrows; the other
+ * folds to a single tappable line with no arrows.
+ */
+function PinRow({
+  label,
+  valueLabel,
+  showArrows = false,
+  onNudge,
+  onOpen,
+}: {
+  label: string;
+  valueLabel: string;
+  showArrows?: boolean;
+  onNudge?: (direction: -1 | 1) => void;
+  onOpen?: () => void;
+}) {
+  const palette = useColors();
+  const content = (
+    <View style={[styles.pinRow, { borderColor: showArrows ? palette.ctaText : palette.border, backgroundColor: palette.surface }]}>
+      <AppText variant={showArrows ? "headline" : "subheadline"} style={styles.pinLabel}>
+        {label}
+      </AppText>
+      <AppText variant={showArrows ? "headline" : "subheadline"} color={showArrows ? "textPrimary" : "textSecondary"}>
+        {valueLabel}
+      </AppText>
+      {showArrows ? (
+        <View style={styles.arrows}>
+          <Pressable onPress={() => onNudge?.(-1)} accessibilityRole="button" accessibilityLabel={`Move ${label.toLowerCase()} earlier`} style={styles.arrow}>
+            <Icon name="chevronLeft" color="ctaText" size={22} />
+          </Pressable>
+          <Pressable onPress={() => onNudge?.(1)} accessibilityRole="button" accessibilityLabel={`Move ${label.toLowerCase()} later`} style={styles.arrow}>
+            <Icon name="chevronRight" color="ctaText" size={22} />
+          </Pressable>
+        </View>
+      ) : null}
+    </View>
+  );
+  if (showArrows || onOpen === undefined) return content;
+  return (
+    <Pressable onPress={onOpen} accessibilityRole="button" accessibilityLabel={`${label} at ${valueLabel}. Edit ${label.toLowerCase()}.`}>
+      {content}
+    </Pressable>
+  );
+}
+
 const styles = StyleSheet.create({
-  mapContainer: {
-    height: 260,
-    borderRadius: radius.lg,
-    borderWidth: 1,
-    overflow: "hidden",
-  },
+  mapContainer: { height: 340 },
+  locate: { position: "absolute", top: spacing.space12, right: spacing.space12, width: 44, height: 44, borderRadius: 22, borderWidth: 1, alignItems: "center", justifyContent: "center" },
+  panel: { padding: spacing.space16, gap: spacing.space12 },
+  chartBox: { minHeight: 140 },
+  pinRow: { flexDirection: "row", alignItems: "center", gap: spacing.space12, minHeight: 44, borderWidth: 1, borderRadius: radius.md, paddingHorizontal: spacing.space12 },
+  pinLabel: { flex: 1 },
+  arrows: { flexDirection: "row" },
+  arrow: { width: 44, height: 44, alignItems: "center", justifyContent: "center" },
 });

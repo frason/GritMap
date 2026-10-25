@@ -21,6 +21,8 @@ export interface RouteMapViewProps {
   editableRange?: EditableSegmentRange;
   /** Fires with the map's visible lat/lng bounds once a pan/zoom settles -- lets a caller (e.g. an elevation chart) zoom in sync with the map. Not called on every live drag tick, only once the gesture settles, via onRegionDidChange. */
   onViewportChange?: (bounds: { west: number; south: number; east: number; north: number }) => void;
+  /** Each time this number changes, the camera eases back to the active pin (the "locate" button). */
+  recenterSignal?: number;
 }
 
 export interface EditableSegmentRange {
@@ -64,7 +66,7 @@ const MAX_MAP_REBUILDS = 2;
  */
 const EDIT_ZOOM_LEVEL = 17;
 
-export function RouteMapView({ points, highlightRange, editableRange, onViewportChange }: RouteMapViewProps) {
+export function RouteMapView({ points, highlightRange, editableRange, onViewportChange, recenterSignal }: RouteMapViewProps) {
   const mapRef = useRef<MapRef>(null);
   const cameraRef = useRef<CameraRef>(null);
   // Bumped on every onRegionDidChange (settled) and, throttled, on onRegionIsChanging (live
@@ -126,6 +128,13 @@ export function RouteMapView({ points, highlightRange, editableRange, onViewport
     editableRange?.endLatLng.lat,
     editableRange?.endLatLng.lng,
   ]);
+
+  const firstRecenterSignalRef = useRef(recenterSignal);
+  useEffect(() => {
+    if (editableRange === undefined || recenterSignal === firstRecenterSignalRef.current) return;
+    const target = editableRange.activeHandle === "start" ? editableRange.startLatLng : editableRange.endLatLng;
+    cameraRef.current?.easeTo({ center: [target.lng, target.lat], zoom: EDIT_ZOOM_LEVEL, duration: 350 });
+  }, [recenterSignal]);
 
   const bounds = points.length === 0 ? undefined : computeBounds(points);
   const boundsKey = bounds === undefined ? "" : bounds.join(",");
