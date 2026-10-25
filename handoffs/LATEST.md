@@ -1,3 +1,40 @@
+# Handoff: redesign build, step (a) tokens (2026-10-24)
+
+## Step (f) part 2: create-segment modes, Open Segments, first-run checklist — 2026-10-24
+- Create segment (`DefineSegmentScreen.tsx`, pure `src/segments/segmentEditView.ts` + test): Start/Finish are modes; open mode shows distance + earlier/later arrows, the other folds to one line; elevation chart zooms around the open pin while touched/dragged/stepped and returns to the whole ride after 3 s (`ZOOM_RETURN_MS`); touching the chart places the pin; locate button recentres the map on the open pin (`recenterSignal` prop on `RouteMapView` native/web). Save logic unchanged; after save opens SegmentPage when the flag is on. The old drag-handle scrubber is no longer on this screen (arrows + chart touch replace it).
+- Open Segments (`RegistryBrowseScreen.tsx`): search by name (`src/registry/filterByName.ts` + test), chips for distance/climb, "In your segments" chip, opens SegmentPage.
+- First-run (`src/onboarding/SetupChecklist.tsx`, `setupSteps.ts` + test): Home shows "GritMap needs: …" (from `WHAT_YOU_NEED` in onboardingCopy.ts, imported not copied) and four steps (FTP, add segment, import ride, send to Karoo) until the rider has a segment and a ride. `OnboardingFlow.tsx`, `onboardingCopy.ts`, Send screens NOT touched.
+- Verified: typecheck clean; `npm test` 900 tests, 0 fail (24 skipped); iOS bundle exports. No simulator check.
+- Rebase onto build8b NOT done (needs a commit; Jason has not asked for commits). Files changed on both sides: `src/screens/RideDetailScreen.tsx`, `src/theme/icons.ts`, `handoffs/LATEST.md`. Expect conflicts there.
+- Still open: Settings gear screen restyle, dark default flip (`DEFAULT_APPEARANCE`), device checks (Dynamic Type, VoiceOver, 44 pt), AI button.
+
+## Step (f) part 1: ride results and compare — 2026-10-24
+- Rides tab: map cards (`RideMapCard`) with sent-segment chips and Personal best; shared `src/plans/loadRideHighlights.ts` (Home uses it too).
+- Ride page: full-screen map with `BottomSheet` (`src/theme/components/BottomSheet.tsx`, pure stops/snap in `sheetSnap.ts` + tests): peek / half / full, opens half, drag the handle or VoiceOver increment/decrement, content scrolls at full only. Same data and actions as before (Segments found, Create a segment).
+- Compare efforts: chart-first order (headline, time gap, power/HR/elevation, then zones), shorter descriptions; Efforts tab on the segment page has "Compare your two best efforts".
+- Token added: `radius.xl = 24` (add `radius/xl` in Figma).
+- Verified: typecheck clean; `npm test` 888 tests, 0 fail (24 skipped); iOS bundle exports. No simulator check; sheet drag behaviour untested on device.
+- NOT done in (f): create-segment modes, Open Segments redesign, onboarding (build 8 owns those screens; coordinate first). Uncommitted, not pushed.
+
+## Step (e): Karoo marks, Segments cards, Home — 2026-10-24
+- New: `src/db/listPlanSendMarks.ts` (+test; latest send per segment from `plan_sends`, read-only), `src/plans/karooMarks.ts` (`karooMark`, `rideHighlights`; +test), `segmentCardView.ts` (+test), `loadSegmentCards.ts`, `SegmentCard.tsx`, `RideMapCard.tsx`.
+- Marks say "Last sent <date>" or "Older plan on Karoo" (FTP changed, or a plan imported after the send). Never "On Karoo": the phone cannot see the Karoo yet.
+- Edited: `SegmentListScreen.tsx` (cards with plan strip + mark), `HomeScreen.tsx` (last ride map card, "Sent from this phone" cards above the existing goal card; "Recent rides" list removed, the Rides tab has them), `RidePreviewThumbnail.tsx` (width/height/stroke options, themed stroke). Home change touches build-8-adjacent file: tell coordinator.
+- Not done: drawing sent segments on the ride map itself (needs attempt point indexes mapped to the decimated preview). Ride card shows chips + Personal best instead.
+- Verified: typecheck clean; `npm test` 883 tests, 0 fail (24 skipped); iOS bundle exports. No simulator check yet.
+- Uncommitted, not pushed.
+
+## Step (d): plans first-class (Plan tab on a new segment page) — 2026-10-24
+- New pure: `src/plans/planView.ts`, `planScreenModel.ts` (one place deciding what the Plan view shows; same rules as the existing segment screen/send), `goalDraft.ts`, `loadPlanInput.ts` (DB reads); tests: `planView.test.ts`, `planScreenModel.test.ts`, `goalDraft.test.ts`.
+- New UI: `src/plans/PlanTab.tsx`, `src/screens/SegmentPageScreen.tsx` (map, stats, Plan/Efforts/Course tabs), `src/theme/components/UnderlineTabs.tsx`.
+- Edited: `ElevationProfileChart.tsx` (intensity tokens, scroll cue chevron), `SegmentsStackNavigator.tsx` + `types.ts` (new `SegmentPage` route), `SegmentListScreen.tsx` (routes via `SEGMENT_PAGE_ENABLED` in `src/plans/featureFlag.ts`; set false to get the old screen back).
+- Send uses the existing `SendToKaroo` screen; existing `SegmentDetailScreen` untouched. Efforts/Course tabs are minimal placeholders until step (f).
+- Verified: typecheck clean; `npm test` 876 tests, 0 fail (24 skipped); `expo export --platform ios` bundles. Not checked on simulator/device; Dynamic Type/VoiceOver on new screen still to check.
+- Figma: plans-list sketch node 181:2358 on "GritMap Redesign Options". Decision for Jason: add a Plans list or keep plans per segment.
+- Uncommitted. Not pushed.
+
+Jason chose Option B2 (Home, Rides, Segments tabs). Branch `claude/redesign-foundation` (from `origin/main` 27e452f, nothing committed or pushed): new colour primitives and v2 light/dark tokens, spacing and type additions, appearance provider (default still light), design-system doc. Pure UI. Typecheck clean, 815 tests pass. Waiting for Jason's review before step (b) shared components. Details: `handoffs/archive/2026-10-24-0035-claude-redesign-options.md`.
+
 # Coordinator: DESIGN NOTE request for Codex (2026-10-24, Jason approved): Karoo inventory for an "On Karoo" mark
 
 Jason wants the phone to show **"On Karoo"** next to a segment (and, if cheap, the plan version the Karoo holds and whether it is older than the phone's). Today the phone only knows what it SENT
