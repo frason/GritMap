@@ -1,3 +1,13 @@
+# Coordinator: NEXT TASK for Codex (2026-10-26, Jason: this is the priority): make the new pacing reach the Karoo
+
+The public 0.10.45/73 release is done; the replanner (1650b79) is built but off and has never run on a real ride. Work in your own worktree, own branch, explicit paths, no force-push, push your commits.
+1. Receiver capability gating: the Karoo must advertise (in the BLE v2 capability/handshake and the Wi-Fi path) that it accepts the optional plan ceilings and `segmentRecord`; the phone sends them only when advertised.
+   Old Karoo versions must keep working unchanged (installed 70 rejected the new extension).
+2. Parser + storage for `docs/PLAN_CEILINGS_CONTRACT.md` fields, and the shared synthetic fixtures the phone session can test against (committed under fixtures/, no personal data). Tell the phone side the exact field names.
+3. Replay validation of the replanner on an anonymous/synthetic copy of the Junction Function and Diablo shape (do NOT commit real GPS/ride data): no target above ceiling, 20 W step limit, deficit redistribution, ahead = no early spend, unreachable goal shows best finish.
+4. Then a flag-on diagnostic build for ONE supervised on-bike test, presented to Jason for an exact install approval. Do not enable the flags in any public release without Jason's approval.
+Sequence: this first, then plan-free Bluetooth + PR timing, then the "On Karoo" inventory design note. Report back in handoffs/LATEST.md.
+
 # Coordinator: PHONE TASK queued, FIT file in the iOS share sheet (2026-10-26, Jason approved, AFTER build 8)
 
 Jason wants GritMap to appear in the iOS share sheet / "Open in..." when he shares a .fit file. Today only the Import screen file picker (expo-document-picker) works; app.json declares no document types.
