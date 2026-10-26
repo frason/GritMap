@@ -308,13 +308,14 @@ describe("kill switch, older-Karoo hint and base64", () => {
     assert.equal(shouldHintOlderKaroo({ phase: "timedOut" }, 60_000), false);
   });
 
-  it("offers the Wi-Fi route when Bluetooth is waiting, timed out, unsent, unavailable or failed, but not during a good transfer", () => {
+  it("offers the Wi-Fi route from the start and whenever Bluetooth is waiting, timed out, unsent, unavailable or failed, but not during a good transfer", () => {
     for (const phase of ["advertising", "timedOut", "sentUnconfirmed", "stopped", "poweredOff", "unauthorized", "unsupported", "error"] as const) {
       assert.equal(offersWifiFallback({ phase } as never), true, phase);
     }
     assert.equal(offersWifiFallback({ phase: "unavailable", reason: "noPlan" }), true);
     assert.equal(offersWifiFallback({ phase: "rejected", code: "bad_hash" }), true);
-    for (const phase of ["idle", "preparing", "connected", "imported"] as const) assert.equal(offersWifiFallback({ phase } as never), false, phase);
+    assert.equal(offersWifiFallback({ phase: "idle" }), true, "offered from the start, inside the Bluetooth card");
+    for (const phase of ["preparing", "connected", "imported"] as const) assert.equal(offersWifiFallback({ phase } as never), false, phase);
     assert.equal(offersWifiFallback({ phase: "sending", resource: "plan", served: 1, total: 2, planDone: false }), false);
   });
 

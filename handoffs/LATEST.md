@@ -1,3 +1,33 @@
+# Coordinator: NEXT TASK for Codex (2026-10-26, Jason: this is the priority): make the new pacing reach the Karoo
+
+The public 0.10.45/73 release is done; the replanner (1650b79) is built but off and has never run on a real ride. Work in your own worktree, own branch, explicit paths, no force-push, push your commits.
+1. Receiver capability gating: the Karoo must advertise (in the BLE v2 capability/handshake and the Wi-Fi path) that it accepts the optional plan ceilings and `segmentRecord`; the phone sends them only when advertised.
+   Old Karoo versions must keep working unchanged (installed 70 rejected the new extension).
+2. Parser + storage for `docs/PLAN_CEILINGS_CONTRACT.md` fields, and the shared synthetic fixtures the phone session can test against (committed under fixtures/, no personal data). Tell the phone side the exact field names.
+3. Replay validation of the replanner on an anonymous/synthetic copy of the Junction Function and Diablo shape (do NOT commit real GPS/ride data): no target above ceiling, 20 W step limit, deficit redistribution, ahead = no early spend, unreachable goal shows best finish.
+4. Then a flag-on diagnostic build for ONE supervised on-bike test, presented to Jason for an exact install approval. Do not enable the flags in any public release without Jason's approval.
+Sequence: this first, then plan-free Bluetooth + PR timing, then the "On Karoo" inventory design note. Report back in handoffs/LATEST.md.
+
+# Coordinator: PHONE TASK queued, FIT file in the iOS share sheet (2026-10-26, Jason approved, AFTER build 8)
+
+Jason wants GritMap to appear in the iOS share sheet / "Open in..." when he shares a .fit file. Today only the Import screen file picker (expo-document-picker) works; app.json declares no document types.
+Do it as option 1: declare a .fit document type (CFBundleDocumentTypes + an imported UTI, via app.json ios.infoPlist), handle the incoming file URL (Linking initial/event URL) and route it into the existing FIT import
+path, with a test. No Share Extension target. Needs a native build, so it cannot be an OTA update. NOT in build 8; branch from main after build 8 ships. Check that it fits docs/GOALS.md priorities and the redesign Import screen.
+
+# Coordinator: DESIGN NOTE request for Codex (2026-10-24, Jason approved): Karoo inventory for an "On Karoo" mark
+
+Jason wants the phone to show **"On Karoo"** next to a segment (and, if cheap, the plan version the Karoo holds and whether it is older than the phone's). Today the phone only knows what it SENT
+(`plan_sends` and Bluetooth receipts), not what the Karoo HAS. Write a short DESIGN NOTE only, no implementation: a read-only inventory the phone can request over the existing Bluetooth link
+(or another safe route): per segment fingerprint, whether present, plan fingerprint/version/FTP, installed time. Cover size (hundreds of segments), privacy (nothing new off-device; no encryption in
+BLE v2, so keep it to fingerprints and versions, no names/GPS if possible), the Bluetooth roles (the phone is the peripheral today; the Karoo the central: who requests?), deletion on the Karoo,
+and fixtures for both sides. This is lower priority than the Bluetooth hardening and the PR/plan-free work; say where you would sequence it. Do not change the BLE contract yet.
+
+# Coordinator: NEEDLE moved to the backlog (2026-10-24, Jason decided)
+
+Jason heard Needle may not work well on the Karoo and could drain the battery. **Stop all Needle work** (no artifact selection, no benchmark, no advisory integration). Keep the existing code
+and `docs/NEEDLE_READINESS.md` as they are; the deterministic live replanner does not depend on it. docs/GOALS.md updated. In-app AI is now being considered for the PHONE app instead
+(priority 9, later phase, needs a design note first): do not start anything on the Karoo for it.
+
 # Public beta73 Companion installation CONFIRMED; release validation complete (2026-10-24)
 
 Jason confirmed **Installed; segments retained** after the public stable-link Share Link > Hammerhead update/version check. Final Companion route validated by owner; ADB unavailable afterward, so no fresh independent package/timestamp/hash claim. Public **0.10.45-bluetooth-beta/code73**, tagkaroo-beta-0.10.45, source0e95e84, public SHA25673aa7e2f497243b4022f3012edb20eda6fe53cbbea5cf9a822350d11ac36ca69 and reviewed signature/checksum/stable URL remain verified.
@@ -107,6 +137,7 @@ Installed71 unchanged; phone internal build5 reported. H10 Enhanced connected/ca
 Jason approved exact candidate install. **0.10.45-bluetooth-beta / code71 is now installed** via adb install-r; version verified and app launch passes. SHA256 `d6b6e87e13f7aa73644badeb1bed1a9ec4e5802d2eb2e104342a12304ae0977a` rechecked before install. Original install timestamp retained; no uninstall/clear-data. No source change after250-test/lint/signed-build QA. Phone checkout untouched.
 
 **Next:** H10 RR coexistence and deliberate disconnect/resume gates with Jason; awaiting H10/phone readiness. Neither test has run on71. **No tagging or publication approved/performed.** Details: `handoffs/archive/2026-10-23-1415-codex-bluetooth-beta71-installed.md`. Earlier install-pending status below is superseded.
+
 
 # Coordinator: RELEASE DECISIONS for Codex (2026-10-24, Jason approved)
 

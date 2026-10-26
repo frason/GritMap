@@ -17,7 +17,7 @@ fallback. Nothing here uploads anything.
 
 ## Turning the option on (and off)
 
-From build 8 Bluetooth is the main way to send and is on in every build. The Send to Karoo screen leads with it; the Wi-Fi route sits below as
+From build 8 Bluetooth is the main way to send and is on in every build. The Karoo needs GritMap 0.10.45 (version code 73) or newer (tag `karoo-beta-0.10.45`; Karoo labels GritMap > Inbox > Receive from Phone for Bluetooth, Legacy Wi-Fi Receive for Wi-Fi). The Send to Karoo screen leads with it; the Wi-Fi route sits below as
 "Bluetooth not working? Use Wi-Fi". A hidden kill switch exists for field problems: set the device setting `ble_transfer_disabled` to `1` and the screen shows
 only the Wi-Fi route. The segment needs an FTP in the profile and a goal time (or an imported plan) so there is a plan to send; otherwise the Bluetooth card
 says so and the Wi-Fi route can send the segment alone.

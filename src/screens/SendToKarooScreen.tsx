@@ -4,8 +4,8 @@ import { useFocusEffect, useRoute, type RouteProp } from "@react-navigation/nati
 import { useDatabase } from "../db/DatabaseProvider";
 import { getSegmentDetail, type SegmentDetail } from "../db/getSegmentDetail";
 import type { SegmentsStackParamList } from "../navigation/types";
-import { KAROO_STEPS } from "../onboarding/onboardingCopy";
-import { AppText, Button, Card, ErrorState, LoadingState, ScreenScroll } from "../theme/components";
+import { KAROO_SEND_SCREEN_STEPS } from "../onboarding/onboardingCopy";
+import { AppText, Card, ErrorState, LoadingState, ScreenScroll } from "../theme/components";
 import { isBleTransferEnabled } from "../transfer/bleTransferSettings";
 import { BleSendSection } from "./BleSendSection";
 import { WifiSendSection } from "./WifiSendSection";
@@ -14,7 +14,7 @@ import { spacing } from "../theme/spacing";
 type SendToKarooRoute = RouteProp<SegmentsStackParamList, "SendToKaroo">;
 
 /**
- * Sends this segment and its pacing plan to the Karoo. Bluetooth leads: the steps, then the Bluetooth send. The Wi-Fi route (the
+ * Sends this segment and its pacing plan to the Karoo. Bluetooth leads: the Bluetooth send first, then the steps. The Wi-Fi route (the
  * original address-based send, which can also send the segment alone) sits below as "Bluetooth not working? Use Wi-Fi" and opens
  * from there or from the fallback button inside the Bluetooth card. The wording is the same as the first-run onboarding
  * (onboardingCopy.ts) so a rider reads one set of instructions everywhere.
@@ -62,9 +62,10 @@ export function SendToKarooScreen() {
 
       {bluetooth ? (
         <>
+          <BleSendSection segment={segment} onUseWifi={() => setShowWifi(true)} wifiOpen={showWifi} />
           <Card>
             <AppText variant="headline">How to send</AppText>
-            {KAROO_STEPS.map((item, index) => (
+            {KAROO_SEND_SCREEN_STEPS.map((item, index) => (
               <View key={item.title} style={styles.step} accessible accessibilityLabel={`Step ${index + 1}. ${item.title}. ${item.body}`}>
                 <AppText variant="subheadline" color="brand" style={styles.stepNumber}>
                   {index + 1}.
@@ -80,13 +81,9 @@ export function SendToKarooScreen() {
               </View>
             ))}
           </Card>
-          <BleSendSection segment={segment} onUseWifi={() => setShowWifi(true)} />
         </>
       ) : null}
 
-      {bluetooth && !showWifi ? (
-        <Button label="Bluetooth not working? Use Wi-Fi" variant="tertiary" fullWidth={false} onPress={() => setShowWifi(true)} />
-      ) : null}
       {!bluetooth || showWifi ? <WifiSendSection segment={segment} /> : null}
     </ScreenScroll>
   );

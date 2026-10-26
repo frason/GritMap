@@ -4,6 +4,9 @@
  * written alongside) cannot drift apart. Change a name here only together with the Karoo app.
  */
 export const KAROO_APP_NAME = "GritMap";
+/** The first public Karoo extension that can receive over Bluetooth (tag karoo-beta-0.10.45). Older ones need the Wi-Fi fallback. */
+export const KAROO_MIN_VERSION_NAME = "0.10.45";
+export const KAROO_MIN_VERSION_CODE = 73;
 /** The Karoo button (GritMap, Inbox) that opens the Bluetooth receiver. */
 export const KAROO_RECEIVE_SCREEN = "Receive from Phone";
 /** The button on a segment, on the phone, that sends the segment and its plan. */
@@ -76,14 +79,14 @@ export const WHAT_YOU_NEED = {
   body: "Pacing plans are power targets, so without a power meter GritMap can show your rides and segments but cannot pace or judge your effort.",
 } as const;
 
-/** Said next to FTP so the rider knows where the number comes from. */
-export const FTP_SOURCE_NOTE = "Your FTP is the number your power meter and recent rides point to.";
+/** The one short line under the FTP box in onboarding. */
+export const FTP_HINT_SHORT = "The most power you can hold for about an hour. Your power meter or a recent test will tell you.";
 
 /** Steps for the main way to send: Bluetooth, straight from the phone to the Karoo, no Wi-Fi or address needed. */
 export const KAROO_STEPS: readonly { title: string; body: string }[] = [
   {
-    title: `Update ${KAROO_APP_NAME} on your Karoo`,
-    body: `Follow the Karoo install guide you were sent. When it worked, ${KAROO_APP_NAME} appears in your Karoo's app list.`,
+    title: `Update ${KAROO_APP_NAME} on your Karoo to ${KAROO_MIN_VERSION_NAME} (version code ${KAROO_MIN_VERSION_CODE}) or newer`,
+    body: `Follow the Karoo install guide you were sent. Older versions cannot receive over Bluetooth; use the Wi-Fi steps below.`,
   },
   {
     title: `On the Karoo, open ${KAROO_APP_NAME}, then ${KAROO_INBOX}, then tap ${KAROO_RECEIVE_SCREEN}`,
@@ -93,11 +96,22 @@ export const KAROO_STEPS: readonly { title: string; body: string }[] = [
     title: `On your phone, open a segment and tap ${PHONE_SEND_BUTTON}`,
     body: "Then tap Start Bluetooth send and keep GritMap open and the phone near the Karoo. iOS asks for Bluetooth permission the first time.",
   },
+  // (The Send to Karoo screen shows these same steps with the third one reworded: see KAROO_SEND_SCREEN_STEPS.)
   {
     title: "Check the Karoo",
     body: `The phone says "Imported on your Karoo" once the Karoo confirms. If it only says "Sent; check your Karoo", open the Karoo's segment list.`,
   },
 ];
+
+/** The same steps for the Send to Karoo screen itself, where the rider is already on the screen the third step names. */
+export const KAROO_SEND_SCREEN_STEPS: readonly { title: string; body: string }[] = KAROO_STEPS.map((step, index) =>
+  index === 2
+    ? {
+        title: "On your phone, tap Start Bluetooth send",
+        body: "Keep GritMap open and the phone near the Karoo. iOS asks for Bluetooth permission the first time.",
+      }
+    : step,
+);
 
 /** What to do when Bluetooth does not work. The Wi-Fi route needs both devices on the same network. */
 export const WIFI_FALLBACK_STEPS: readonly { title: string; body: string }[] = [
@@ -110,14 +124,14 @@ export const WIFI_FALLBACK_STEPS: readonly { title: string; body: string }[] = [
     body: `Older ${KAROO_APP_NAME} versions call it ${KAROO_RECEIVE_SCREEN}. The Karoo shows an address like ${KAROO_ADDRESS_EXAMPLE}. It stops listening after ${KAROO_RECEIVE_WINDOW_MINUTES} minutes.`,
   },
   {
-    title: "Type that address in the box below and tap send",
-    body: "GritMap remembers the address after that.",
+    title: "Type that address in GritMap and tap send",
+    body: "Use the Karoo address box on the segment's Send to Karoo screen, under Bluetooth not working? Use Wi-Fi. GritMap remembers it after that.",
   },
 ];
 
 /** Why a rider might be waiting on a Karoo that cannot receive over Bluetooth (an older GritMap on the Karoo). */
 export const OLDER_KAROO_HINT =
-  `Still waiting. If your Karoo has an older ${KAROO_APP_NAME} version, it cannot receive over Bluetooth: update it, or send over Wi-Fi instead.`;
+  `Still waiting. Your Karoo needs ${KAROO_APP_NAME} ${KAROO_MIN_VERSION_NAME} (version code ${KAROO_MIN_VERSION_CODE}) or newer to receive over Bluetooth. Update it, or send over Wi-Fi instead.`;
 
 export const FTP_HELP =
   "FTP is the most power you can hold for about an hour. If you do not know yours, a recent power test or your bike computer's estimate is fine. You can change it later.";
