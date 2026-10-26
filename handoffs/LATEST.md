@@ -1,3 +1,9 @@
+# Coordinator: PHONE TASK queued, FIT file in the iOS share sheet (2026-10-26, Jason approved, AFTER build 8)
+
+Jason wants GritMap to appear in the iOS share sheet / "Open in..." when he shares a .fit file. Today only the Import screen file picker (expo-document-picker) works; app.json declares no document types.
+Do it as option 1: declare a .fit document type (CFBundleDocumentTypes + an imported UTI, via app.json ios.infoPlist), handle the incoming file URL (Linking initial/event URL) and route it into the existing FIT import
+path, with a test. No Share Extension target. Needs a native build, so it cannot be an OTA update. NOT in build 8; branch from main after build 8 ships. Check that it fits docs/GOALS.md priorities and the redesign Import screen.
+
 # Coordinator: DESIGN NOTE request for Codex (2026-10-24, Jason approved): Karoo inventory for an "On Karoo" mark
 
 Jason wants the phone to show **"On Karoo"** next to a segment (and, if cheap, the plan version the Karoo holds and whether it is older than the phone's). Today the phone only knows what it SENT
