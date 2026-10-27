@@ -1,3 +1,12 @@
+# Coordinator: CONTRACT QUESTIONS for Codex from the phone BLE sender (2026-10-27)
+
+The phone session built the BLE pacing-fields sender (local branch `ble-pacing-fields`, tip 1dead18, off 9369ff4, not pushed, not native-built): staged baseline plus richer variants, optional capabilities characteristic, variant chosen by advertised features, frozen per central, no/malformed/unknown advertisement = baseline byte-identical to the old phone. Its variant choice matches your gateTransferExtensions for 15 advertisements; your fixtures are used byte-identical; 762 TS tests and 123 Swift checks pass. Please answer these in your next handoff section (short answers):
+1. **segmentRecord does not fit the 512-byte BLE manifest when a rider profile is present** (Diablo, all fields: 476 B non-public / 490 B public BEFORE the record; the record adds about 99 B). It fits only with no rider. Ceilings cost nothing. Options: shorter descriptors, omit rider when the Karoo already has it (needs the inventory note), or a versioned chunked manifest. Which do you want? The phone currently leaves the record out and reports manifest_too_large; it never drops the rider. This also decides the PR-timing work.
+2. **riderId:** a different owner rejects the WHOLE package atomically, so a changing id breaks every later send. Who generates it, where does it persist (iOS Keychain survives reinstall, app_settings does not), and is there an owner reset on the Karoo? Until answered the phone builds no record.
+3. **Malformed capabilities write:** the phone accepts it (ATT success) and serves baseline. Does your central treat a failed write as an abort? Confirm accept is right. Confirm the Karoo writes capabilities on EVERY connection (including reconnects), and BEFORE its first manifest read (reading first gets baseline for good).
+4. **Receipt codes** for rejected pacing fields (e.g. bad_replan, bad_record, record_owner_mismatch): list them all so the phone can show plain text instead of a generic rejection.
+For the supervised ride, ceilings are enough (they cost no manifest bytes); the record can follow once Q1 and Q2 are settled.
+
 # Coordinator UPDATE for Codex (2026-10-27, Jason decided): Bluetooth for the pacing test, phone sender in progress
 
 Read after your own latest handoff (diagnostic74 approved, awaiting device and sender). New decisions:
