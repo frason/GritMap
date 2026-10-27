@@ -508,6 +508,29 @@ export const migrations: readonly Migration[] = [
         FROM athlete_profile WHERE id = 'singleton';
     `,
   },
+  {
+    version: 16,
+    name: "ride_name",
+    sql: `
+      -- The name a ride's file carried (a FIT session's sport profile name, or a GPX track name), shown as the ride
+      -- card title. Additive and nullable: NULL means "no name", and the app falls back to a title built from the
+      -- ride's date. Rides imported before this version are backfilled from the metadata already stored with them
+      -- (rides.fit_metadata_json), so nothing needs re-importing. Rolling back means restoring the pre-update
+      -- database file: an older app refuses a newer user_version rather than ignore the extra column.
+      ALTER TABLE rides ADD COLUMN name TEXT CHECK (name IS NULL OR length(name) > 0);
+
+      UPDATE rides SET name = CASE
+        WHEN NOT json_valid(fit_metadata_json) THEN NULL
+        ELSE COALESCE(
+          NULLIF(TRIM(CASE WHEN json_type(fit_metadata_json, '$.sessions[0].sportProfileName') = 'text'
+            THEN json_extract(fit_metadata_json, '$.sessions[0].sportProfileName') END), ''),
+          NULLIF(TRIM(CASE WHEN json_type(fit_metadata_json, '$.trackName') = 'text'
+            THEN json_extract(fit_metadata_json, '$.trackName') END), '')
+        )
+      END
+      WHERE name IS NULL AND fit_metadata_json IS NOT NULL;
+    `,
+  },
 ];
 
 export function configureDatabaseConnection(database: MigrationDatabase): void {

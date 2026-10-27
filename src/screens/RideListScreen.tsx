@@ -8,6 +8,8 @@ import { listRides, type RideSummary } from "../db/listRides";
 import type { RidesStackParamList } from "../navigation/types";
 import type { RideSegmentHighlight } from "../plans/karooMarks";
 import { loadRideHighlights } from "../plans/loadRideHighlights";
+import { loadRideSegmentLines } from "../plans/loadRideSegmentLines";
+import type { PreviewPoint } from "../plans/segmentListView";
 import { RideMapCard } from "../plans/RideMapCard";
 import { spacing } from "../theme/spacing";
 import { useColors } from "../theme/useColors";
@@ -15,7 +17,7 @@ import { EmptyState } from "../theme/components";
 
 type Navigation = NativeStackNavigationProp<RidesStackParamList>;
 
-type RideCard = { ride: RideSummary; highlights: RideSegmentHighlight[] };
+type RideCard = { ride: RideSummary; highlights: RideSegmentHighlight[]; segmentLines: PreviewPoint[][] };
 
 export function RideListScreen() {
   const database = useDatabase();
@@ -28,7 +30,7 @@ export function RideListScreen() {
   useFocusEffect(
     useCallback(() => {
       const sent = new Set(listPlanSendMarks(database).map((mark) => mark.segmentId));
-      setCards(listRides(database).map((ride) => ({ ride, highlights: loadRideHighlights(database, ride.rideId, sent) })));
+      setCards(listRides(database).map((ride) => ({ ride, highlights: loadRideHighlights(database, ride.rideId, sent), segmentLines: ride.segmentCount === 0 ? [] : loadRideSegmentLines(database, ride.rideId) })));
     }, [database]),
   );
 
@@ -52,7 +54,7 @@ export function RideListScreen() {
       data={cards}
       keyExtractor={(card) => card.ride.rideId}
       renderItem={({ item }) => (
-        <RideMapCard ride={item.ride} highlights={item.highlights} onPress={() => navigation.navigate("RideDetail", { rideId: item.ride.rideId })} />
+        <RideMapCard ride={item.ride} highlights={item.highlights} segmentLines={item.segmentLines} onPress={() => navigation.navigate("RideDetail", { rideId: item.ride.rideId })} />
       )}
     />
   );

@@ -19,6 +19,7 @@ import {
   formatDurationHoursMinutes,
   formatElevationFeet,
   formatRideDate,
+  rideTitle,
 } from "./formatRideStats";
 
 type DetailRoute = RouteProp<RidesStackParamList, "RideDetail">;
@@ -86,10 +87,10 @@ export function RideDetailScreen() {
       <BottomSheet label="Ride details. Swipe up or down to resize.">
         <View style={styles.heading}>
           <AppText variant="title2" accessibilityRole="header">
-            {ride.startTimestampMs !== undefined ? formatRideDate(ride.startTimestampMs) : "Ride"}
+            {rideTitle(ride)}
           </AppText>
           <AppText variant="subheadline" color="textSecondary">
-            {`${formatDistanceMiles(ride.totalDistanceMeters)} \u00b7 ${formatDurationHoursMinutes(ride.durationMs)}`}
+            {[ride.startTimestampMs === undefined ? undefined : formatRideDate(ride.startTimestampMs), `${formatDistanceMiles(ride.totalDistanceMeters)} \u00b7 ${formatDurationHoursMinutes(ride.durationMs)}`].filter((part) => part !== undefined).join(" \u00b7 ")}
           </AppText>
         </View>
 

@@ -1,3 +1,4 @@
+import { extractRideName } from "./rideName.ts";
 import { PARSER_VERSION, parseFitFile, type ParsedRide } from "../fit/parseFitFile.ts";
 import { GPX_PARSER_VERSION, looksLikeGpx, parseGpxFile } from "../gpx/parseGpxFile.ts";
 import type { RideIdentityDatabase } from "../db/getRideIdentity.ts";
@@ -70,6 +71,7 @@ export function importRideFile(
   };
   const match = findDuplicate(candidate, listRideIdentities(database));
 
+  const rideName = extractRideName(parsed.deviceMetadata);
   const persistParams: ImportedRideParams = {
     contentHash: input.contentHash,
     originalFilename: input.filename,
@@ -81,6 +83,7 @@ export function importRideFile(
     startTimestampMs: identity.startTimestampMs,
     durationMs: identity.durationMs,
     nowMs: input.nowMs,
+    ...(rideName !== undefined ? { name: rideName } : {}),
     ...(identity.deviceId !== undefined ? { deviceId: identity.deviceId } : {}),
     ...(identity.activityId !== undefined ? { activityId: identity.activityId } : {}),
     ...(parsed.originalTimezoneOffsetMinutes !== undefined

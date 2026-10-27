@@ -58,6 +58,21 @@ describe("listRides", () => {
     assert.deepEqual(withPreview?.previewPolyline, [{ lat: 37.0, lng: -122.0 }]);
     assert.ok(withoutPreview && !("previewPolyline" in withoutPreview));
   });
+
+  it("carries the ride name and ascent when present, and counts only effort that counts", () => {
+    using database = migratedDatabase();
+    insertRide(database, "ride-a", "file-a", { startTimestampMs: 1_000 });
+    database.prepare("UPDATE rides SET name = 'Road', total_ascent_meters = 320 WHERE id = 'ride-a'").run();
+    insertRide(database, "ride-b", "file-b", { startTimestampMs: 2_000 });
+
+    const rides = listRides(database);
+    const a = rides.find((r) => r.rideId === "ride-a");
+    const b = rides.find((r) => r.rideId === "ride-b");
+    assert.equal(a?.name, "Road");
+    assert.equal(a?.totalAscentMeters, 320);
+    assert.equal(a?.segmentCount, 0);
+    assert.ok(b && !("name" in b) && !("totalAscentMeters" in b));
+  });
 });
 
 function migratedDatabase(): DatabaseSync {

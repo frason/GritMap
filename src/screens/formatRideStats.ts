@@ -52,3 +52,21 @@ export function formatSpeedMph(metersPerSecond?: number): string {
   const SECONDS_PER_HOUR = 3_600;
   return `${((metersPerSecond * SECONDS_PER_HOUR) / METERS_PER_MILE).toFixed(1)} mph`;
 }
+
+/**
+ * "Sat morning ride": the title for a ride whose file carried no name, built from when it started (the phone's
+ * local time). Morning is before noon, afternoon before 5pm, evening before 9pm, otherwise night.
+ */
+export function fallbackRideTitle(startMs: number): string {
+  const date = new Date(startMs);
+  const weekday = date.toLocaleDateString(undefined, { weekday: "short" });
+  const hour = date.getHours();
+  const part = hour < 12 ? "morning" : hour < 17 ? "afternoon" : hour < 21 ? "evening" : "night";
+  return `${weekday} ${part} ride`;
+}
+
+/** What a ride is called on its card and detail page: its own name, else the date-built title, else "Ride". */
+export function rideTitle(ride: { name?: string; startTimestampMs?: number }): string {
+  if (ride.name !== undefined) return ride.name;
+  return ride.startTimestampMs === undefined ? "Ride" : fallbackRideTitle(ride.startTimestampMs);
+}

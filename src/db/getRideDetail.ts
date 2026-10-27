@@ -7,6 +7,7 @@ export interface GetRideDetailDatabase {
 export interface RideDetail {
   rideId: string;
   originalFilename: string;
+  name?: string;
   startTimestampMs?: number;
   durationMs?: number;
   totalDistanceMeters?: number;
@@ -17,6 +18,7 @@ export interface RideDetail {
 interface StoredRideDetail {
   ride_id: string;
   original_filename: string;
+  name: string | null;
   start_timestamp_ms: number | null;
   duration_ms: number | null;
   total_distance_meters: number | null;
@@ -37,6 +39,7 @@ export function getRideDetail(
       `SELECT
         rides.id AS ride_id,
         imported_files.original_filename AS original_filename,
+        rides.name,
         rides.start_timestamp_ms,
         rides.duration_ms,
         rides.total_distance_meters,
@@ -56,6 +59,7 @@ export function getRideDetail(
     rideId: row.ride_id,
     originalFilename: row.original_filename,
     pointCount: row.point_count,
+    ...(row.name === null ? {} : { name: row.name }),
     ...(row.start_timestamp_ms === null ? {} : { startTimestampMs: row.start_timestamp_ms }),
     ...(row.duration_ms === null ? {} : { durationMs: row.duration_ms }),
     ...(row.total_distance_meters === null

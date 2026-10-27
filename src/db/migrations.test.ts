@@ -24,7 +24,7 @@ describe("SQLite migrations", () => {
       .map((row) => String(row.name));
 
     for (const table of CORE_TABLES) assert.ok(tables.includes(table), `missing ${table}`);
-    assert.equal(Number(database.prepare("PRAGMA user_version").get()?.user_version), 15);
+    assert.equal(Number(database.prepare("PRAGMA user_version").get()?.user_version), 16);
 
     assertColumns(database, "imported_files", [
       "id",
@@ -51,6 +51,7 @@ describe("SQLite migrations", () => {
       "total_distance_meters",
       "total_ascent_meters",
       "preview_polyline_json",
+      "name",
     ]);
     assertColumns(database, "ride_points", [
       "ride_id",
@@ -205,7 +206,7 @@ describe("SQLite migrations", () => {
 
     applyMigrations(database);
 
-    assert.equal(Number(database.prepare("PRAGMA user_version").get()?.user_version), 15);
+    assert.equal(Number(database.prepare("PRAGMA user_version").get()?.user_version), 16);
     assert.deepEqual({ ...database.prepare(`
       SELECT rides.id, imported_files.original_filename,
              imported_files.retained_file_uri, imported_files.file_size_bytes,
@@ -329,7 +330,7 @@ describe("SQLite migrations", () => {
 
     applyMigrations(database);
 
-    assert.equal(Number(database.prepare("PRAGMA user_version").get()?.user_version), 15);
+    assert.equal(Number(database.prepare("PRAGMA user_version").get()?.user_version), 16);
     assert.deepEqual({ ...database.prepare(`
       SELECT total_distance_meters, total_ascent_meters FROM rides WHERE id = 'ride-pre-v3'
     `).get() }, { total_distance_meters: null, total_ascent_meters: null });
@@ -460,7 +461,7 @@ describe("SQLite migrations", () => {
 
     applyMigrations(database);
 
-    assert.equal(Number(database.prepare("PRAGMA user_version").get()?.user_version), 15);
+    assert.equal(Number(database.prepare("PRAGMA user_version").get()?.user_version), 16);
     assert.equal(count(database, "segments"), 1);
     assert.equal(count(database, "segment_reference_points"), 2);
     assert.equal(count(database, "segment_attempts"), 1);
@@ -486,6 +487,46 @@ describe("SQLite migrations", () => {
     assert.equal(count(database, "segment_attempts"), 0);
     assert.equal(count(database, "match_diagnostics"), 0);
     assert.equal(rowExists(database, "rides", "ride-pre-v4"), true);
+  });
+
+  it("upgrades a populated v15 database to v16: backfills ride names from stored metadata, loses nothing, and is idempotent", () => {
+    using database = new DatabaseSync(":memory:");
+    applyMigrations(database, migrations.slice(0, 15));
+    insertRide(database, "ride-fit", "file-fit");
+    insertRide(database, "ride-gpx", "file-gpx");
+    insertRide(database, "ride-none", "file-none");
+    insertRide(database, "ride-blank", "file-blank");
+    insertSegment(database, "segment-v16", "ride-fit");
+    insertAttempt(database, "attempt-v16", "segment-v16", "ride-fit");
+    database.prepare("INSERT INTO active_goal (id, segment_id, target_duration_ms, updated_at_ms) VALUES ('singleton', ?, 600000, 5000)").run("segment-v16");
+    database
+      .prepare(
+        `INSERT INTO plan_sends (id, segment_id, sent_at_ms, package_id, generator_type, generator_model_version, ftp_watts, plan_json)
+         VALUES ('send-1', 'segment-v16', 6000, 'pkg', 'gen', '1', 250, '{}')`,
+      )
+      .run();
+    const setMetadata = database.prepare("UPDATE rides SET fit_metadata_json = ? WHERE id = ?");
+    setMetadata.run(JSON.stringify({ sessions: [{ sportProfileName: " Road " }] }), "ride-fit");
+    setMetadata.run(JSON.stringify({ trackName: "Evening spin" }), "ride-gpx");
+    setMetadata.run(JSON.stringify({ sessions: [{ sportProfileName: 7 }] }), "ride-blank");
+
+    applyMigrations(database);
+
+    const names = Object.fromEntries(
+      database.prepare("SELECT id, name FROM rides").all().map((row) => [String(row.id), row.name]),
+    );
+    assert.deepEqual(names, { "ride-fit": "Road", "ride-gpx": "Evening spin", "ride-none": null, "ride-blank": null });
+    assert.equal(Number(database.prepare("PRAGMA user_version").get()?.user_version), 16);
+    assert.equal(count(database, "rides"), 4);
+    assert.equal(count(database, "segments"), 1);
+    assert.equal(count(database, "segment_attempts"), 1);
+    assert.equal(count(database, "active_goal"), 1);
+    assert.equal(count(database, "plan_sends"), 1);
+    assert.deepEqual(database.prepare("PRAGMA foreign_key_check").all(), []);
+
+    applyMigrations(database);
+    assert.equal(count(database, "rides"), 4);
+    assert.equal(database.prepare("SELECT name FROM rides WHERE id = 'ride-fit'").get()?.name, "Road");
   });
 });
 

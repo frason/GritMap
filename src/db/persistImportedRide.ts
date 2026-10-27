@@ -14,6 +14,8 @@ export interface ImportedRideParams {
   startTimestampMs: number;
   durationMs: number;
   originalTimezoneOffsetMinutes?: number;
+  /** The name the ride's file carried, if any (see rideName.ts). */
+  name?: string;
   nowMs: number;
 }
 
@@ -62,8 +64,8 @@ export function insertImportedRide(
           id, imported_file_id, parser_version, start_timestamp_ms, end_timestamp_ms,
           created_at_ms, updated_at_ms, activity_id, device_id, duration_ms,
           original_timezone_offset_minutes, fit_metadata_json,
-          total_distance_meters, total_ascent_meters, preview_polyline_json
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+          total_distance_meters, total_ascent_meters, preview_polyline_json, name
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       )
       .run(
         rideId,
@@ -81,6 +83,7 @@ export function insertImportedRide(
         totalDistanceMeters ?? null,
         totalAscentMeters ?? null,
         previewPolylineJson ?? null,
+        params.name ?? null,
       );
 
     insertRidePoints(database, rideId, params.points);
@@ -156,7 +159,7 @@ export function replaceImportedRide(
          SET parser_version = ?, start_timestamp_ms = ?, end_timestamp_ms = ?,
              updated_at_ms = ?, activity_id = ?, device_id = ?, duration_ms = ?,
              original_timezone_offset_minutes = ?, fit_metadata_json = ?,
-             total_distance_meters = ?, total_ascent_meters = ?, preview_polyline_json = ?
+             total_distance_meters = ?, total_ascent_meters = ?, preview_polyline_json = ?, name = ?
          WHERE id = ?`,
       )
       .run(
@@ -172,6 +175,7 @@ export function replaceImportedRide(
         totalDistanceMeters ?? null,
         totalAscentMeters ?? null,
         previewPolylineJson ?? null,
+        params.name ?? null,
         existingRideId,
       );
 

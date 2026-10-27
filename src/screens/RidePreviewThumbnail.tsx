@@ -10,6 +10,8 @@ export interface RidePreviewThumbnailProps {
   width?: number;
   height?: number;
   strokeWidth?: number;
+  /** Stretches of the route to draw over it in the accent colour (segment efforts); the route itself is then muted. */
+  highlights?: readonly (readonly RidePreviewPoint[])[];
 }
 
 /**
@@ -25,12 +27,13 @@ export interface RidePreviewThumbnailProps {
  * cos(meanLatitude) correction narrows the longitude span first, since a degree of
  * longitude covers less real distance than a degree of latitude away from the equator.
  */
-export function RidePreviewThumbnail({ points, size = 40, width = size, height = size, strokeWidth = 1.5 }: RidePreviewThumbnailProps) {
+export function RidePreviewThumbnail({ points, size = 40, width = size, height = size, strokeWidth = 1.5, highlights = [] }: RidePreviewThumbnailProps) {
   const palette = useColors();
   if (points.length < 2) return null;
 
-  const lats = points.map((point) => point.lat);
-  const lngs = points.map((point) => point.lng);
+  const everyPoint = [...points, ...highlights.flat()];
+  const lats = everyPoint.map((point) => point.lat);
+  const lngs = everyPoint.map((point) => point.lng);
   const minLat = Math.min(...lats);
   const maxLat = Math.max(...lats);
   const minLng = Math.min(...lngs);
@@ -51,7 +54,9 @@ export function RidePreviewThumbnail({ points, size = 40, width = size, height =
   const toX = (lng: number) => offsetX + (lng - minLng) * lngCorrection * scale;
   const toY = (lat: number) => height - (offsetY + (lat - minLat) * scale);
 
-  const polylinePoints = points.map((point) => `${toX(point.lng)},${toY(point.lat)}`).join(" ");
+  const toPolyline = (line: readonly RidePreviewPoint[]) => line.map((point) => `${toX(point.lng)},${toY(point.lat)}`).join(" ");
+  const polylinePoints = toPolyline(points);
+  const hasHighlights = highlights.some((line) => line.length >= 2);
 
   return (
     <View>
@@ -59,11 +64,24 @@ export function RidePreviewThumbnail({ points, size = 40, width = size, height =
         <Polyline
           points={polylinePoints}
           fill="none"
-          stroke={palette.ctaText}
+          stroke={hasHighlights ? palette.borderStrong : palette.ctaText}
           strokeWidth={strokeWidth}
           strokeLinecap="round"
           strokeLinejoin="round"
         />
+        {highlights.map((line, index) =>
+          line.length < 2 ? null : (
+            <Polyline
+              key={index}
+              points={toPolyline(line)}
+              fill="none"
+              stroke={palette.ctaText}
+              strokeWidth={strokeWidth * 1.8}
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            />
+          ),
+        )}
       </Svg>
     </View>
   );

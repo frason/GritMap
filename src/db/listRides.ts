@@ -12,18 +12,26 @@ export interface RidePreviewPoint {
 export interface RideSummary {
   rideId: string;
   originalFilename: string;
+  /** The name the ride's file carried (see import/rideName.ts); absent when it had none. */
+  name?: string;
   startTimestampMs?: number;
   durationMs?: number;
   totalDistanceMeters?: number;
+  totalAscentMeters?: number;
+  /** Segment efforts on this ride that count (matched, or approved by the rider). */
+  segmentCount: number;
   previewPolyline?: RidePreviewPoint[];
 }
 
 interface StoredRideSummary {
   ride_id: string;
   original_filename: string;
+  name: string | null;
   start_timestamp_ms: number | null;
   duration_ms: number | null;
   total_distance_meters: number | null;
+  total_ascent_meters: number | null;
+  segment_count: number;
   preview_polyline_json: string | null;
 }
 
@@ -39,9 +47,14 @@ export function listRides(database: ListRidesDatabase): RideSummary[] {
       `SELECT
         rides.id AS ride_id,
         imported_files.original_filename AS original_filename,
+        rides.name,
         rides.start_timestamp_ms,
         rides.duration_ms,
         rides.total_distance_meters,
+        rides.total_ascent_meters,
+        (SELECT COUNT(*) FROM segment_attempts
+          WHERE segment_attempts.ride_id = rides.id
+            AND (segment_attempts.decision = 'accept' OR segment_attempts.manually_approved = 1)) AS segment_count,
         rides.preview_polyline_json
       FROM rides
       JOIN imported_files ON imported_files.id = rides.imported_file_id
@@ -52,6 +65,9 @@ export function listRides(database: ListRidesDatabase): RideSummary[] {
   return rows.map((row) => ({
     rideId: row.ride_id,
     originalFilename: row.original_filename,
+    segmentCount: Number(row.segment_count),
+    ...(row.name === null ? {} : { name: row.name }),
+    ...(row.total_ascent_meters === null ? {} : { totalAscentMeters: row.total_ascent_meters }),
     ...(row.start_timestamp_ms === null ? {} : { startTimestampMs: row.start_timestamp_ms }),
     ...(row.duration_ms === null ? {} : { durationMs: row.duration_ms }),
     ...(row.total_distance_meters === null
