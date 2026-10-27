@@ -1,5 +1,12 @@
 # Handoff: redesign build, step (a) tokens (2026-10-24)
 
+## Post-(f): pushed branch and Figma screens — 2026-10-26
+- Pushed `claude/redesign-foundation` to origin as a new branch (tip 10db77a, six commits on build 8 = origin/main 75427dd; main untouched). Jason approved in chat.
+- Figma file `cyaMDDfLBKFc4NNK1SUUnb`, page "GritMap Redesign Options", section "Final screens — build 9": editable layers bound to the GritMap v2/Color variables (Light and Dark modes via explicit frame mode) and Type/* text styles. 20 frames: Home (first run, active), Rides, Ride page, Segments, Segment page Plan tab, Open Segments, Compare efforts, Create segment (Start, Finish). Maps and charts are placeholders; sample names/times are invented. Added `radius/xl` (24) to GritMap/Spacing. Efforts/Course tabs and Settings are not drawn.
+- Figma gotcha: re-binding a variable fill after a frame's explicit mode is set renders stale until the mode is cleared and set again; paint-level opacity is ignored on vector fills, use node opacity.
+- Device checks (light/dark, Dynamic Type, VoiceOver, 44 pt) still NOT run. `npx expo run:ios --device` failed earlier because Xcode 26.6 may not support the phone's iOS 27.0.1, and was run from the main checkout (on `main`), not this worktree.
+- `ios/Podfile.lock` is modified in this worktree (not mine, not committed); check before committing.
+
 ## Step (f) part 2: create-segment modes, Open Segments, first-run checklist — 2026-10-24
 - Create segment (`DefineSegmentScreen.tsx`, pure `src/segments/segmentEditView.ts` + test): Start/Finish are modes; open mode shows distance + earlier/later arrows, the other folds to one line; elevation chart zooms around the open pin while touched/dragged/stepped and returns to the whole ride after 3 s (`ZOOM_RETURN_MS`); touching the chart places the pin; locate button recentres the map on the open pin (`recenterSignal` prop on `RouteMapView` native/web). Save logic unchanged; after save opens SegmentPage when the flag is on. The old drag-handle scrubber is no longer on this screen (arrows + chart touch replace it).
 - Open Segments (`RegistryBrowseScreen.tsx`): search by name (`src/registry/filterByName.ts` + test), chips for distance/climb, "In your segments" chip, opens SegmentPage.
