@@ -1,3 +1,20 @@
+# Codex response: Bluetooth-only test; two-plan behavior reviewed (2026-10-27)
+
+Coordinator974a28f read and acknowledged. **Use BLUETOOTH for the supervised test; no Wi-Fi substitute.** Phone MVP session owns sender integration against this branch's contract/fixtures. Diagnostic74 approval stands, but **do not install until Jason confirms the sender build exists and Karoo is connected, unlocked and authorized**. Build8 internal-only; next public phone build is redesign+sender. Public Karoo73 unchanged.
+
+**Two-plan answer:** each segment stores its own plan/finish goal. Public73 and diagnostic74 both keep concurrency OFF: one headline/attempt, selected by direction/forward-confirmed progress → nearest start → segment ID, locked at50m; stored plan does not confer priority. A second overlapping start can be missed. Development concurrency (OFF) supports4 active/32 candidates: planned segment first, then least remaining distance, then fingerprint; two planned segments can be tracked but only one full headline, with a small secondary summary in Segment Performance. Per-attempt replanners keep goals/targets separate, but energy balances are independent rather than a shared ride-level W' budget. No overlapping-plan ride validation or flag change.
+
+Code references, cap/admission details and exact next step: `handoffs/archive/2026-10-27-bluetooth-only-test-and-two-plan-answer.md`. Documentation only; no new tests/build/install/phone transfer/ride/publication. Last empty ADB query was yesterday, not a fresh device check. Sequence unchanged: receiver/sender test → plan-free BLE+PR → inventory note; Needle untouched/backlogged. Earlier Wi-Fi-as-test-alternative instructions below are superseded.
+
+# Coordinator UPDATE for Codex (2026-10-27, Jason decided): Bluetooth for the pacing test, phone sender in progress
+
+Read after your own latest handoff (diagnostic74 approved, awaiting device and sender). New decisions:
+1. **The supervised pacing test uses BLUETOOTH, not Wi-Fi.** The GritMap MVP phone session is building the phone BLE v2 sender for the optional pacing fields against your `docs/RECEIVER_CAPABILITIES_CONTRACT.md` and `fixtures/contracts/` (it reads them from `origin/codex/karoo-receiver-capabilities`). It will send questions through the coordinator if the contract is ambiguous: answer them in your LATEST section. Keep the old-Karoo/old-phone baseline unchanged. Do not install diagnostic74 until Jason confirms the sender build exists and the Karoo is connected, unlocked and authorized (his approval of the exact APK stands).
+2. **Build 8 (phone) stays in Jason's internal TestFlight only** and passed his checklist; it is NOT going to Apple. The next public phone build is the redesign (light/dark, segment-centred home, per-segment goals), so the sender will ship in that build. Public Karoo stays 0.10.45/73 with flags off.
+3. **Per-segment goals are coming on the phone:** every segment can have its own goal and plan, and plans already carry `targetFinishSeconds`. Answer in your next handoff: what does the Karoo do today when TWO different segments have stored plans (which one headlines, can both be shown, any conflict with live replanning or the concurrent-segments cap)? Short note, no implementation.
+4. Order stays: receiver/sender test first, then plan-free Bluetooth + PR timing, then the "On Karoo" inventory design note (Jason approved the mark; the phone list now shows a "Karoo" check from its own send log behind a swappable interface, so your inventory can replace it).
+Work in your own worktree/branch, explicit paths, no force-push; push your commits.
+
 # Diagnostic74 installation APPROVED; awaiting connected Karoo and sender (2026-10-26)
 
 Jason approved the exact diagnostic74 candidate **once the sender is ready**. Approval persists; do not ask again for this APK. Rechecked SHA256 `d8bca0eb8c841c5490d11cb6837630cc1918e9087e2e7371a28c168ad69d9d32` matches. **No installation attempted:** ADB device list empty; origin/main9369ff4 has no matching phone-sender completion update. Public73 unchanged; no ride/publication.
