@@ -1,4 +1,5 @@
 import { createBottomTabNavigator, type BottomTabHeaderProps } from "@react-navigation/bottom-tabs";
+import { StackActions } from "@react-navigation/native";
 import { HomeScreen } from "../screens/HomeScreen";
 import { Icon } from "../theme/Icon";
 import type { IconName } from "../theme/icons";
@@ -6,6 +7,7 @@ import { useColors } from "../theme/useColors";
 import { RidesStackNavigator } from "./RidesStackNavigator";
 import { SegmentsStackNavigator } from "./SegmentsStackNavigator";
 import { HomeHeader } from "./tabHeaders";
+import { stackToReset } from "./tabPressReset";
 import type { RootTabParamList } from "./types";
 
 const Tab = createBottomTabNavigator<RootTabParamList>();
@@ -45,6 +47,13 @@ export function RootNavigator({ initialTab = "HomeTab" }: { initialTab?: keyof R
           key={tab.name}
           name={tab.name}
           component={tab.name === "HomeTab" ? HomeScreen : tab.name === "RidesTab" ? RidesStackNavigator : SegmentsStackNavigator}
+          listeners={({ navigation, route }) => ({
+            // Tapping a tab, focused or not, shows that tab's list page and drops anything left open inside it.
+            tabPress: () => {
+              const target = stackToReset(navigation.getState().routes.find((candidate) => candidate.key === route.key)?.state);
+              if (target !== undefined) navigation.dispatch({ ...StackActions.popToTop(), target });
+            },
+          })}
           options={{
             title: tab.title,
             tabBarIcon: tabIcon(tab.icon),

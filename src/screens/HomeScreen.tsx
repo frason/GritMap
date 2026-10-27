@@ -14,6 +14,8 @@ import { getAthleteProfile } from "../db/getAthleteProfile";
 import { SetupChecklist } from "../onboarding/SetupChecklist";
 import { setupSteps, shouldShowSetupChecklist, type SetupProgress, type SetupStepKey } from "../onboarding/setupSteps";
 import { loadRideHighlights } from "../plans/loadRideHighlights";
+import { loadRideSegmentLines } from "../plans/loadRideSegmentLines";
+import type { PreviewPoint } from "../plans/segmentListView";
 import { loadSegmentCards, type SegmentCardData } from "../plans/loadSegmentCards";
 import type { RideSegmentHighlight } from "../plans/karooMarks";
 import { RideMapCard } from "../plans/RideMapCard";
@@ -36,6 +38,7 @@ export function HomeScreen() {
   const [attempts, setAttempts] = useState<AttemptSummary[]>([]);
   const [lastRide, setLastRide] = useState<RideSummary | undefined>(undefined);
   const [lastRideHighlights, setLastRideHighlights] = useState<RideSegmentHighlight[]>([]);
+  const [lastRideLines, setLastRideLines] = useState<PreviewPoint[][]>([]);
   const [sentCards, setSentCards] = useState<SegmentCardData[]>([]);
   const [setup, setSetup] = useState<SetupProgress>({ hasFtp: true, hasSegment: true, hasRide: true, hasSent: true });
   const [editingGoal, setEditingGoal] = useState(false);
@@ -58,6 +61,7 @@ export function HomeScreen() {
     });
     setSentCards(cards.filter((card) => card.sent));
     const sentSegmentIds = new Set(cards.filter((card) => card.sent).map((card) => card.summary.segmentId));
+    setLastRideLines(newest === undefined || newest.segmentCount === 0 ? [] : loadRideSegmentLines(database, newest.rideId));
     setLastRideHighlights(newest === undefined ? [] : loadRideHighlights(database, newest.rideId, sentSegmentIds));
   }, [database]);
 
@@ -145,6 +149,7 @@ export function HomeScreen() {
           <RideMapCard
             ride={lastRide}
             highlights={lastRideHighlights}
+            segmentLines={lastRideLines}
             onPress={() => navigation.navigate("RidesTab", { screen: "RideDetail", initial: false, params: { rideId: lastRide.rideId } })}
           />
         )}
