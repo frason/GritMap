@@ -1,3 +1,9 @@
+# Diagnostic74 installation APPROVED; awaiting connected Karoo and sender (2026-10-26)
+
+Jason approved the exact diagnostic74 candidate **once the sender is ready**. Approval persists; do not ask again for this APK. Rechecked SHA256 `d8bca0eb8c841c5490d11cb6837630cc1918e9087e2e7371a28c168ad69d9d32` matches. **No installation attempted:** ADB device list empty; origin/main9369ff4 has no matching phone-sender completion update. Public73 unchanged; no ride/publication.
+
+Next: connect/unlock/authorize Karoo, verify matching phone BLE sender (or updated Wi-Fi source), then approved in-place install and retained-ceiling metadata check before ONE supervised test. Room4/fallback75 limits unchanged. Details: `handoffs/archive/2026-10-26-diagnostic74-install-approved-awaiting-device-sender.md`. Prior implementation/candidate evidence below.
+
 # Receiver gates/record storage implemented; diagnostic74 prepared, NOT installed (2026-10-26)
 
 Own branch `codex/karoo-receiver-capabilities`, source `eac155f` (plus implementation6d6af67, merge1328870). Receiver capabilities and strict record storage/Room4 are implemented; shared invented fixtures under `fixtures/contracts/`. Wi-Fi source gates generated-plan ceilings after GET/capabilities. **BLE needs phone native optional characteristic/variant selection before new fields can travel**; old phone/old receiver remain baseline. Exact fields and512-byte manifest constraint: `docs/RECEIVER_CAPABILITIES_CONTRACT.md`.
