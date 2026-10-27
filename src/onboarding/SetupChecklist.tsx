@@ -17,7 +17,7 @@ export function SetupChecklist({ steps, onAction }: { steps: readonly SetupStep[
       <Card>
         <View style={styles.row}>
           <AppText variant="headline" style={styles.grow}>
-            {WHAT_YOU_NEED.intro}
+            {WHAT_YOU_NEED.title}
           </AppText>
           <InfoBubble topic={WHAT_YOU_NEED.title}>{WHAT_YOU_NEED.body}</InfoBubble>
         </View>

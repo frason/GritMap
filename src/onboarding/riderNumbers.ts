@@ -65,3 +65,13 @@ export function defaultWeightUnit(locale: string | undefined): WeightUnit {
   const region = locale?.split(/[-_]/)[1]?.toUpperCase();
   return region !== undefined && POUND_REGIONS.has(region) ? "lb" : "kg";
 }
+
+/** The unit's full name, for VoiceOver and the unit menu ("lb" alone is read badly). */
+export function weightUnitName(unit: WeightUnit): string {
+  return unit === "lb" ? "Pounds" : "Kilograms";
+}
+
+/** The other unit, for platforms where the unit control simply switches. */
+export function otherWeightUnit(unit: WeightUnit): WeightUnit {
+  return unit === "lb" ? "kg" : "lb";
+}

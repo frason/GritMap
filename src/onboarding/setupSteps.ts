@@ -1,11 +1,12 @@
 import type { IconName } from "../theme/icons.ts";
 
-export type SetupStepKey = "ftp" | "segment" | "ride" | "send";
+export type SetupStepKey = "ftp" | "segment" | "ride" | "karoo";
 
 export interface SetupProgress {
   hasFtp: boolean;
   hasSegment: boolean;
   hasRide: boolean;
+  /** A segment has been sent to a Karoo from this phone (a row in the send log), so the Karoo is connected. */
   hasSent: boolean;
 }
 
@@ -24,7 +25,7 @@ export function setupSteps(progress: SetupProgress): SetupStep[] {
     { key: "ftp", title: "Enter your FTP", body: "The most power you can hold for about an hour. Plans are built from it.", action: "Enter FTP", icon: "bolt", done: progress.hasFtp },
     { key: "segment", title: "Add a segment", body: "A stretch of road you want to ride faster.", action: "Browse Open Segments", icon: "mapPin", done: progress.hasSegment },
     { key: "ride", title: "Import a ride", body: "GritMap finds your segments in it and keeps your times.", action: "Import a ride", icon: "download", done: progress.hasRide },
-    { key: "send", title: "Send a segment to your Karoo", body: "Open a segment and send it by Bluetooth.", action: "Choose a segment", icon: "bluetooth", done: progress.hasSent },
+    { key: "karoo", title: "Connect your Karoo", body: "Install GritMap on your Karoo, then send a segment to it by Bluetooth.", action: "Show me how", icon: "bluetooth", done: progress.hasSent },
   ];
 }
 

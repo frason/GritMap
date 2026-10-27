@@ -14,6 +14,10 @@ import {
   KAROO_STEPS,
   KAROO_WIFI_RECEIVE,
   OLDER_KAROO_HINT,
+  KAROO_APK_URL,
+  KAROO_SIDELOAD_GUIDE_URL,
+  KAROO_UPDATE_LINKS,
+  onboardingStepLabel,
   ONBOARDING_STEPS,
   PHONE_SEND_BUTTON,
   SEGMENT_WAYS,
@@ -34,8 +38,8 @@ const everyString = [
 ];
 
 describe("onboarding copy", () => {
-  it("walks welcome, numbers, segments, Karoo in that order", () => {
-    assert.deepEqual(ONBOARDING_STEPS.map((step) => step.key), ["welcome", "numbers", "segments", "karoo"]);
+  it("walks welcome, numbers, segments in that order; the Karoo is a Home checklist item, not a step", () => {
+    assert.deepEqual(ONBOARDING_STEPS.map((step) => step.key), ["welcome", "numbers", "segments"]);
   });
 
   it("names the Karoo screens and the phone button exactly as the apps do (Karoo: GritMap, Inbox, Receive from Phone / Legacy Wi-Fi Receive)", () => {
@@ -85,7 +89,7 @@ describe("onboarding copy", () => {
     assert.match(items, /Karoo 3/);
     assert.match(items, /power meter/);
     assert.match(items, /heart-rate monitor/);
-    assert.equal(WHAT_YOU_NEED.intro, "GritMap needs:");
+    assert.ok(!("intro" in WHAT_YOU_NEED), "the card heading already says what it is; no second lead-in line");
     assert.match(WHAT_YOU_NEED.body, /without a power meter/);
   });
 
@@ -100,5 +104,26 @@ describe("onboarding copy", () => {
 
   it("keeps every step short enough to read on a phone", () => {
     for (const text of everyString) assert.ok(text.length <= 230, `${text.length}: ${text}`);
+  });
+});
+
+describe("onboardingStepLabel", () => {
+  it("counts from 1 and always uses the real number of steps", () => {
+    assert.equal(ONBOARDING_STEPS.length, 3);
+    assert.equal(onboardingStepLabel(0), "Step 1 of 3");
+    assert.equal(onboardingStepLabel(2), "Step 3 of 3");
+  });
+});
+
+describe("Karoo update links", () => {
+  it("point at the latest APK and Hammerhead's sideloading guide, and sit under the first step", () => {
+    assert.equal(KAROO_APK_URL, "https://github.com/frason/GritMap/releases/latest/download/gritmap-karoo.apk");
+    assert.equal(KAROO_SIDELOAD_GUIDE_URL, "https://support.hammerhead.io/hc/en-us/articles/31576497036827-Companion-App-Sideloading");
+    assert.deepEqual(KAROO_STEPS[0]!.links, KAROO_UPDATE_LINKS);
+    assert.deepEqual(KAROO_UPDATE_LINKS.map((link) => link.url), [KAROO_APK_URL, KAROO_SIDELOAD_GUIDE_URL]);
+  });
+
+  it("says the APK goes onto the Karoo through the Hammerhead Companion app, not the iPhone", () => {
+    assert.match(KAROO_STEPS[0]!.body, /Hammerhead Companion app, not on this iPhone/);
   });
 });

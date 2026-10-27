@@ -16,6 +16,8 @@ export type SegmentsStackParamList = {
   AttemptComparison: { primaryAttemptId: string; comparisonAttemptId: string };
   RegistryBrowse: undefined;
   /** `returnAfterSave`: opened from a prompt to set FTP or weight, so Save goes back to where the rider came from. */
+  /** "Connect your Karoo": the Karoo steps, opened from the Home checklist. */
+  KarooSetup: undefined;
   ZonesSettings: { returnAfterSave?: boolean } | undefined;
   HistoricalBand: { segmentId: string; currentAttemptId: string };
   SendToKaroo: { segmentId: string };

@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 
-import { KG_PER_LB, defaultWeightUnit, kilogramsToDisplay, parseFtpInput, parseMaxHeartRateInput, parseWeightInput } from "./riderNumbers.ts";
+import { KG_PER_LB, defaultWeightUnit, kilogramsToDisplay, otherWeightUnit, parseFtpInput, parseMaxHeartRateInput, parseWeightInput, weightUnitName } from "./riderNumbers.ts";
 
 describe("parseFtpInput", () => {
   it("accepts whole watts, with stray spaces or a 'W'", () => {
@@ -80,5 +80,14 @@ describe("parseMaxHeartRateInput", () => {
     assert.match((parseMaxHeartRateInput("fast") as { error: string }).error, /whole beats/);
     assert.match((parseMaxHeartRateInput("60") as { error: string }).error, /between 100 and 230/);
     assert.match((parseMaxHeartRateInput("300") as { error: string }).error, /between 100 and 230/);
+  });
+});
+
+describe("weight unit helpers", () => {
+  it("names the units in full and flips between them", () => {
+    assert.equal(weightUnitName("lb"), "Pounds");
+    assert.equal(weightUnitName("kg"), "Kilograms");
+    assert.equal(otherWeightUnit("lb"), "kg");
+    assert.equal(otherWeightUnit("kg"), "lb");
   });
 });

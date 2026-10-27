@@ -65,7 +65,7 @@ export function HomeScreen() {
     if (key === "ftp") navigation.navigate("SegmentsTab", { screen: "ZonesSettings", initial: false });
     else if (key === "segment") navigation.navigate("SegmentsTab", { screen: "RegistryBrowse", initial: false });
     else if (key === "ride") navigation.navigate("RidesTab", { screen: "Import", initial: false });
-    else navigation.navigate("SegmentsTab", { screen: "SegmentList", initial: false });
+    else navigation.navigate("SegmentsTab", { screen: "KarooSetup", initial: false });
   }
 
   function handleSaveGoal(segmentId: string, targetDurationMs: number) {

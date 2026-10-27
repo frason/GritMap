@@ -18,15 +18,14 @@ import { Icon } from "../theme/Icon";
 import { MIN_TOUCH_TARGET, SCREEN_PADDING } from "../theme/layout";
 import { spacing } from "../theme/spacing";
 import { useColors } from "../theme/useColors";
-import { AppText, Button, Card, SegmentedControl, TextField } from "../theme/components";
+import { AppText, Button, Card, TextField } from "../theme/components";
 import {
   FTP_HINT_SHORT,
-  KAROO_STEPS,
   ONBOARDING_STEPS,
   SEGMENT_WAYS,
   WELCOME_POINTS,
   WHAT_YOU_NEED,
-  WIFI_FALLBACK_STEPS,
+  onboardingStepLabel,
 } from "./onboardingCopy";
 import { markOnboardingComplete } from "./onboardingState";
 import {
@@ -36,12 +35,13 @@ import {
   parseWeightInput,
   type WeightUnit,
 } from "./riderNumbers";
+import { WeightField } from "./WeightField";
 
 /**
  * First-run onboarding, shown once on an empty install before the main tabs: what GritMap does,
- * the rider's FTP and weight, how to get a segment, and how to connect the Karoo. Every step after
- * the first can be skipped; nothing here is required to use the app, and each skipped thing is
- * reachable later from where it is used.
+ * the rider's FTP and weight, and how to get a segment. Every step after the first can be skipped;
+ * nothing here is required to use the app, and each skipped thing is reachable later from where it is
+ * used. Connecting the Karoo is a Home checklist item (KarooSetupScreen), not a step here.
  */
 export function OnboardingFlow({ onFinished }: { onFinished: () => void }) {
   const database = useDatabase();
@@ -49,6 +49,7 @@ export function OnboardingFlow({ onFinished }: { onFinished: () => void }) {
   const [stepIndex, setStepIndex] = useState(0);
   const step = ONBOARDING_STEPS[stepIndex]!;
   const titleRef = useRef<View>(null);
+  const scrollRef = useRef<ScrollView>(null);
 
   const stored = getAthleteProfile(database);
   const [weightUnit, setWeightUnit] = useState<WeightUnit>(() => defaultWeightUnit(deviceLocale()));
@@ -77,6 +78,9 @@ export function OnboardingFlow({ onFinished }: { onFinished: () => void }) {
   useEffect(() => {
     const tag = findNodeHandle(titleRef.current);
     if (tag !== null) AccessibilityInfo.setAccessibilityFocus(tag);
+    // Show the scroll bar briefly: a step taller than the screen (the first one is) reads as scrollable.
+    const flash = setTimeout(() => scrollRef.current?.flashScrollIndicators(), 400);
+    return () => clearTimeout(flash);
   }, [stepIndex]);
 
   function finish() {
@@ -142,22 +146,10 @@ export function OnboardingFlow({ onFinished }: { onFinished: () => void }) {
           ) : (
             <View style={styles.back} />
           )}
-          <View
-            style={styles.dots}
-            accessible
-            accessibilityLabel={`Step ${stepIndex + 1} of ${ONBOARDING_STEPS.length}`}
-          >
-            {ONBOARDING_STEPS.map((item, index) => (
-              <View
-                key={item.key}
-                style={[styles.dot, { backgroundColor: index <= stepIndex ? palette.brand : palette.borderStrong }]}
-              />
-            ))}
-          </View>
           <View style={styles.back} />
         </View>
 
-        <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled" keyboardDismissMode="on-drag">
+        <ScrollView ref={scrollRef} contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled" keyboardDismissMode="on-drag">
           <View ref={titleRef} accessible accessibilityRole="header">
             <AppText variant="title1">{headline(step.key)}</AppText>
           </View>
@@ -182,7 +174,6 @@ export function OnboardingFlow({ onFinished }: { onFinished: () => void }) {
             />
           ) : null}
           {step.key === "segments" ? <SegmentsStep /> : null}
-          {step.key === "karoo" ? <KarooStep /> : null}
         </ScrollView>
 
         <View style={[styles.footer, { borderTopColor: palette.border, backgroundColor: palette.background }]}>
@@ -190,6 +181,16 @@ export function OnboardingFlow({ onFinished }: { onFinished: () => void }) {
             <Button label="Done" variant="tertiary" onPress={Keyboard.dismiss} />
           ) : (
             <>
+              <View style={styles.progress} accessible accessibilityLabel={onboardingStepLabel(stepIndex)}>
+                <View style={styles.dots}>
+                  {ONBOARDING_STEPS.map((item, index) => (
+                    <View key={item.key} style={[styles.dot, { backgroundColor: index <= stepIndex ? palette.brand : palette.borderStrong }]} />
+                  ))}
+                </View>
+                <AppText variant="footnote" color="textSecondary">
+                  {onboardingStepLabel(stepIndex)}
+                </AppText>
+              </View>
               {step.key === "welcome" ? <Button label="Get started" onPress={next} /> : null}
               {step.key === "numbers" ? (
                 <>
@@ -202,13 +203,7 @@ export function OnboardingFlow({ onFinished }: { onFinished: () => void }) {
                   <Button label="Skip for now" variant="tertiary" onPress={next} />
                 </>
               ) : null}
-              {step.key === "segments" ? <Button label="Continue" onPress={next} /> : null}
-              {isLast ? (
-                <>
-                  <Button label="Finish" onPress={finish} />
-                  <Button label="I'll set this up later" variant="tertiary" onPress={finish} />
-                </>
-              ) : null}
+              {isLast ? <Button label="Finish" onPress={finish} /> : null}
             </>
           )}
         </View>
@@ -225,8 +220,6 @@ function headline(key: (typeof ONBOARDING_STEPS)[number]["key"]): string {
       return "Your numbers";
     case "segments":
       return "Pick a segment";
-    case "karoo":
-      return "Connect your Karoo";
   }
 }
 
@@ -237,9 +230,8 @@ function WelcomeStep() {
         GritMap plans how to pace a climb, guides you through it live on your Karoo, and shows you afterwards how it went.
       </AppText>
       <Card>
-        <View accessible accessibilityLabel={`${WHAT_YOU_NEED.title}. ${WHAT_YOU_NEED.intro} ${WHAT_YOU_NEED.items.join(", ")}. ${WHAT_YOU_NEED.body}`}>
+        <View accessible accessibilityLabel={`${WHAT_YOU_NEED.title}. ${WHAT_YOU_NEED.items.join(", ")}. ${WHAT_YOU_NEED.body}`}>
           <AppText variant="headline">{WHAT_YOU_NEED.title}</AppText>
-          <AppText variant="subheadline">{WHAT_YOU_NEED.intro}</AppText>
           {WHAT_YOU_NEED.items.map((item) => (
             <AppText key={item} variant="subheadline">
               {`• ${item}`}
@@ -292,23 +284,12 @@ function NumbersStep(props: {
         keyboardType="number-pad"
         {...(props.ftpError === undefined ? {} : { error: props.ftpError })}
       />
-      <SegmentedControl
-        accessibilityLabel="Weight unit"
-        value={props.weightUnit}
-        onChange={props.onUnitChange}
-        options={[
-          { value: "lb", label: "lb", accessibilityLabel: "Pounds" },
-          { value: "kg", label: "kg", accessibilityLabel: "Kilograms" },
-        ]}
-      />
-      <TextField
-        label="Weight"
-        unit={props.weightUnit}
+      <WeightField
         value={props.weightInput}
         onChangeText={props.onWeightChange}
-        placeholder={props.weightUnit === "lb" ? "e.g. 165" : "e.g. 75"}
+        unit={props.weightUnit}
+        onUnitChange={props.onUnitChange}
         hint="Your weight, with your kit, is how GritMap works out how fast a given power will take you uphill."
-        keyboardType="decimal-pad"
         {...(props.weightError === undefined ? {} : { error: props.weightError })}
       />
       <AppText variant="footnote" color="textSecondary">
@@ -341,51 +322,6 @@ function SegmentsStep() {
   );
 }
 
-function KarooStep() {
-  const palette = useColors();
-  return (
-    <View style={styles.stack}>
-      <AppText variant="body" color="textSecondary">
-        To ride a segment with live pacing, GritMap sends it and its plan to your Karoo over Bluetooth, straight from your phone. Do this when you are ready to ride; you can skip it for now.
-      </AppText>
-      {KAROO_STEPS.map((item, index) => (
-        <View key={item.title} style={styles.numberedRow}>
-          <View style={[styles.number, { backgroundColor: palette.brandSubtle }]}>
-            <AppText variant="headline" color="brand" accessibilityElementsHidden importantForAccessibility="no">
-              {index + 1}
-            </AppText>
-          </View>
-          <View style={styles.pointText} accessible accessibilityLabel={`Step ${index + 1}. ${item.title}. ${item.body}`}>
-            <AppText variant="headline">{item.title}</AppText>
-            <AppText variant="subheadline" color="textSecondary">
-              {item.body}
-            </AppText>
-          </View>
-        </View>
-      ))}
-      <AppText variant="headline" accessibilityRole="header">
-        If Bluetooth does not work
-      </AppText>
-      <AppText variant="subheadline" color="textSecondary">
-        You can send over Wi-Fi instead, from the segment's Send to Karoo screen.
-      </AppText>
-      {WIFI_FALLBACK_STEPS.map((item, index) => (
-        <View key={item.title} style={styles.pointText} accessible accessibilityLabel={`Wi-Fi step ${index + 1}. ${item.title}. ${item.body}`}>
-          <AppText variant="subheadline" style={{ fontWeight: "600" }}>
-            {`${index + 1}. ${item.title}`}
-          </AppText>
-          <AppText variant="footnote" color="textSecondary">
-            {item.body}
-          </AppText>
-        </View>
-      ))}
-      <AppText variant="footnote" color="textSecondary">
-        No Karoo yet? You can still import rides and see how you did against a plan.
-      </AppText>
-    </View>
-  );
-}
-
 function deviceLocale(): string | undefined {
   try {
     return Intl.DateTimeFormat().resolvedOptions().locale;
@@ -406,14 +342,13 @@ const styles = StyleSheet.create({
     minHeight: MIN_TOUCH_TARGET,
   },
   back: { flexDirection: "row", alignItems: "center", minWidth: 72, minHeight: MIN_TOUCH_TARGET },
+  progress: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: spacing.space12 },
   dots: { flexDirection: "row", gap: spacing.space8 },
   dot: { width: 8, height: 8, borderRadius: 4 },
   content: { paddingHorizontal: SCREEN_PADDING, paddingTop: spacing.space16, paddingBottom: spacing.space24, gap: spacing.space16 },
   stack: { gap: spacing.space16 },
   pointRow: { flexDirection: "row", gap: spacing.space12, alignItems: "flex-start" },
   pointText: { flex: 1, gap: spacing.space4 },
-  numberedRow: { flexDirection: "row", gap: spacing.space12, alignItems: "flex-start" },
-  number: { width: 32, height: 32, borderRadius: 16, alignItems: "center", justifyContent: "center" },
   footer: {
     paddingHorizontal: SCREEN_PADDING,
     paddingTop: spacing.space12,

@@ -11,6 +11,7 @@ import { SendToKarooScreen } from "../screens/SendToKarooScreen";
 import { PublishToRegistryScreen } from "../screens/PublishToRegistryScreen";
 import { ImportCoachPlanScreen } from "../screens/ImportCoachPlanScreen";
 import { PlanVsActualScreen } from "../screens/PlanVsActualScreen";
+import { KarooSetupScreen } from "../onboarding/KarooSetupScreen";
 import { SegmentsHeader } from "./tabHeaders";
 import type { SegmentsStackParamList } from "./types";
 
@@ -34,6 +35,7 @@ export function SegmentsStackNavigator() {
       />
       <Stack.Screen name="RegistryBrowse" component={RegistryBrowseScreen} options={{ title: "Open Segments" }} />
       <Stack.Screen name="ZonesSettings" component={ZonesSettingsScreen} options={{ title: "Settings" }} />
+      <Stack.Screen name="KarooSetup" component={KarooSetupScreen} options={{ title: "Connect your Karoo" }} />
       <Stack.Screen name="HistoricalBand" component={HistoricalBandScreen} options={{ title: "Progress Over Time" }} />
       <Stack.Screen name="SendToKaroo" component={SendToKarooScreen} options={{ title: "Send to Karoo" }} />
       <Stack.Screen

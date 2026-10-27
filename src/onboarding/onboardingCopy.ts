@@ -17,7 +17,7 @@ export const KAROO_RECEIVE_WINDOW_MINUTES = 10;
 export const KAROO_ADDRESS_EXAMPLE = "192.168.1.23:8734";
 
 export interface OnboardingStep {
-  key: "welcome" | "numbers" | "segments" | "karoo";
+  key: "welcome" | "numbers" | "segments";
   title: string;
 }
 
@@ -25,8 +25,33 @@ export const ONBOARDING_STEPS: readonly OnboardingStep[] = [
   { key: "welcome", title: "Welcome" },
   { key: "numbers", title: "Your numbers" },
   { key: "segments", title: "Get a segment" },
-  { key: "karoo", title: "Connect your Karoo" },
 ];
+
+/** "Step 2 of 3": shown beside the progress dots and read out by VoiceOver. */
+export function onboardingStepLabel(stepIndex: number): string {
+  return `Step ${stepIndex + 1} of ${ONBOARDING_STEPS.length}`;
+}
+
+/** Where the Karoo APK is downloaded from (the same link as docs/BETA_KAROO_INSTALL.md). */
+export const KAROO_APK_URL = "https://github.com/frason/GritMap/releases/latest/download/gritmap-karoo.apk";
+/** Hammerhead's own guide to installing an APK through the Companion app. */
+export const KAROO_SIDELOAD_GUIDE_URL = "https://support.hammerhead.io/hc/en-us/articles/31576497036827-Companion-App-Sideloading";
+
+export interface KarooLink {
+  label: string;
+  url: string;
+}
+
+/** The two links under the first Karoo step. */
+export const KAROO_UPDATE_LINKS: readonly KarooLink[] = [
+  { label: "Get the GritMap Karoo APK", url: KAROO_APK_URL },
+  { label: "Hammerhead's sideloading guide", url: KAROO_SIDELOAD_GUIDE_URL },
+];
+
+/** Heading and lead-in for the Karoo steps, on the Home checklist's "Connect your Karoo" screen. */
+export const KAROO_SETUP_TITLE = "Connect your Karoo";
+export const KAROO_SETUP_INTRO =
+  "To ride a segment with live pacing, GritMap sends it and its plan to your Karoo over Bluetooth, straight from your phone. Do this when you are ready to ride; you can skip it for now.";
 
 export const WELCOME_POINTS: readonly { icon: "mapPin" | "speedometer" | "pulse"; title: string; body: string }[] = [
   {
@@ -74,7 +99,6 @@ export const KAROO_BLUETOOTH_WINDOW_MINUTES = 2;
 /** What GritMap needs to be useful (docs/GOALS.md, decided 2026-10-23). Shown before anything is set up. */
 export const WHAT_YOU_NEED = {
   title: "What you need",
-  intro: "GritMap needs:",
   items: ["A Hammerhead Karoo 3", "A power meter on your bike", "A heart-rate monitor"],
   body: "Pacing plans are power targets, so without a power meter GritMap can show your rides and segments but cannot pace or judge your effort.",
 } as const;
@@ -83,10 +107,11 @@ export const WHAT_YOU_NEED = {
 export const FTP_HINT_SHORT = "The most power you can hold for about an hour. Your power meter or a recent test will tell you.";
 
 /** Steps for the main way to send: Bluetooth, straight from the phone to the Karoo, no Wi-Fi or address needed. */
-export const KAROO_STEPS: readonly { title: string; body: string }[] = [
+export const KAROO_STEPS: readonly { title: string; body: string; links?: readonly KarooLink[] }[] = [
   {
     title: `Update ${KAROO_APP_NAME} on your Karoo to ${KAROO_MIN_VERSION_NAME} (version code ${KAROO_MIN_VERSION_CODE}) or newer`,
-    body: `Follow the Karoo install guide you were sent. Older versions cannot receive over Bluetooth; use the Wi-Fi steps below.`,
+    body: `The APK installs on the Karoo through the Hammerhead Companion app, not on this iPhone. Older versions cannot receive over Bluetooth; use the Wi-Fi steps below.`,
+    links: KAROO_UPDATE_LINKS,
   },
   {
     title: `On the Karoo, open ${KAROO_APP_NAME}, then ${KAROO_INBOX}, then tap ${KAROO_RECEIVE_SCREEN}`,
@@ -104,7 +129,7 @@ export const KAROO_STEPS: readonly { title: string; body: string }[] = [
 ];
 
 /** The same steps for the Send to Karoo screen itself, where the rider is already on the screen the third step names. */
-export const KAROO_SEND_SCREEN_STEPS: readonly { title: string; body: string }[] = KAROO_STEPS.map((step, index) =>
+export const KAROO_SEND_SCREEN_STEPS: readonly { title: string; body: string; links?: readonly KarooLink[] }[] = KAROO_STEPS.map((step, index) =>
   index === 2
     ? {
         title: "On your phone, tap Start Bluetooth send",
