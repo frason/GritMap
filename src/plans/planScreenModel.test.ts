@@ -54,7 +54,7 @@ describe("buildPlanScreenModel", () => {
     assert.equal(model.origin, "imported");
     assert.equal(model.sourceLabel, "Coach plan · Sam");
     assert.equal(model.outdated?.planFtpWatts, 280);
-    assert.equal(model.lastSent, "Last sent Oct 5");
+    assert.equal(model.lastSent, "Karoo");
   });
 
   it("without a weight there is no predicted finish and the plan says so", () => {

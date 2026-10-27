@@ -36,7 +36,7 @@ describe("planView", () => {
 
   it("labels last sent only when something was sent", () => {
     assert.equal(lastSentLabel(undefined), undefined);
-    assert.match(lastSentLabel(new Date(2026, 9, 5, 12).getTime())!, /^Last sent Oct 5$/);
+    assert.match(lastSentLabel(new Date(2026, 9, 5, 12).getTime())!, /^Karoo$/);
   });
 
   it("labels the plan source", () => {

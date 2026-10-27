@@ -46,6 +46,7 @@ import {
   AppText,
   Button,
   Card,
+  Chip,
   ErrorState,
   HeaderButton,
   ListRow,
@@ -407,9 +408,7 @@ export function SegmentDetailScreen() {
         ) : null}
         {sendBlock(outdated)}
         {activePlan.lastSentAtMs === undefined ? null : (
-          <AppText variant="footnote" color="textSecondary">
-            Last sent {formatRideDate(activePlan.lastSentAtMs)}
-          </AppText>
+          <Chip label="Karoo" tone="success" icon="check" />
         )}
         <Button label="Use GritMap's own plan instead" variant="tertiary" fullWidth={false} onPress={handleUseGeneratedPlan} />
       </Card>

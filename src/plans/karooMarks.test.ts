@@ -10,7 +10,7 @@ describe("karooMark", () => {
     assert.equal(karooMark({}), undefined);
   });
   it("says last sent, never On Karoo", () => {
-    assert.deepEqual(karooMark({ lastSentAtMs: oct5, sentFtpWatts: 280, currentFtpWatts: 280 }), { label: "Last sent Oct 5", tone: "success" });
+    assert.deepEqual(karooMark({ lastSentAtMs: oct5, sentFtpWatts: 280, currentFtpWatts: 280 }), { label: "Karoo", tone: "success" });
   });
   it("flags an older plan when FTP changed or the plan was imported after the send", () => {
     assert.equal(karooMark({ lastSentAtMs: oct5, sentFtpWatts: 280, currentFtpWatts: 300 })?.label, "Older plan on Karoo");

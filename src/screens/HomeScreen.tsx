@@ -154,7 +154,7 @@ export function HomeScreen() {
           />
         )}
         {sentCards.length === 0 ? null : (
-          <Section title="Sent from this phone" description="Segments you have sent to a Karoo. The mark shows when this phone last sent each one.">
+          <Section title="Sent from this phone" description="Segments you have sent to a Karoo. The check shows this phone has sent it.">
             {sentCards.map((card) => (
               <SegmentCard
                 key={card.summary.segmentId}

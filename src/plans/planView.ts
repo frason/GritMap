@@ -79,9 +79,9 @@ export function formatShortDate(ms: number): string {
   return `${MONTHS[date.getMonth()]} ${date.getDate()}`;
 }
 
-/** The quiet "Last sent Oct 5" line when the phone only knows what it sent. Undefined when nothing was ever sent. */
+/** The bare "Karoo" mark when this phone has sent the segment. Undefined when nothing was ever sent. */
 export function lastSentLabel(lastSentAtMs: number | undefined): string | undefined {
-  return lastSentAtMs === undefined ? undefined : `Last sent ${formatShortDate(lastSentAtMs)}`;
+  return lastSentAtMs === undefined ? undefined : "Karoo";
 }
 
 /** Who wrote the plan: GritMap's own, or an imported one with its author when known. */

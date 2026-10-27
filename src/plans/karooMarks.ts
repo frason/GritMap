@@ -1,5 +1,3 @@
-import { formatShortDate } from "./planView.ts";
-
 export interface KarooMark {
   label: string;
   /** "success": the Karoo has the current plan as far as this phone knows. "warning": it is older than the plan here. */
@@ -16,7 +14,7 @@ export function karooMark(input: { lastSentAtMs?: number; sentFtpWatts?: number;
   const ftpChanged = input.sentFtpWatts !== undefined && input.currentFtpWatts !== undefined && Math.round(input.sentFtpWatts) !== Math.round(input.currentFtpWatts);
   const planChanged = input.planChangedAtMs !== undefined && input.planChangedAtMs > input.lastSentAtMs;
   if (ftpChanged || planChanged) return { label: "Older plan on Karoo", tone: "warning" };
-  return { label: `Last sent ${formatShortDate(input.lastSentAtMs)}`, tone: "success" };
+  return { label: "Karoo", tone: "success" };
 }
 
 /**

@@ -14,7 +14,7 @@ const PREVIEW_HEIGHT = 96;
 /**
  * A segment as a card. The default (Segments list) shows the name, its length and efforts, a small
  * preview of the course and a bare "Karoo" check when the segment is on a Karoo. `compact` (Home) keeps the
- * plan line, the intensity strip and the "Last sent" mark. The plan itself lives on the segment page.
+ * plan line, the intensity strip and the "Karoo" mark. The plan itself lives on the segment page.
  */
 export function SegmentCard({ data, onPress, compact = false }: { data: SegmentCardData; onPress: () => void; compact?: boolean }) {
   const colors = useColors();

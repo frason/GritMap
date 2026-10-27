@@ -5,7 +5,7 @@ import type { ColorPalette } from "../colors.ts";
  * or a plan intensity. The tone says what kind of thing it is, so the colour carries meaning
  * consistently across screens.
  *
- * - neutral: quiet information ("Last sent Oct 5", "No plan yet").
+ * - neutral: quiet information ("No plan yet").
  * - cta: interactive or informational emphasis; solid is the strongest ("New PR", the selected filter).
  * - rest, hold, push, max: how hard a plan stretch asks you to ride.
  * - success, warning, danger, info: status; use for outcomes, not for intensity.
