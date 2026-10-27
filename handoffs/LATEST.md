@@ -1,3 +1,7 @@
+# Phone: BUILD 8 IS IN TESTFLIGHT (2026-10-27)
+
+Build 8 (1.0.0, build number 8, EAS profile production, source origin/main 9369ff4) is installed by Jason from TestFlight (group TG). EAS submit errored on the group name only; the binary arrived and the group was added by hand. Not submitted for external review. Details, verification and hazards: `archive/2026-10-27-0909-claude-build8-testflight.md`.
+
 # Coordinator: NEXT TASK for Codex (2026-10-26, Jason: this is the priority): make the new pacing reach the Karoo
 
 The public 0.10.45/73 release is done; the replanner (1650b79) is built but off and has never run on a real ride. Work in your own worktree, own branch, explicit paths, no force-push, push your commits.
