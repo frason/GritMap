@@ -133,10 +133,10 @@ private final class TransferPeripheral: NSObject, CBPeripheralManagerDelegate {
 
   private func handle(_ event: TransferSession.Event) {
     switch event {
-    case .variant(let name):
-      // Which offer was frozen for this Karoo ("baseline" or a richer one). Never any content.
+    case .variant(let name, let advertised):
+      // Which offer was frozen for this Karoo ("baseline" or a richer one), and whether it advertised capabilities. Never any content.
       markConnected()
-      emit(["state": "variant", "variant": name])
+      emit(["state": "variant", "variant": name, "advertised": advertised])
     case .manifestRead:
       markConnected()
     case .progress(let resource, let served, let total):

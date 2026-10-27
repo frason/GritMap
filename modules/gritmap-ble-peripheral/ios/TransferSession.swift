@@ -64,8 +64,9 @@ final class TransferSession {
 
   enum Event: Equatable {
     case manifestRead
-    /// The variant that was chosen for this central and is now frozen ("baseline" or a richer one).
-    case variant(String)
+    /// The variant that was chosen for this central and is now frozen ("baseline" or a richer one), and whether the
+    /// central sent a valid capabilities advertisement (false for an old Karoo, which never writes one).
+    case variant(String, advertised: Bool)
     case progress(resource: String, served: Int, total: Int)
     case receipt(status: String, code: String)
   }
@@ -149,7 +150,7 @@ final class TransferSession {
     if selectedIndex != nil { return true }
     guard let index = TransferSession.chooseVariant(variants, capabilities: capabilities) else { return false }
     selectedIndex = index
-    emit(.variant(variants[index].name))
+    emit(.variant(variants[index].name, advertised: capabilities != nil))
     return true
   }
 

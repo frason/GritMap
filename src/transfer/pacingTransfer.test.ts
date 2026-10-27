@@ -5,7 +5,7 @@ import { describe, it } from "node:test";
 
 import type { SegmentDetail } from "../db/getSegmentDetail.ts";
 import type { SavedSegmentPlan } from "../db/segmentPlans.ts";
-import { describeBleSend, describePacingNote, KAROO_TOO_OLD_FOR_PACING_TEXT, reduceBleEvent, showsPacingNote, type BleSendState } from "./bleSendStatus.ts";
+import { describeBleSend, describePacingNote, KAROO_CANNOT_USE_PACING_TEXT, reduceBleEvent, showsPacingNote, type BleSendState } from "./bleSendStatus.ts";
 import {
   assembleTransferPackage,
   buildDirectTransfer,
@@ -224,22 +224,29 @@ describe("variants against the Karoo-side contract fixtures", () => {
 
 describe("what the phone says about pacing fields", () => {
   const offered = { ceilings: true, record: false };
+  const reception = (variant: string, advertised: boolean) => ({ variant, advertised });
 
-  it("tells the rider plainly when the Karoo is too old for pacing limits, and what to do", () => {
-    const note = describePacingNote(offered, "baseline");
-    assert.equal(note?.kind, "tooOld");
-    assert.equal(note?.text, KAROO_TOO_OLD_FOR_PACING_TEXT);
-    assert.match(note!.text, /too old for pacing limits/);
+  it("says nothing to a Karoo that advertised nothing: the public 0.10.45 baseline is normal, not a failure", () => {
+    assert.equal(describePacingNote(offered, reception("baseline", false)), undefined);
+    assert.equal(describePacingNote({ ceilings: true, record: true }, reception("baseline", false)), undefined);
+  });
+
+  it("explains plainly when a Karoo that advertised capabilities still got the basic plan", () => {
+    const note = describePacingNote(offered, reception("baseline", true));
+    assert.equal(note?.kind, "fellBack");
+    assert.equal(note?.text, KAROO_CANNOT_USE_PACING_TEXT);
+    assert.match(note!.text, /can't use pacing limits/);
     assert.match(note!.text, /Update GritMap on your Karoo/);
     assert.doesNotMatch(note!.text, /ceiling|replan|capabilit|variant|manifest|\bBLE\b|characteristic/i);
   });
 
   it("confirms delivery when the Karoo took a richer variant", () => {
-    for (const variant of ["full", "ceilings", "record"]) assert.equal(describePacingNote(offered, variant)?.kind, "delivered");
+    for (const variant of ["full", "ceilings", "record"]) assert.equal(describePacingNote(offered, reception(variant, true))?.kind, "delivered");
   });
 
-  it("says nothing when there was nothing extra to send, or the phone cannot tell which variant was used", () => {
-    assert.equal(describePacingNote({ ceilings: false, record: false }, "baseline"), undefined);
+  it("says nothing when there was nothing extra to send, or the phone cannot tell what the Karoo got", () => {
+    assert.equal(describePacingNote({ ceilings: false, record: false }, reception("baseline", true)), undefined);
+    assert.equal(describePacingNote({ ceilings: false, record: false }, reception("baseline", false)), undefined);
     assert.equal(describePacingNote(offered, undefined), undefined);
   });
 
@@ -250,7 +257,7 @@ describe("what the phone says about pacing fields", () => {
     ];
     for (const [state, shown] of states) assert.equal(showsPacingNote(state), shown, state.phase);
     const connected: BleSendState = { phase: "connected" };
-    assert.deepEqual(reduceBleEvent(connected, { state: "variant", variant: "baseline" }), connected);
+    assert.deepEqual(reduceBleEvent(connected, { state: "variant", variant: "baseline", advertised: false }), connected);
     assert.equal(describeBleSend({ phase: "imported", code: "ok" }).text, "Imported on your Karoo.");
   });
 });

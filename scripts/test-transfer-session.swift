@@ -240,7 +240,7 @@ struct TransferSessionTests {
     session = TransferSession(transferId: id, variants: variantSet())
     events = []
     check(!isRefused(session.writeCapabilities(central: "K", body: capsFixture, emit: emit)), "C6: the capabilities write is accepted")
-    check(events.contains(.variant("full")), "C6: the choice is reported as an event")
+    check(events.contains(.variant("full", advertised: true)), "C6: the choice is reported as an event, with the advertisement noted")
     check(value(session.readManifest(central: "K", emit: emit)) == json("{\"v\":2,\"m\":\"full\"}"), "C6: the manifest of the chosen variant is served")
     _ = session.writeRequest(central: "K", body: json("{\"resource\":\"plan\",\"offset\":512}"), emit: emit)
     check(value(session.readData(central: "K", valueOffset: 0, emit: emit)) == ceilPlan.subdata(in: 512..<ceilPlan.count), "C6: plan chunks come from the chosen variant's plan")
@@ -280,6 +280,20 @@ struct TransferSessionTests {
     check(!isRefused(session.writeCapabilities(central: "K", body: json("garbage"), emit: emit)), "C8: repeating the same malformed write is still idempotent")
     session.end()
     check(isRefused(session.writeCapabilities(central: "K", body: capsFixture)), "C9: after end the capabilities write is refused")
+
+    // Whether the Karoo advertised at all is reported, so the phone can tell "old Karoo" from "newer Karoo that fell back".
+    func variantEvent(_ body: Data?) -> TransferSession.Event? {
+      var seen: TransferSession.Event?
+      let s = TransferSession(transferId: id, variants: variantSet())
+      let capture: (TransferSession.Event) -> Void = { if case .variant = $0 { seen = $0 } }
+      if let body = body { _ = s.writeCapabilities(central: "K", body: body, emit: capture) } else { _ = s.readManifest(central: "K", emit: capture) }
+      return seen
+    }
+    check(variantEvent(nil) == .variant("baseline", advertised: false), "C11: a Karoo that never writes capabilities is reported as not advertised")
+    check(variantEvent(capsFixture) == .variant("full", advertised: true), "C11: a valid advertisement is reported as advertised")
+    check(variantEvent(capsJSON(features: "[]", maxRecord: 0)) == .variant("baseline", advertised: true), "C11: a valid advertisement with no usable features is advertised, and fell back to baseline")
+    check(variantEvent(json("garbage")) == .variant("baseline", advertised: false), "C11: a malformed advertisement counts as not advertised")
+    check(variantEvent(capsJSON(v: 2)) == .variant("baseline", advertised: false), "C11: a future-version advertisement counts as not advertised")
 
     // The consistency check knows the record resource.
     func recordManifest(recordBytes: Int, recordSha: String) -> Data {

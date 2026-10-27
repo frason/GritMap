@@ -11,7 +11,7 @@ import { getActiveSegmentPlan, markSegmentPlanSent } from "../db/segmentPlans";
 import { loadPlanHistory } from "../pacing/loadPlanHistory";
 import { computeFileHash } from "../import/computeFileHash";
 import { addStateListener, bleAdvertiserAvailable, bleCapabilityNegotiationAvailable, startTransfer, startTransferVariants, stopTransfer } from "../../modules/gritmap-ble-peripheral";
-import { describeBleSend, describePacingNote, offersWifiFallback, reduceBleEvent, shouldHintOlderKaroo, showsPacingNote, OLDER_KAROO_HINT_AFTER_MS, type BleSendState } from "../transfer/bleSendStatus";
+import { describeBleSend, describePacingNote, offersWifiFallback, reduceBleEvent, shouldHintOlderKaroo, showsPacingNote, OLDER_KAROO_HINT_AFTER_MS, type BleSendState, type PacingReception } from "../transfer/bleSendStatus";
 import { OLDER_KAROO_HINT } from "../onboarding/onboardingCopy";
 import { bytesToBase64 } from "../transfer/directTransfer";
 import { buildDirectTransferOffer, toNativeOfferConfig, type DirectTransferOffer } from "../transfer/directTransferOffer";
@@ -36,7 +36,7 @@ export function BleSendSection({ segment, onUseWifi, wifiOpen }: { segment: Segm
   // What the current offer carries, kept so a Karoo receipt ("imported") can record the plan the Karoo really got.
   const pendingRef = useRef<{ packageId: string; offer: DirectTransferOffer; importedPlanId: string | undefined; sentAtMs: number } | undefined>(undefined);
   // Which staged variant the Karoo was given (reported by the native layer); undefined until it connects, or in a build that cannot tell.
-  const [variant, setVariant] = useState<string | undefined>(undefined);
+  const [received, setReceived] = useState<PacingReception | undefined>(undefined);
 
   const stop = useCallback(() => {
     if (offeringRef.current) stopTransfer();
@@ -45,8 +45,8 @@ export function BleSendSection({ segment, onUseWifi, wifiOpen }: { segment: Segm
 
   useEffect(() => {
     const subscription = addStateListener((event) => {
-      if (event.state === "variant") setVariant(event.variant);
-      if (event.state === "advertising") setVariant(undefined);
+      if (event.state === "variant") setReceived({ variant: event.variant, advertised: event.advertised });
+      if (event.state === "advertising") setReceived(undefined);
       if (event.state !== "advertising" && event.state !== "connected" && event.state !== "progress" && event.state !== "variant") offeringRef.current = false;
       setState((current) => reduceBleEvent(current, event));
     });
@@ -70,13 +70,13 @@ export function BleSendSection({ segment, onUseWifi, wifiOpen }: { segment: Segm
     pendingRef.current = undefined;
     try {
       // Keep the plan the Karoo really got: the one in the variant it was given (the baseline when we cannot tell).
-      const given = pending.offer.variants.find((candidate) => candidate.name === variant) ?? pending.offer.variants[pending.offer.variants.length - 1]!;
+      const given = pending.offer.variants.find((candidate) => candidate.name === received?.variant) ?? pending.offer.variants[pending.offer.variants.length - 1]!;
       recordPlanSend(database, { id: Crypto.randomUUID(), segmentId: segment.segmentId, sentAtMs: pending.sentAtMs, packageId: pending.packageId, plan: given.transfer.baselinePacingPlan as SentBaselinePlan });
       if (pending.importedPlanId !== undefined) markSegmentPlanSent(database, pending.importedPlanId, Date.now());
     } catch {
       // The transfer itself succeeded; failing to keep a record must not turn it into an error for the rider.
     }
-  }, [state.phase, database, segment.segmentId, variant]);
+  }, [state.phase, database, segment.segmentId, received]);
 
   // How long the phone has been waiting for a Karoo to connect (restarts each time it starts advertising).
   const [waitedMs, setWaitedMs] = useState(0);
@@ -103,7 +103,7 @@ export function BleSendSection({ segment, onUseWifi, wifiOpen }: { segment: Segm
       setState({ phase: "unavailable", reason: "noPlan" });
       return;
     }
-    setVariant(undefined);
+    setReceived(undefined);
     const built = await buildDirectTransferOffer({
       segment,
       rider: { ftpWatts: profile.ftpWatts, weightKg: profile.weightKg, maxHeartRateBpm: profile.maxHeartRateBpm },
@@ -144,7 +144,7 @@ export function BleSendSection({ segment, onUseWifi, wifiOpen }: { segment: Segm
   }
 
   const status = describeBleSend(state);
-  const pacingNote = showsPacingNote(state) && offerRef.current !== undefined ? describePacingNote(offerRef.current.pacing, variant) : undefined;
+  const pacingNote = showsPacingNote(state) && offerRef.current !== undefined ? describePacingNote(offerRef.current.pacing, received) : undefined;
 
   return (
     <Card>

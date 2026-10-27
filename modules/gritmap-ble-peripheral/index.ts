@@ -4,8 +4,11 @@ import { requireOptionalNativeModule } from "expo-modules-core";
 export type BlePeripheralEvent =
   | { state: "advertising" }
   | { state: "connected" }
-  /** Which staged variant was frozen for the Karoo ("baseline" or a richer one). Only in a build that supports variants. */
-  | { state: "variant"; variant: string }
+  /**
+   * Which staged variant was frozen for the Karoo ("baseline" or a richer one), and whether the Karoo sent a valid capabilities
+   * advertisement (false for any Karoo that never writes one, such as the public 0.10.45). Only in a build that supports variants.
+   */
+  | { state: "variant"; variant: string; advertised: boolean }
   | { state: "progress"; resource: "plan" | "segment" | "rider"; served: number; total: number }
   | { state: "receipt"; status: "imported" | "rejected"; code: string }
   | { state: "sentUnconfirmed" }

@@ -74,9 +74,11 @@ variant that carries the most features the Karoo advertised, freezes its manifes
 - The 512-byte manifest cap holds for every variant. The `record` descriptor does not fit next to a rider profile and a public segment flag;
   then the record is left out (`pacing.recordOmitted = "manifest_too_large"`), the rider profile is never dropped and nothing is truncated.
   A record that fails `validateSegmentRecord` is never staged (the Karoo rejects the whole package atomically).
-- Wording: when the plan had ceilings to send but the Karoo took the baseline, the result says "Your Karoo's GritMap is too old for pacing limits,
-  so it used the basic plan. Update GritMap on your Karoo to use them." (`describePacingNote`); a richer variant says the Karoo also received
-  the pacing limits. A build without the native change (`bleCapabilityNegotiationAvailable` false) sends the baseline and says nothing.
+- Wording (Jason, 2026-10-27): a Karoo that advertised nothing, like the public 0.10.45/73, gets the baseline and **no note**: that is the normal
+  case and there is nothing newer for its rider to install. The fallback note ("Your Karoo can't use pacing limits for this send yet, so it used
+  the basic plan. Update GritMap on your Karoo to use them.") appears only when the Karoo DID advertise (so pacing support exists on its side) and
+  the send still fell back (`variant` event with `advertised: true` and `variant: "baseline"`). A richer variant says the Karoo also received the
+  pacing limits. A build without the native change (`bleCapabilityNegotiationAvailable` false) sends the baseline and says nothing.
 - Tests: `src/transfer/pacingTransfer.test.ts` and `segmentRecord.test.ts` (against the Karoo-side fixtures, and against Codex's
   `gateTransferExtensions` for 15 advertisements); `scripts/test-transfer-session.swift` (the native serving logic; run with the swiftc command above).
 - **Not yet verified:** the Swift module has only been syntax-checked, not compiled (no native build was made); nothing has run on a radio.
