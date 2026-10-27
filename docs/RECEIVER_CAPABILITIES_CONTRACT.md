@@ -8,7 +8,7 @@ This implements GOALS priorities1/8 and the minimum record storage prerequisite 
 
 Exact JSON fixture: `fixtures/contracts/receiver-capabilities-v1.json`.
 Keys: `v:1`, `transferV:2`, positive integer `versionCode`, `features` array,
-`maxManifestBytes:1024`, `maxRecordBytes:8192`. No names, GPS, rider IDs or inventory.
+`maxManifestBytes:512`, `maxRecordBytes:8192`. No names, GPS, rider IDs or inventory.
 Feature strings: `planCeilingsV1`, `segmentRecordV1`. Each follows its independent build flag.
 An absent, malformed, future-version, timed-out or unrecognized advertisement means baseline only.
 Only a positively advertised known feature permits its fields. Unknown feature strings grant nothing.
@@ -30,7 +30,11 @@ then freeze the exact manifest and resource bytes for the owning central for the
 Claim the first central on capability write OR manifest read. Reject another central's writes/reads.
 An identical capability write on reconnect must be idempotent, with no resource regeneration or offset reset;
 a changed write after manifest selection must be refused. Existing recovery compares the entire manifest.
-Keep the512-byte manifest ceiling for baseline peers; permit1024 only after this handshake.
+Keep the512-byte manifest ceiling for every peer: a GATT attribute cannot exceed512 bytes
+([Bluetooth ATT specification](https://www.bluetooth.com/wp-content/uploads/Files/Specification/HTML/Core-54/out/en/host/attribute-protocol--att-.html)).
+Four resource descriptors may exceed that cap. Omit the optional record in that case and send it via Wi-Fi,
+or omit rider only when the matching profile is already installed. Never silently discard a needed rider profile,
+truncate hashes or raise this cap. A richer manifest needs a separately versioned chunked-manifest protocol.
 The new pure TypeScript gate in `src/transfer/receiverCapabilities.ts` is shared preparation, not native BLE wiring.
 Current iOS module/sender still stages a fixed baseline, so it cannot send the new BLE extensions yet.
 Do not label an old-phone diagnostic transfer a successful ceiling transfer.

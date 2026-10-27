@@ -19,5 +19,10 @@ test("shared extensions only pass an explicit valid receiver advertisement",()=>
 });
 test("capability limits and versions fail closed",()=>{
  assert.deepEqual(parseReceiverCapabilities(caps),caps);
- for(const bad of [{...caps,maxManifestBytes:1025},{...caps,maxRecordBytes:8193},{...caps,versionCode:"74"},{...caps,features:["private data"]}]) assert.equal(parseReceiverCapabilities(bad),undefined);
+ for(const bad of [{...caps,maxManifestBytes:513},{...caps,maxRecordBytes:8193},{...caps,maxRecordBytes:0},{...caps,features:["planCeilingsV1","planCeilingsV1"]},{...caps,versionCode:"74"},{...caps,features:["private data"]}]) assert.equal(parseReceiverCapabilities(bad),undefined);
+});
+
+test("record gate enforces the advertised UTF-8 size before staging bytes",()=>{
+ assert.equal(gateTransferExtensions({segmentRecord:record},{...caps,maxRecordBytes:10}).segmentRecord,undefined);
+ assert.deepEqual(gateTransferExtensions({segmentRecord:record},caps).segmentRecord,record);
 });

@@ -269,7 +269,7 @@ describe("receiver capability negotiation",()=>{
    const methods:string[]=[];let body:any;
    globalThis.fetch=(async(_url:string,init:RequestInit)=>{
     methods.push(init.method!);
-    if(init.method==="GET")return {ok:supported,status:supported?200:405,json:async()=>({v:1,transferV:2,versionCode:74,features:["planCeilingsV1"],maxManifestBytes:1024,maxRecordBytes:8192})} as Response;
+    if(init.method==="GET")return {ok:supported,status:supported?200:405,json:async()=>({v:1,transferV:2,versionCode:74,features:["planCeilingsV1"],maxManifestBytes:512,maxRecordBytes:8192})} as Response;
     body=JSON.parse(init.body as string);return {ok:true,status:200} as Response;
    }) as typeof fetch;
    const result=await sendGuidancePackageToKaroo(sampleSegment(),sampleRider(),60000,"192.168.1.42:8734","p",1000,undefined,{attempts:[]});

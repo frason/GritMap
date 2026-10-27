@@ -4,6 +4,7 @@ import java.security.MessageDigest
 import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.jsonObject
+import kotlinx.serialization.json.JsonObject
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
@@ -74,7 +75,7 @@ class DirectBleTransferTest {
 
     @Test fun `optional record descriptor is bounded and maps to transfer extension`() = runBlocking {
         val record="{\"schemaVersion\":1}".encodeToByteArray()
-        fun bytes(size:Int)=manifestBytes().toString(Charsets.UTF_8).dropLast(1).plus(",\"record\":{\"bytes\":$size,\"sha256\":\"${sha(record)}\"}}").encodeToByteArray()
+        fun bytes(size:Int)=JsonObject(Json.parseToJsonElement(manifestBytes().toString(Charsets.UTF_8)).jsonObject - "rider").toString().dropLast(1).plus(",\"record\":{\"bytes\":$size,\"sha256\":\"${sha(record)}\"}}").encodeToByteArray()
         val manifest=DirectTransferManifestParser().parse(bytes(record.size))
         assertEquals(record.size,manifest.record!!.bytes)
         assertTrue(runCatching { DirectTransferManifestParser().parse(bytes(8193)) }.isFailure)

@@ -69,7 +69,7 @@ class DirectTransferManifestParser(private val json: Json = Json { ignoreUnknown
 
     companion object {
         const val VERSION = 2
-        const val MAX_MANIFEST_BYTES = 1024
+        const val MAX_MANIFEST_BYTES = 512
         const val MIN_CHUNK_BYTES = 20
         const val MAX_CHUNK_BYTES = 512
         const val MAX_PLAN_BYTES = 128 * 1024

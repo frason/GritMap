@@ -17,7 +17,7 @@ data class ReceiverCapabilities(
             if (planCeilings) add(JsonPrimitive("planCeilingsV1"))
             if (segmentRecords) add(JsonPrimitive("segmentRecordV1"))
         }))
-        put("maxManifestBytes", 1024)
+        put("maxManifestBytes", 512)
         put("maxRecordBytes", 8192)
     }.toString()
 

@@ -6,6 +6,6 @@
     "planCeilingsV1",
     "segmentRecordV1"
   ],
-  "maxManifestBytes": 1024,
+  "maxManifestBytes": 512,
   "maxRecordBytes": 8192
 }
