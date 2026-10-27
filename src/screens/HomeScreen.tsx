@@ -207,7 +207,7 @@ export function HomeScreen() {
           />
         </Card>
         {otherGoals.length === 0 ? null : (
-          <Section title="Other goals" description="Segments where you have also set a goal. Tap one to open it.">
+          <Section title="Other goals" description="Segments where you have also set a goal. Your Karoo shows one goal at a time for now. Tap one to open it.">
             {otherGoals.map((other) => (
               <ListRow
                 key={other.segmentId}
