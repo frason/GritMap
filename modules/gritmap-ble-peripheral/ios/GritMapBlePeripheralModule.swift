@@ -7,6 +7,9 @@ private let manifestUUID = CBUUID(string: "A9C5876C-8F5F-48BE-AAE7-EB47EF573C41"
 private let requestUUID = CBUUID(string: "59E28123-C142-4B89-ACBA-57D76E483B72")
 private let dataUUID = CBUUID(string: "83E82BA5-A7F4-47C5-BF6C-6473178BEF68")
 private let statusUUID = CBUUID(string: "C0BB77AF-3BD8-4C60-B669-91AC74C778B9")
+/// Optional: a receiver that understands pacing extensions writes its capabilities here before reading the
+/// manifest (docs/RECEIVER_CAPABILITIES_CONTRACT.md). Old Karoos never do, and are served the baseline variant.
+private let capabilitiesUUID = CBUUID(string: "9AA66E90-1C9E-46E1-9E52-45FD6A40847A")
 
 /// Must match modules/gritmap-ble-peripheral/index.ts. Events never carry the transfer's bytes.
 private let stateEvent = "onStateChange"
@@ -93,6 +96,7 @@ private final class TransferPeripheral: NSObject, CBPeripheralManagerDelegate {
         CBMutableCharacteristic(type: requestUUID, properties: [.write], value: nil, permissions: [.writeable]),
         CBMutableCharacteristic(type: dataUUID, properties: [.read], value: nil, permissions: [.readable]),
         CBMutableCharacteristic(type: statusUUID, properties: [.write], value: nil, permissions: [.writeable]),
+        CBMutableCharacteristic(type: capabilitiesUUID, properties: [.write], value: nil, permissions: [.writeable]),
       ]
       manager.add(service)
     case .poweredOff: finish("poweredOff")
@@ -113,19 +117,28 @@ private final class TransferPeripheral: NSObject, CBPeripheralManagerDelegate {
     }
   }
 
+  /// The Karoo has found us (by its capabilities write or its first manifest read): the discovery window is
+  /// over. Keep advertising, so the same Karoo can reconnect and resume, but the session is locked to it
+  /// (other centrals are refused).
+  private func markConnected() {
+    if connected { return }  // a long read arrives as several reads
+    connected = true
+    advertiseTimer?.cancel(); advertiseTimer = nil
+    schedule(&capTimer, after: sessionCapSeconds) { [weak self] in
+      guard let self = self, let session = self.session else { return }
+      self.finish(session.idleOutcome())
+    }
+    emit(["state": "connected"])
+  }
+
   private func handle(_ event: TransferSession.Event) {
     switch event {
+    case .variant(let name, let advertised):
+      // Which offer was frozen for this Karoo ("baseline" or a richer one), and whether it advertised capabilities. Never any content.
+      markConnected()
+      emit(["state": "variant", "variant": name, "advertised": advertised])
     case .manifestRead:
-      if connected { return }  // a long read arrives as several reads
-      connected = true
-      // The Karoo has found us: the discovery window is over. Keep advertising, so the same Karoo can
-      // reconnect and resume, but the session is locked to it (other centrals are refused).
-      advertiseTimer?.cancel(); advertiseTimer = nil
-      schedule(&capTimer, after: sessionCapSeconds) { [weak self] in
-        guard let self = self, let session = self.session else { return }
-        self.finish(session.idleOutcome())
-      }
-      emit(["state": "connected"])
+      markConnected()
     case .progress(let resource, let served, let total):
       emit(["state": "progress", "resource": resource, "served": served, "total": total])
     case .receipt(let status, let code):
@@ -198,6 +211,8 @@ private final class TransferPeripheral: NSObject, CBPeripheralManagerDelegate {
       switch request.characteristic.uuid {
       case requestUUID:
         if case .ok = session.writeRequest(central: central, body: body, emit: { self.handle($0) }) { touch() } else { allowed = false }
+      case capabilitiesUUID:
+        if case .ok = session.writeCapabilities(central: central, body: body, emit: { self.handle($0) }) { touch() } else { allowed = false }
       case statusUUID:
         if case .refused = session.writeStatus(central: central, body: body, emit: { self.handle($0) }) { allowed = false }
       default:
@@ -246,6 +261,21 @@ public final class GritMapBlePeripheralModule: Module {
       }
       let session = TransferSession(transferId: transferId, manifest: manifestData, resources: resources)
       self.peripheral.start(session: session, advertiseSeconds: min(max(advertiseMs / 1000.0, 1.0), maxAdvertiseSeconds))
+    }
+
+    /// Offers one transfer as several staged variants (a baseline every Karoo can read, and richer ones for receivers
+    /// that advertise the matching features). `config` is JSON, see `TransferOffer`; nothing in it is ever logged.
+    Function("startTransferVariants") { (config: String) throws in
+      guard let data = config.data(using: .utf8) else {
+        throw Exception(name: "ERR_INVALID_TRANSFER", description: "Not a valid transfer offer")
+      }
+      switch TransferOffer.parse(data) {
+      case .invalid(let reason):
+        throw Exception(name: "ERR_INVALID_TRANSFER", description: reason)
+      case .ok(let offer):
+        let session = TransferSession(transferId: offer.transferId, variants: offer.variants)
+        self.peripheral.start(session: session, advertiseSeconds: offer.advertiseSeconds)
+      }
     }
 
     Function("stopTransfer") {

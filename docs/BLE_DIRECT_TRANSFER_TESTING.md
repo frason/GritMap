@@ -58,6 +58,52 @@ Optional on a Mac (also needs the physical iPhone): `swiftc -o /tmp/fake-karoo s
 [--skip-segment] [--receipt imported|rejected]` scans, reads the manifest, walks the chunks, verifies the hashes and writes a receipt, printing
 sizes and OK/FAIL only. Untested against a real iPhone as of this commit.
 
+## Pacing extensions over Bluetooth (plan ceilings, `segmentRecord`): phone side, needs a native build
+
+Contract: `docs/RECEIVER_CAPABILITIES_CONTRACT.md` (Codex's branch `codex/karoo-receiver-capabilities`); shared fixtures `fixtures/contracts/`.
+The phone stages several complete offers (variants) before it advertises: the **baseline** (exactly what every phone has always sent, for any
+Karoo that never writes the capabilities characteristic) and richer ones. The Karoo (the central) writes its advertisement to the optional
+characteristic `9aa66e90-1c9e-46e1-9e52-45fd6a40847a` (write with response) before its first manifest read; the native layer picks the one
+variant that carries the most features the Karoo advertised, freezes its manifest and bytes for that central, and reports which one in a
+`variant` event. No advertisement, a malformed one, a future version, or unknown features: baseline.
+
+- Variants: `full` (ceilings + record), `ceilings`, `record`, `baseline`. Targets are identical in every variant; only `replan` and each
+  zone's `ceilingPowerWatts` differ. Imported coach plans never get ceilings.
+- A first write or the first manifest read claims the session; another central is refused. An identical rewrite on reconnect is a no-op (no
+  regeneration, no offset reset); a changed one, or one after the manifest was chosen, is refused. A malformed write is accepted and means baseline.
+- The 512-byte manifest cap holds for every variant. The `record` descriptor does not fit next to a rider profile and a public segment flag;
+  then the record is left out (`pacing.recordOmitted = "manifest_too_large"`), the rider profile is never dropped and nothing is truncated.
+  A record that fails `validateSegmentRecord` is never staged (the Karoo rejects the whole package atomically).
+- Wording (Jason, 2026-10-27): a Karoo that advertised nothing, like the public 0.10.45/73, gets the baseline and **no note**: that is the normal
+  case and there is nothing newer for its rider to install. The fallback note ("Your Karoo can't use pacing limits for this send yet, so it used
+  the basic plan. Update GritMap on your Karoo to use them.") appears only when the Karoo DID advertise (so pacing support exists on its side) and
+  the send still fell back (`variant` event with `advertised: true` and `variant: "baseline"`). A richer variant says the Karoo also received the
+  pacing limits. A build without the native change (`bleCapabilityNegotiationAvailable` false) sends the baseline and says nothing.
+- Tests: `src/transfer/pacingTransfer.test.ts` and `segmentRecord.test.ts` (against the Karoo-side fixtures, and against Codex's
+  `gateTransferExtensions` for 15 advertisements); `scripts/test-transfer-session.swift` (the native serving logic; run with the swiftc command above).
+- **Not yet verified:** the Swift module has only been syntax-checked, not compiled (no native build was made); nothing has run on a radio.
+  First device check: nRF Connect, write the fixture JSON to the capabilities characteristic before reading the Manifest, and confirm the manifest
+  and Data bytes are the richer variant's; a second connection that writes nothing and reads gets refused.
+
+### Device check for the pacing-extensions build (phone + Karoo), for Jason
+
+Needs: the TestFlight build of branch `ble-pacing-fields`, an FTP, a weight and a goal time (or a generated plan) for a segment, and a Karoo.
+Which Karoo build advertises capabilities is Codex's diagnostic (flags on); the public 0.10.45/73 advertises nothing and must keep working unchanged.
+
+1. **Public Karoo 0.10.45/73 (baseline, nothing new may break):** Send to Karoo, Start Bluetooth send, Karoo: GritMap, Inbox, Receive from Phone.
+   Expect the same steps as build 8 ending in "Imported on your Karoo." and **no pacing note**. Permission prompt, Stop, 30 s older-Karoo hint and the Wi-Fi
+   fallback behave as in build 8.
+2. **Karoo build that advertises pacing support (the diagnostic):** same steps. Expect "Imported on your Karoo." plus the green line "Your Karoo also
+   received your pacing limits, so it can keep your effort within them." That line means the Karoo wrote its capabilities and took a richer variant.
+3. **Karoo advertises but the send fell back:** you would see "Imported on your Karoo." plus "Your Karoo can't use pacing limits for this send yet, so it used the
+   basic plan." Write down the Karoo build and what the Karoo shows; this is a bug report, not an expected result.
+4. **Imported coach plan:** a segment whose plan was imported (not generated) never carries pacing limits: no pacing note on either Karoo.
+5. **On the Karoo (Codex's side):** after step 2, check that the plan it stored has the ceilings (stored replan metadata) before any ride; the phone cannot see this.
+6. **Resume:** start a send, turn the Karoo's Bluetooth off and on (or move away) mid-transfer, return within the 30 s inactivity window; it resumes at the
+   last chunk and still ends in "Imported". Variant stays the same after the reconnect.
+7. Anything that shows a pacing note, a rejected result ("Your Karoo couldn't use this transfer...") or a stuck "Sending..." : note the step, the Karoo build and
+   the time, and send it to the coordinator. Never paste the plan or any ride data.
+
 ## Known limits and decisions open
 
 - No link-layer encryption (see the contract's threat model); decision for Jason/Codex.
