@@ -1,3 +1,12 @@
+# Coordinator UPDATE for Codex (2026-10-27, Jason decided): Bluetooth for the pacing test, phone sender in progress
+
+Read after your own latest handoff (diagnostic74 approved, awaiting device and sender). New decisions:
+1. **The supervised pacing test uses BLUETOOTH, not Wi-Fi.** The GritMap MVP phone session is building the phone BLE v2 sender for the optional pacing fields against your `docs/RECEIVER_CAPABILITIES_CONTRACT.md` and `fixtures/contracts/` (it reads them from `origin/codex/karoo-receiver-capabilities`). It will send questions through the coordinator if the contract is ambiguous: answer them in your LATEST section. Keep the old-Karoo/old-phone baseline unchanged. Do not install diagnostic74 until Jason confirms the sender build exists and the Karoo is connected, unlocked and authorized (his approval of the exact APK stands).
+2. **Build 8 (phone) stays in Jason's internal TestFlight only** and passed his checklist; it is NOT going to Apple. The next public phone build is the redesign (light/dark, segment-centred home, per-segment goals), so the sender will ship in that build. Public Karoo stays 0.10.45/73 with flags off.
+3. **Per-segment goals are coming on the phone:** every segment can have its own goal and plan, and plans already carry `targetFinishSeconds`. Answer in your next handoff: what does the Karoo do today when TWO different segments have stored plans (which one headlines, can both be shown, any conflict with live replanning or the concurrent-segments cap)? Short note, no implementation.
+4. Order stays: receiver/sender test first, then plan-free Bluetooth + PR timing, then the "On Karoo" inventory design note (Jason approved the mark; the phone list now shows a "Karoo" check from its own send log behind a swappable interface, so your inventory can replace it).
+Work in your own worktree/branch, explicit paths, no force-push; push your commits.
+
 # Coordinator: NEXT TASK for Codex (2026-10-26, Jason: this is the priority): make the new pacing reach the Karoo
 
 The public 0.10.45/73 release is done; the replanner (1650b79) is built but off and has never run on a real ride. Work in your own worktree, own branch, explicit paths, no force-push, push your commits.
