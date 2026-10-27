@@ -85,6 +85,25 @@ variant that carries the most features the Karoo advertised, freezes its manifes
   First device check: nRF Connect, write the fixture JSON to the capabilities characteristic before reading the Manifest, and confirm the manifest
   and Data bytes are the richer variant's; a second connection that writes nothing and reads gets refused.
 
+### Device check for the pacing-extensions build (phone + Karoo), for Jason
+
+Needs: the TestFlight build of branch `ble-pacing-fields`, an FTP, a weight and a goal time (or a generated plan) for a segment, and a Karoo.
+Which Karoo build advertises capabilities is Codex's diagnostic (flags on); the public 0.10.45/73 advertises nothing and must keep working unchanged.
+
+1. **Public Karoo 0.10.45/73 (baseline, nothing new may break):** Send to Karoo, Start Bluetooth send, Karoo: GritMap, Inbox, Receive from Phone.
+   Expect the same steps as build 8 ending in "Imported on your Karoo." and **no pacing note**. Permission prompt, Stop, 30 s older-Karoo hint and the Wi-Fi
+   fallback behave as in build 8.
+2. **Karoo build that advertises pacing support (the diagnostic):** same steps. Expect "Imported on your Karoo." plus the green line "Your Karoo also
+   received your pacing limits, so it can keep your effort within them." That line means the Karoo wrote its capabilities and took a richer variant.
+3. **Karoo advertises but the send fell back:** you would see "Imported on your Karoo." plus "Your Karoo can't use pacing limits for this send yet, so it used the
+   basic plan." Write down the Karoo build and what the Karoo shows; this is a bug report, not an expected result.
+4. **Imported coach plan:** a segment whose plan was imported (not generated) never carries pacing limits: no pacing note on either Karoo.
+5. **On the Karoo (Codex's side):** after step 2, check that the plan it stored has the ceilings (stored replan metadata) before any ride; the phone cannot see this.
+6. **Resume:** start a send, turn the Karoo's Bluetooth off and on (or move away) mid-transfer, return within the 30 s inactivity window; it resumes at the
+   last chunk and still ends in "Imported". Variant stays the same after the reconnect.
+7. Anything that shows a pacing note, a rejected result ("Your Karoo couldn't use this transfer...") or a stuck "Sending..." : note the step, the Karoo build and
+   the time, and send it to the coordinator. Never paste the plan or any ride data.
+
 ## Known limits and decisions open
 
 - No link-layer encryption (see the contract's threat model); decision for Jason/Codex.
