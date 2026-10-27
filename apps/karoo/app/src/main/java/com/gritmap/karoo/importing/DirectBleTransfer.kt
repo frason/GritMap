@@ -25,15 +25,16 @@ data class DirectTransferManifest(
     val plan: DirectTransferResource,
     val segment: DirectTransferResource,
     val rider: DirectTransferResource?,
+    val record: DirectTransferResource? = null,
 )
 
 class DirectTransferManifestParser(private val json: Json = Json { ignoreUnknownKeys = false }) {
     fun parse(bytes: ByteArray): DirectTransferManifest {
         require(bytes.size <= MAX_MANIFEST_BYTES) { "Transfer manifest is too large" }
         val root = json.parseToJsonElement(bytes.toString(Charsets.UTF_8)).jsonObject
-        val allowed = setOf("v", "transferId", "createdAtMs", "segmentFingerprint", "chunkBytes", "plan", "segment", "rider")
+        val allowed = setOf("v", "transferId", "createdAtMs", "segmentFingerprint", "chunkBytes", "plan", "segment", "rider", "record")
         require(root.keys.all(allowed::contains)) { "Unknown transfer manifest property" }
-        require(root.keys.containsAll(allowed - "rider")) { "Transfer manifest is missing a property" }
+        require(root.keys.containsAll(allowed - setOf("rider", "record"))) { "Transfer manifest is missing a property" }
         require(root.getValue("v").jsonPrimitive.int == VERSION) { "Unsupported transfer version" }
         val transferId = root.getValue("transferId").jsonPrimitive.content
         require(transferId.matches(TRANSFER_ID)) { "Invalid transfer id" }
@@ -48,6 +49,7 @@ class DirectTransferManifestParser(private val json: Json = Json { ignoreUnknown
             parseResource(root.getValue("plan").jsonObject, MAX_PLAN_BYTES, false),
             parseResource(root.getValue("segment").jsonObject, MAX_SEGMENT_BYTES, true),
             root["rider"]?.jsonObject?.let { parseResource(it, MAX_RIDER_BYTES, false) },
+            root["record"]?.jsonObject?.let { parseResource(it, MAX_RECORD_BYTES, false) },
         )
     }
 
@@ -67,18 +69,19 @@ class DirectTransferManifestParser(private val json: Json = Json { ignoreUnknown
 
     companion object {
         const val VERSION = 2
-        const val MAX_MANIFEST_BYTES = 512
+        const val MAX_MANIFEST_BYTES = 1024
         const val MIN_CHUNK_BYTES = 20
         const val MAX_CHUNK_BYTES = 512
         const val MAX_PLAN_BYTES = 128 * 1024
         const val MAX_SEGMENT_BYTES = 512 * 1024
+        const val MAX_RECORD_BYTES = 8192
         const val MAX_RIDER_BYTES = 16 * 1024
         private val TRANSFER_ID = Regex("[A-Za-z0-9_-]{22}")
         private val SHA256 = Regex("[0-9a-f]{64}")
     }
 }
 
-enum class DirectTransferResourceName(val wireName: String) { PLAN("plan"), SEGMENT("segment"), RIDER("rider") }
+enum class DirectTransferResourceName(val wireName: String) { PLAN("plan"), SEGMENT("segment"), RIDER("rider"), RECORD("record") }
 
 fun directTransferRequest(resource: DirectTransferResourceName, offset: Int): ByteArray =
     "{\"resource\":\"${resource.wireName}\",\"offset\":$offset}".encodeToByteArray().also {
@@ -122,10 +125,11 @@ suspend fun readDirectTransferResource(
 }
 
 class DirectTransferPackageBuilder(private val json: Json = Json { ignoreUnknownKeys = false }) {
-    fun build(manifest: DirectTransferManifest, plan: ByteArray, segment: ByteArray?, rider: ByteArray?): String {
+    fun build(manifest: DirectTransferManifest, plan: ByteArray, segment: ByteArray?, rider: ByteArray?, record: ByteArray? = null): String {
         val planObject = json.parseToJsonElement(plan.toString(Charsets.UTF_8)).jsonObject
         val segmentObject = segment?.let { json.parseToJsonElement(it.toString(Charsets.UTF_8)).jsonObject }
         val riderObject = rider?.let { json.parseToJsonElement(it.toString(Charsets.UTF_8)).jsonObject }
+        val recordObject = record?.let { json.parseToJsonElement(it.toString(Charsets.UTF_8)).jsonObject }
         return buildJsonObject {
             put("schemaVersion", 1)
             put("packageType", TransferPackageParser.PACKAGE_TYPE)
@@ -133,6 +137,7 @@ class DirectTransferPackageBuilder(private val json: Json = Json { ignoreUnknown
             put("createdAtMs", manifest.createdAtMs)
             segmentObject?.let { put("segment", it) }
             riderObject?.let { put("riderHistory", it) }
+            recordObject?.let { put("segmentRecord", it) }
             put("baselinePacingPlan", planObject)
         }.toString()
     }

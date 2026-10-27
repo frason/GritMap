@@ -139,3 +139,21 @@ data class HistoricalAttemptSampleEntity(
     val speedMetersPerSecond: Double?,
     val elevationMeters: Double?,
 )
+
+/** Pin ownership explicitly; FTP is not an identity. No implicit owner resets on profile sync. */
+@Entity(tableName = "segment_record_owner")
+data class SegmentRecordOwnerEntity(@PrimaryKey val singletonId: Int = 1, val riderId: String)
+
+@Entity(tableName = "segment_records", foreignKeys = [ForeignKey(
+    entity = SegmentEntity::class, parentColumns = ["id"], childColumns = ["segmentId"],
+    onDelete = ForeignKey.CASCADE,
+)], indices = [Index("segmentId")])
+data class SegmentRecordEntity(
+    @PrimaryKey val segmentFingerprint: String,
+    val segmentId: String,
+    val riderId: String,
+    val bestDurationSeconds: Double,
+    val achievedAtMs: Long,
+    val importedAtMs: Long,
+    val recordJson: String,
+)

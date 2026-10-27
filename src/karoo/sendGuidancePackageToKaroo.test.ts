@@ -37,6 +37,7 @@ describe("sendGuidancePackageToKaroo", () => {
   it("POSTs a segment, rider profile, and generated baseline pacing plan to the Karoo's /transfer endpoint", async () => {
     const calls: { url: string; init: RequestInit }[] = [];
     globalThis.fetch = (async (url: string, init: RequestInit) => {
+      if (init.method === "GET") return { ok: false, status: 405 } as Response;
       calls.push({ url, init });
       return { ok: true, status: 200 } as Response;
     }) as typeof fetch;
@@ -259,4 +260,23 @@ describe("sendGuidancePackageToKaroo", () => {
       assert.equal(bodies.length, 0);
     });
   });
+});
+
+
+describe("receiver capability negotiation",()=>{
+ it("sends realistic ceiling metadata only after an explicit advertisement",async()=>{
+  for (const supported of [false,true]) {
+   const methods:string[]=[];let body:any;
+   globalThis.fetch=(async(_url:string,init:RequestInit)=>{
+    methods.push(init.method!);
+    if(init.method==="GET")return {ok:supported,status:supported?200:405,json:async()=>({v:1,transferV:2,versionCode:74,features:["planCeilingsV1"],maxManifestBytes:1024,maxRecordBytes:8192})} as Response;
+    body=JSON.parse(init.body as string);return {ok:true,status:200} as Response;
+   }) as typeof fetch;
+   const result=await sendGuidancePackageToKaroo(sampleSegment(),sampleRider(),60000,"192.168.1.42:8734","p",1000,undefined,{attempts:[]});
+   assert.equal(result.ok,true);assert.deepEqual(methods,["GET","POST"]);
+   assert.equal(!!body.baselinePacingPlan.replan,supported);
+   assert.ok(body.baselinePacingPlan.zones.every((z:any)=>supported?Number.isInteger(z.ceilingPowerWatts):z.ceilingPowerWatts===undefined));
+   if(supported)assert.deepEqual(Object.keys(body.baselinePacingPlan.replan).sort(),["schemaVersion","criticalPowerWatts","wPrimeJoules","wPrimeReserveFraction","maxStepWatts","hardMaxStepWatts","stepLimitMinGradePct"].sort());
+  }
+ });
 });

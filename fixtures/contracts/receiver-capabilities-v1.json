@@ -1,0 +1,11 @@
+{
+  "v": 1,
+  "transferV": 2,
+  "versionCode": 74,
+  "features": [
+    "planCeilingsV1",
+    "segmentRecordV1"
+  ],
+  "maxManifestBytes": 1024,
+  "maxRecordBytes": 8192
+}

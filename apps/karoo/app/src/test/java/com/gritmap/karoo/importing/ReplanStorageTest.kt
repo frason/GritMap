@@ -68,7 +68,7 @@ class ReplanStorageTest {
         helper.writableDatabase
         helper.close()
         val db=Room.databaseBuilder(context,KarooDatabase::class.java,name).allowMainThreadQueries()
-            .addMigrations(DatabaseProvider.MIGRATION_2_3).build()
+            .addMigrations(DatabaseProvider.MIGRATION_2_3, DatabaseProvider.MIGRATION_3_4).build()
         try {
             assertEquals("Preserved",db.segmentDao().segment("s")!!.name)
             val plan=db.pacingDao().baseline("s")!!
@@ -76,4 +76,60 @@ class ReplanStorageTest {
             assertNull(plan.replanMetadataJson)
         } finally { db.close(); context.deleteDatabase(name) }
     }
+    @Test fun `schema three upgrade retains ceiling metadata`() = runBlocking {
+        val context=ApplicationProvider.getApplicationContext<Context>()
+        val name="records-migration-${UUID.randomUUID()}.db"
+        val schema=Json.parseToJsonElement(File(root,"apps/karoo/app/schemas/com.gritmap.karoo.data.KarooDatabase/3.json").readText()).jsonObject.getValue("database").jsonObject
+        val helper=FrameworkSQLiteOpenHelperFactory().create(SupportSQLiteOpenHelper.Configuration.builder(context).name(name)
+            .callback(object: SupportSQLiteOpenHelper.Callback(3) {
+                override fun onCreate(db: SupportSQLiteDatabase) {
+                    schema.getValue("entities").jsonArray.forEach { item ->
+                        val entity=item.jsonObject;val table=entity.getValue("tableName").jsonPrimitive.content
+                        db.execSQL(entity.getValue("createSql").jsonPrimitive.content.replace("\${TABLE_NAME}",table))
+                        entity["indices"]?.jsonArray.orEmpty().forEach { index -> db.execSQL(index.jsonObject.getValue("createSql").jsonPrimitive.content.replace("\${TABLE_NAME}",table)) }
+                    }
+                    db.execSQL("INSERT INTO segments VALUES ('s','Preserved',30,0.9,1,'abc')")
+                    db.execSQL("INSERT INTO pacing_plans (id,segmentId,segmentFingerprint,createdAtMs,source,isBaseline,replanMetadataJson) VALUES ('p','s','abc',1000,'LOCAL',1,'retained-metadata')")
+                }
+                override fun onUpgrade(db: SupportSQLiteDatabase,oldVersion:Int,newVersion:Int) = Unit
+            }).build())
+        helper.writableDatabase;helper.close()
+        val db=Room.databaseBuilder(context,KarooDatabase::class.java,name).allowMainThreadQueries().addMigrations(DatabaseProvider.MIGRATION_3_4).build()
+        try {
+            assertEquals("retained-metadata",db.pacingDao().baseline("s")!!.replanMetadataJson)
+            assertNull(db.segmentRecordDao().owner())
+            assertNull(db.segmentRecordDao().record("abc"))
+        } finally { db.close();context.deleteDatabase(name) }
+    }
+
+    @Test fun `record import retains fastest value and rolls back mismatched owner plan`() = runBlocking {
+        val context=ApplicationProvider.getApplicationContext<Context>()
+        val db=Room.inMemoryDatabaseBuilder(context,KarooDatabase::class.java).allowMainThreadQueries().build()
+        val planFixture=Json.parseToJsonElement(File(root,"fixtures/contracts/plan-ceilings-transfer-v1.json").readText()).jsonObject
+        val recordFixture=Json.parseToJsonElement(File(root,"fixtures/contracts/segment-record-v1.json").readText()).jsonObject
+        val fp=recordFixture.getValue("segmentFingerprint").jsonPrimitive.content
+        val repository=TransferPackageRepository(db,parser=TransferPackageParser(planCeilingsEnabled=true,segmentRecordsEnabled=true))
+        fun payload(duration:Int=2400,rider:String="synthetic_rider_0001",withPlan:Boolean=false,length:Double=10460.736): String {
+            val record=JsonObject(recordFixture + mapOf("bestDurationSeconds" to JsonPrimitive(duration),"riderId" to JsonPrimitive(rider),"splits" to buildJsonArray {
+                add(buildJsonObject { put("distanceMeters",0);put("elapsedSeconds",0) })
+                add(buildJsonObject { put("distanceMeters",length);put("elapsedSeconds",duration) })
+            }))
+            return JsonObject(planFixture.filterKeys { it!="baselinePacingPlan" || withPlan } + ("segmentRecord" to record)).toString()
+        }
+        try {
+            db.segmentDao().insertDefinition(SegmentEntity("s","Synthetic",schemaVersion=1,fingerprint=fp),listOf(
+                SegmentReferencePointEntity(segmentId="s",pointIndex=0,lat=0.0,lng=0.0,distanceMeters=0.0,elevationMeters=0.0),
+                SegmentReferencePointEntity(segmentId="s",pointIndex=1,lat=0.1,lng=0.0,distanceMeters=10460.736,elevationMeters=100.0)))
+            assertTrue(repository.importPackage(payload()).segmentRecordUpdated)
+            assertFalse(repository.importPackage(payload(2500)).segmentRecordUpdated)
+            assertFalse(repository.importPackage(payload()).segmentRecordUpdated)
+            assertTrue(repository.importPackage(payload(2300)).segmentRecordUpdated)
+            assertEquals(2300.0,db.segmentRecordDao().record(fp)!!.bestDurationSeconds,0.0)
+            assertTrue(runCatching { repository.importPackage(payload(2200,"synthetic_rider_0002",true)) }.isFailure)
+            assertNull(db.pacingDao().baseline("s")) // plan replacement rolled back atomically
+            assertTrue(runCatching { repository.importPackage(payload(2200,length=200.0)) }.isFailure)
+            assertEquals(2300.0,db.segmentRecordDao().record(fp)!!.bestDurationSeconds,0.0)
+        } finally { db.close() }
+    }
+
 }

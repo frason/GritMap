@@ -87,6 +87,21 @@ class HttpSegmentInboxTest {
         assertEquals(body, pendingDeferred.await().single().payload)
     }
 
+    @Test fun `capabilities probe advertises exact JSON and preserves POST session`() = runBlocking {
+        val capabilities=ReceiverCapabilities(true,true,74).encode()
+        val inbox=HttpSegmentInbox(port=0,timeoutMs=5000,capabilitiesJson=capabilities)
+        val pending=async { inbox.pending() }
+        val port=awaitBoundPort(inbox)
+        repeat(2) {
+            val response=sendRaw(port,"GET /capabilities HTTP/1.1\r\nHost: x\r\n\r\n")
+            assertTrue(response.startsWith("HTTP/1.1 200"))
+            assertTrue(response.endsWith(capabilities))
+            assertTrue(response.contains("Cache-Control: no-store"))
+        }
+        assertTrue(postRaw(port,"{}").startsWith("HTTP/1.1 200"))
+        assertEquals("{}",pending.await().single().payload)
+    }
+
     private suspend fun awaitBoundPort(inbox: HttpSegmentInbox): Int {
         var port: Int? = null
         withTimeout(2_000) {

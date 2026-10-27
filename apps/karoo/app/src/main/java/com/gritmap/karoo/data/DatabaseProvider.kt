@@ -13,7 +13,15 @@ object DatabaseProvider {
             context.applicationContext,
             KarooDatabase::class.java,
             "gritmap-karoo.db",
-        ).addMigrations(MIGRATION_1_2, MIGRATION_2_3).build().also { instance = it }
+        ).addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4).build().also { instance = it }
+    }
+
+    val MIGRATION_3_4 = object : Migration(3, 4) {
+        override fun migrate(db: SupportSQLiteDatabase) {
+            db.execSQL("CREATE TABLE IF NOT EXISTS segment_record_owner (singletonId INTEGER NOT NULL PRIMARY KEY, riderId TEXT NOT NULL)")
+            db.execSQL("CREATE TABLE IF NOT EXISTS segment_records (segmentFingerprint TEXT NOT NULL PRIMARY KEY, segmentId TEXT NOT NULL, riderId TEXT NOT NULL, bestDurationSeconds REAL NOT NULL, achievedAtMs INTEGER NOT NULL, importedAtMs INTEGER NOT NULL, recordJson TEXT NOT NULL, FOREIGN KEY(segmentId) REFERENCES segments(id) ON UPDATE NO ACTION ON DELETE CASCADE)")
+            db.execSQL("CREATE INDEX IF NOT EXISTS index_segment_records_segmentId ON segment_records(segmentId)")
+        }
     }
 
     val MIGRATION_2_3 = object : Migration(2, 3) {

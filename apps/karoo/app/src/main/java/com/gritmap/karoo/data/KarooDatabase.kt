@@ -164,14 +164,28 @@ interface RiderHistoryDao {
     }
 }
 
+@Dao
+interface SegmentRecordDao {
+    @Query("SELECT * FROM segment_record_owner WHERE singletonId = 1")
+    suspend fun owner(): SegmentRecordOwnerEntity?
+    @Insert(onConflict = OnConflictStrategy.ABORT)
+    suspend fun pinOwner(owner: SegmentRecordOwnerEntity)
+    @Query("SELECT * FROM segment_records WHERE segmentFingerprint = :fingerprint")
+    suspend fun record(fingerprint: String): SegmentRecordEntity?
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun save(record: SegmentRecordEntity)
+}
+
 @Database(
     entities = [SegmentEntity::class, SegmentReferencePointEntity::class, PacingPlanEntity::class,
         PacingZoneEntity::class, SegmentAttemptEntity::class, AttemptCheckpointEntity::class,
-        RiderProfileEntity::class, TrainingLoadEntity::class, HistoricalAttemptSampleEntity::class],
-    version = 3,
+        RiderProfileEntity::class, TrainingLoadEntity::class, HistoricalAttemptSampleEntity::class,
+        SegmentRecordOwnerEntity::class, SegmentRecordEntity::class],
+    version = 4,
     exportSchema = true,
 )
 abstract class KarooDatabase : RoomDatabase() {
+    abstract fun segmentRecordDao(): SegmentRecordDao
     abstract fun segmentDao(): SegmentDao
     abstract fun attemptDao(): AttemptDao
     abstract fun pacingDao(): PacingDao

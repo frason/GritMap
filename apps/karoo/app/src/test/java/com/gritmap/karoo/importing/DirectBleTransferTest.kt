@@ -72,6 +72,18 @@ class DirectBleTransferTest {
         )
     }
 
+    @Test fun `optional record descriptor is bounded and maps to transfer extension`() = runBlocking {
+        val record="{\"schemaVersion\":1}".encodeToByteArray()
+        fun bytes(size:Int)=manifestBytes().toString(Charsets.UTF_8).dropLast(1).plus(",\"record\":{\"bytes\":$size,\"sha256\":\"${sha(record)}\"}}").encodeToByteArray()
+        val manifest=DirectTransferManifestParser().parse(bytes(record.size))
+        assertEquals(record.size,manifest.record!!.bytes)
+        assertTrue(runCatching { DirectTransferManifestParser().parse(bytes(8193)) }.isFailure)
+        assertTrue(readDirectTransferResource(manifest.record!!,20) { offset,count -> record.copyOfRange(offset,offset+count) }.contentEquals(record))
+        val root=Json.parseToJsonElement(DirectTransferPackageBuilder().build(manifest,"{}".encodeToByteArray(),null,null,record)).jsonObject
+        assertTrue(root.containsKey("segmentRecord"))
+        assertEquals("{\"resource\":\"record\",\"offset\":0}",directTransferRequest(DirectTransferResourceName.RECORD,0).toString(Charsets.UTF_8))
+    }
+
     private fun manifestBytes(): ByteArray {
         val plan = "plan".encodeToByteArray()
         val segment = "segment".encodeToByteArray()

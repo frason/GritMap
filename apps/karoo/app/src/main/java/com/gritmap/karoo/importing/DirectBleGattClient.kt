@@ -106,6 +106,11 @@ class DirectBleGattClient(private val context: Context) {
             requireCharacteristic(REQUEST_UUID)
             requireCharacteristic(DATA_UUID)
             requireCharacteristic(STATUS_UUID)
+            // Old phone builds have no characteristic: continue their unchanged baseline exchange.
+            if (gatt?.getService(SERVICE_UUID)?.getCharacteristic(CAPABILITIES_UUID) != null) {
+                write(CAPABILITIES_UUID, ReceiverCapabilities().encode().encodeToByteArray())
+                Log.i("GritMapLive", "ble_receiver_capabilities sent=true")
+            }
             Log.i("GritMapLive", "ble_connected mtu=$negotiatedMtu")
         }
 
@@ -210,6 +215,7 @@ class DirectBleGattClient(private val context: Context) {
     companion object {
         const val PREFERRED_MTU = 517
         private const val OPERATION_TIMEOUT_MS = 8_000L
+        val CAPABILITIES_UUID: UUID = UUID.fromString(ReceiverCapabilities.BLE_UUID)
         val SERVICE_UUID: UUID = UUID.fromString("e7a4e868-0a21-45d6-ac63-5812c740ba12")
         val MANIFEST_UUID: UUID = UUID.fromString("a9c5876c-8f5f-48be-aae7-eb47ef573c41")
         val REQUEST_UUID: UUID = UUID.fromString("59e28123-c142-4b89-acba-57d76e483b72")

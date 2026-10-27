@@ -32,6 +32,7 @@ class DirectBleTransferReceiver(
         try {
             connection = gattClient.connect(device)
             manifest = manifestParser.parse(connection.readManifest())
+            require(manifest.record == null || BuildConfig.SEGMENT_RECORDS_ENABLED) { "Record feature not enabled" }
             val existing = segmentExists(manifest.segmentFingerprint)
             // Keep one GATT connection across resources. Fetch the segment before the plan
             // so the phone's plan-served receipt deadline does not include a large download.
@@ -60,7 +61,8 @@ class DirectBleTransferReceiver(
             }
             val plan = resource(DirectTransferResourceName.PLAN, manifest.plan)
             val rider = manifest.rider?.let { resource(DirectTransferResourceName.RIDER, it) }
-            val packageJson = packageBuilder.build(manifest, plan, segment, rider)
+            val record = manifest.record?.let { resource(DirectTransferResourceName.RECORD, it) }
+            val packageJson = packageBuilder.build(manifest, plan, segment, rider, record)
             val result = withTimeout(RECEIPT_DEADLINE_MS) {
                 val imported = importPackage(packageJson)
                 receiptAttempted = true

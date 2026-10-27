@@ -5,6 +5,8 @@ import com.gritmap.karoo.BuildConfig
 import com.gritmap.karoo.ai.AiPacingResponseParser
 import com.gritmap.karoo.ai.AiPlanValidator
 import com.gritmap.karoo.data.KarooDatabase
+import com.gritmap.karoo.data.SegmentRecordEntity
+import com.gritmap.karoo.data.SegmentRecordOwnerEntity
 import com.gritmap.karoo.data.PacingPlanEntity
 import com.gritmap.karoo.data.PacingZoneEntity
 import com.gritmap.karoo.domain.RiderHistoryPackage
@@ -25,6 +27,7 @@ data class TransferPackage(
     val segment: SegmentDefinition?,
     val riderHistory: RiderHistoryPackage?,
     val baselinePlan: ImportedBaselinePlan?,
+    val segmentRecord: SegmentRecord? = null,
 )
 
 data class ImportedBaselinePlan(
@@ -45,6 +48,7 @@ data class TransferImportResult(
     val segmentWasNew: Boolean,
     val riderProfileUpdated: Boolean,
     val baselinePlanUpdated: Boolean,
+    val segmentRecordUpdated: Boolean = false,
 )
 
 class TransferPackageParser(
@@ -53,12 +57,13 @@ class TransferPackageParser(
     private val historyParser: RiderHistoryJsonParser = RiderHistoryJsonParser(),
     private val planValidator: AiPlanValidator = AiPlanValidator(),
     private val planCeilingsEnabled: Boolean = BuildConfig.PLAN_CEILINGS_ENABLED,
+    private val segmentRecordsEnabled: Boolean = BuildConfig.SEGMENT_RECORDS_ENABLED,
 ) {
     fun parse(input: String): TransferPackage {
         val root = json.parseToJsonElement(input).requireObject("root")
         val allowed = setOf(
             "schemaVersion", "packageType", "packageId", "createdAtMs",
-            "segment", "riderHistory", "baselinePacingPlan",
+            "segment", "riderHistory", "baselinePacingPlan", "segmentRecord",
         )
         if (!root.keys.all(allowed::contains)) fail("Unknown transfer-package property")
         if (root.requiredInt("schemaVersion") != 1) fail("Unsupported transfer schemaVersion")
@@ -76,14 +81,21 @@ class TransferPackageParser(
         val segment = root["segment"]?.let { segmentParser.parse(it.toString()) }
         val history = root["riderHistory"]?.let { historyParser.parse(it.toString()) }
         val baseline = root["baselinePacingPlan"]?.let { parseBaseline(it.jsonObject) }
-        if (segment == null && history == null && baseline == null) fail("Transfer package is empty")
+        val record = root["segmentRecord"]?.let {
+            try { SegmentRecord.parse(it.jsonObject) } catch (error: Exception) { fail("Invalid segment record: ${error.message}") }
+        }
+        if (record != null && listOfNotNull(segment?.fingerprint, baseline?.segmentFingerprint).any { it != record.segmentFingerprint }) {
+            fail("Record fingerprint does not match packaged segment or plan")
+        }
+        if (record != null && !segmentRecordsEnabled) fail("Segment records are not enabled on this receiver")
+        if (segment == null && history == null && baseline == null && record == null) fail("Transfer package is empty")
         if (segment != null && baseline != null && baseline.segmentFingerprint != segment.fingerprint) {
             fail("Baseline plan does not target the packaged segment fingerprint")
         }
         if (history != null && baseline != null && baseline.ftpWatts != history.profile.ftpWatts) {
             fail("Baseline plan FTP does not match the packaged rider profile")
         }
-        return TransferPackage(packageId, createdAtMs, segment, history, baseline)
+        return TransferPackage(packageId, createdAtMs, segment, history, baseline, record)
     }
 
     private fun parseBaseline(value: JsonObject): ImportedBaselinePlan {
@@ -202,12 +214,31 @@ class TransferPackageRepository(
                     },
                 )
             }
+            var recordUpdated = false
+            transfer.segmentRecord?.let { record ->
+                val segment = database.segmentDao().segmentByFingerprint(record.segmentFingerprint)
+                    ?: fail("Record references an uninstalled segment")
+                val length = database.segmentDao().points(segment.id).lastOrNull()?.distanceMeters
+                    ?: fail("Record segment has no points")
+                try { record.validateLength(length) } catch (error: Exception) { fail("Invalid record: ${error.message}") }
+                val dao = database.segmentRecordDao()
+                val owner = dao.owner()
+                if (owner != null && owner.riderId != record.riderId) fail("Record belongs to another rider")
+                if (owner == null) dao.pinOwner(SegmentRecordOwnerEntity(riderId = record.riderId))
+                val previous = dao.record(record.segmentFingerprint)
+                if (previous == null || record.bestDurationSeconds < previous.bestDurationSeconds) {
+                    dao.save(SegmentRecordEntity(record.segmentFingerprint, segment.id, record.riderId,
+                        record.bestDurationSeconds, record.achievedAtMs, System.currentTimeMillis(), record.json))
+                    recordUpdated = true
+                }
+            }
             TransferImportResult(
                 packageId = transfer.packageId,
                 segmentName = packagedSegment?.name,
                 segmentWasNew = packagedSegment != null && existingByFingerprint == null,
                 riderProfileUpdated = transfer.riderHistory != null,
                 baselinePlanUpdated = plan != null,
+                segmentRecordUpdated = recordUpdated,
             )
         }
     }

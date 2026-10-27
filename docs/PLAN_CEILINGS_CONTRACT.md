@@ -1,16 +1,13 @@
 # Plan ceilings contract (DRAFT for Codex): realistic quarter-mile targets and live replanning
 
-Receiver update, 2026-10-22: Karoo source now accepts/persists the optional v1 fields, with a default-off live replanner and a non-destructive Room migration. `docs/fixtures/plan-ceilings-transfer-v1.json` matches the phone-generated fixture and is checked by both sides. **Not deployed: installed version70 still rejects the extension. Phone sender remains unchanged; do not send these fields to old receivers.** See `KAROO_LIVE_REPLANNER.md` for assumptions and rollout limits.
+Receiver update, 2026-10-26: optional v1 parsing/storage exists behind default-off flags.
+Receiver capability negotiation and a gated Wi-Fi phone path are implemented in source; BLE needs the
+matching phone native capability characteristic/variant selection before it can send the extension.
+See `RECEIVER_CAPABILITIES_CONTRACT.md` for exact handshake, fixture paths and deployment limits.
+Public73 remains unchanged. No supervised live-replanner ride has passed.
 
-Status: **draft, 2026-10-20**. The phone side (ceilings, W' guard, redistribution) is implemented and used when GritMap generates
-a plan for display and sending (`src/pacing/realisticPlan.ts`, `planCeilings.ts`, `generateRealisticPlan.ts`). **Nothing in this
-document is on the wire yet.** The phone must not send ceilings or constants to the Karoo until Codex's parser accepts the optional
-fields below and the shared fixture passes on both sides (same rule as `segmentRecord`). Until then a Karoo only ever sees the
-final per-zone targets, already realistic, in the existing `baselinePacingPlan` shape.
-
-GOALS priority 8: plans must never target above what the rider has sustained; the Karoo replans the remaining quarter-miles at each
-boundary from what the rider actually did, within the same ceilings; Needle (on-device AI) assists the live layer only, clamped to
-the ceilings and smoothing limits, with silent fallback to the deterministic replanner.
+GOALS priority8: deterministic live replanning within phone-supplied ceilings. Needle is backlogged
+per Jason's2026-10-24 decision; no Needle dependency or integration is part of this work.
 
 ## What the phone does today (informational)
 
@@ -36,7 +33,7 @@ For a generated plan (never for an imported coach/rider plan) the phone starts f
 
 Constants are configuration (`DEFAULT_REALISTIC_PLAN_CONFIG`); the shared fixture records the ones in force.
 
-## Proposed optional wire additions (not sent yet)
+## Optional wire additions (only after capability advertisement)
 
 Both are optional. Today `TransferPackageParser.parseBaseline` and `parseZone` are exact-key strict, so an unmodified Karoo would
 reject a plan that contains them: the Karoo parser **must** accept them before the phone sends them.
@@ -67,10 +64,7 @@ Plan level, next to `zones`:
 - At each quarter-mile boundary compare cumulative actual vs planned time and recompute the remaining targets with a deadband; behind:
   spread the deficit over later, easier zones within the ceilings; ahead: never spend the surplus early; unreachable: show the best
   achievable finish. Use the same constants from `replan`, so phone and Karoo agree.
-- Needle only estimates sustainable power and fade and suggests the adjustment size and a cue, clamped to the ceilings and smoothing
-  limits; unavailable, slow or invalid means silent fallback to the deterministic replanner (which stays the authority).
-- The README says Needle initialisation is disabled until a model bundle and digest are recorded: say what is missing and whether the
-  Karoo can run it today.
+- Needle remains backlogged. Use the deterministic replanner only.
 
 ## Shared fixture
 
@@ -84,5 +78,4 @@ trace and the expected adjusted targets) are the next addition once the Karoo la
 
 - Imported coach/rider plans carry no ceilings; the phone warns (`findTargetsAboveCeilings`) and does not rewrite them.
 - The rider-facing words: "sections" for pacing stretches; "zones" only for power/HR training zones. The wire key stays `zones`.
-- Open: whether the Karoo should also receive the infeasible-goal gap, or only the targets; whether `ceilingPowerWatts` is enough for
-  Needle or it also needs each zone's grade (the Karoo can compute grade from the segment polyline).
+- The Karoo computes grade from the installed segment polyline. Its finish estimate uses a simplified normalized response and remains an estimate, not a calibrated prediction.

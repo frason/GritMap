@@ -1,3 +1,4 @@
+import { parseReceiverCapabilities } from "../transfer/receiverCapabilities.ts";
 import type { SegmentDetail } from "../db/getSegmentDetail.ts";
 import { buildTransferBaselinePlan, buildTransferSegmentJson } from "./buildTransferParts.ts";
 import type { SentBaselinePlan } from "../db/planSends.ts";
@@ -51,7 +52,21 @@ export async function sendGuidancePackageToKaroo(
 ): Promise<SendGuidanceResult> {
   const planResult = buildTransferBaselinePlan({ segment, rider, targetDurationMs, importedPlan, packageId, nowMs, planHistory });
   if (!planResult.ok) return { ok: false, message: planResult.message };
-  const baselinePacingPlan = planResult.baselinePacingPlan;
+  let baselinePacingPlan = planResult.baselinePacingPlan;
+  let endpoint: string;
+  try { endpoint = karooTransferEndpoint(hostAndPort); }
+  catch (error) { return { ok: false, message: error instanceof Error ? error.message : String(error) }; }
+  // Old receivers return 405/404 (or an unreadable response): preserve their baseline-only POST.
+  try {
+    const response = await fetchWithTimeout(endpoint.replace(/\/transfer$/, "/capabilities"), { method: "GET" }, 1500);
+    const capabilities = response.ok ? parseReceiverCapabilities(await response.json()) : undefined;
+    if (capabilities) {
+      const negotiated = buildTransferBaselinePlan({ segment, rider, targetDurationMs, importedPlan, packageId,
+        nowMs, planHistory, receiverCapabilities: capabilities });
+      if (!negotiated.ok) return { ok: false, message: negotiated.message };
+      baselinePacingPlan = negotiated.baselinePacingPlan;
+    }
+  } catch { /* Discovery failed: no extensions, existing transfer path remains usable. */ }
 
   const json = {
     schemaVersion: 1,
@@ -66,13 +81,6 @@ export async function sendGuidancePackageToKaroo(
     }),
     baselinePacingPlan,
   };
-
-  let endpoint: string;
-  try {
-    endpoint = karooTransferEndpoint(hostAndPort);
-  } catch (error) {
-    return { ok: false, message: error instanceof Error ? error.message : String(error) };
-  }
 
   try {
     const response = await fetchWithTimeout(endpoint, {

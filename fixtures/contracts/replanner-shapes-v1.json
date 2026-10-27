@@ -1,0 +1,39 @@
+{
+  "description": "Entirely invented distances, grades and powers. These broad short rolling climb and long sustained climb shapes are not GPS or ride data. Normalized response test, not a calibrated finish prediction.",
+  "shapes": [
+    {
+      "name": "junction-like-synthetic",
+      "grades": [
+        6,
+        8,
+        4,
+        2,
+        5,
+        3
+      ],
+      "targetWatts": 250,
+      "ceilingWatts": 270,
+      "secondsPerSection": 120
+    },
+    {
+      "name": "diablo-like-synthetic",
+      "grades": [
+        5,
+        6,
+        7,
+        8,
+        6,
+        5,
+        4,
+        7,
+        6,
+        3,
+        5,
+        4
+      ],
+      "targetWatts": 250,
+      "ceilingWatts": 270,
+      "secondsPerSection": 180
+    }
+  ]
+}

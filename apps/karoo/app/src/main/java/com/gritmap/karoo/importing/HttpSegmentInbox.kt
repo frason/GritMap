@@ -27,6 +27,7 @@ import kotlinx.coroutines.withContext
 class HttpSegmentInbox(
     private val port: Int = DEFAULT_PORT,
     private val timeoutMs: Int = DEFAULT_TIMEOUT_MS,
+    private val capabilitiesJson: String = ReceiverCapabilities().encode(),
 ) : SegmentInbox {
     @Volatile
     private var serverSocket: ServerSocket? = null
@@ -60,7 +61,7 @@ class HttpSegmentInbox(
                 }
                 // Port probes, abandoned clients, and malformed requests must not consume the
                 // manual receive session. Keep accepting until one complete POST arrives.
-                val payload = runCatching { socket.use { readHttpPostBody(it) } }.getOrNull()
+                val payload = runCatching { socket.use { readHttpPostBody(it, capabilitiesJson) } }.getOrNull()
                 if (payload != null) {
                     return@withContext listOf(
                         InboxItem(id = NETWORK_ITEM_ID, displayName = "Phone transfer", payload = payload),
@@ -119,7 +120,7 @@ class HttpSegmentInbox(
  * this is a single-purpose LAN receiver, not a general HTTP server, matching the "lightweight"
  * scope of a manual phone-to-Karoo transfer.
  */
-private fun readHttpPostBody(socket: Socket): String {
+private fun readHttpPostBody(socket: Socket, capabilitiesJson: String): String {
     socket.soTimeout = SOCKET_READ_TIMEOUT_MS
     val input = socket.getInputStream()
     val output = socket.getOutputStream()
@@ -145,6 +146,12 @@ private fun readHttpPostBody(socket: Socket): String {
 
     val headerLines = headerBytes.toString(Charsets.ISO_8859_1.name()).split("\r\n")
     val requestLine = headerLines.firstOrNull().orEmpty()
+    if (requestLine.startsWith("GET ")) {
+        if (requestLine.split(' ').getOrNull(1) == "/capabilities") {
+            writeResponse(output, 200, "OK", capabilitiesJson, "application/json")
+        } else writeResponse(output, 405, "Method Not Allowed")
+        throw IOException("Read-only request completed")
+    }
     if (!requestLine.startsWith("POST ")) {
         writeResponse(output, 405, "Method Not Allowed")
         throw IOException("Unsupported request line: $requestLine")
@@ -176,10 +183,10 @@ private fun readHttpPostBody(socket: Socket): String {
     return String(bodyBytes, Charsets.UTF_8)
 }
 
-private fun writeResponse(output: OutputStream, statusCode: Int, reasonPhrase: String) {
-    val body = reasonPhrase
+private fun writeResponse(output: OutputStream, statusCode: Int, reasonPhrase: String,
+    body: String = reasonPhrase, contentType: String = "text/plain") {
     val response = "HTTP/1.1 $statusCode $reasonPhrase\r\n" +
-        "Content-Type: text/plain\r\n" +
+        "Content-Type: $contentType\r\n" + "Cache-Control: no-store\r\n" +
         "Content-Length: ${body.toByteArray(Charsets.UTF_8).size}\r\n" +
         "Connection: close\r\n\r\n$body"
     output.write(response.toByteArray(Charsets.UTF_8))

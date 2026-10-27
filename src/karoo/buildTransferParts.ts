@@ -1,3 +1,5 @@
+import { supportsReceiverFeature, type ReceiverCapabilities } from "../transfer/receiverCapabilities.ts";
+import { DEFAULT_REALISTIC_PLAN_CONFIG } from "../pacing/realisticPlan.ts";
 import type { SegmentDetail } from "../db/getSegmentDetail.ts";
 import type { SavedSegmentPlan } from "../db/segmentPlans.ts";
 import { buildBaselinePacingPlan, toBaselinePlanWire } from "../pacing/buildBaselinePacingPlan.ts";
@@ -48,6 +50,7 @@ export function buildTransferBaselinePlan(input: {
    * zones. Imported plans are never changed. Omit it to get the plain grade-shaped plan.
    */
   planHistory?: PlanHistoryInput | undefined;
+  receiverCapabilities?: ReceiverCapabilities | undefined;
 }): BaselinePlanResult {
   const { segment, rider, targetDurationMs, importedPlan, packageId, nowMs, planHistory } = input;
   if (importedPlan !== undefined) {
@@ -78,18 +81,22 @@ export function buildTransferBaselinePlan(input: {
       goalDurationMs: targetDurationMs,
       history: planHistory,
     });
-    return {
-      ok: true,
-      baselinePacingPlan: toBaselinePlanWire({
-        id: packageId,
-        segmentFingerprint: segment.fingerprint,
-        createdAtMs: nowMs,
-        generator: { type: "phone-ai", modelVersion: REALISTIC_PLAN_MODEL_VERSION },
-        ftpWatts: rider.ftpWatts,
-        targetFinishTimeSeconds: Math.round(targetDurationMs / 1000),
-        zones: generated.zones,
-      }),
-    };
+    const baseline = toBaselinePlanWire({
+      id: packageId, segmentFingerprint: segment.fingerprint, createdAtMs: nowMs,
+      generator: { type: "phone-ai", modelVersion: REALISTIC_PLAN_MODEL_VERSION },
+      ftpWatts: rider.ftpWatts, targetFinishTimeSeconds: Math.round(targetDurationMs / 1000), zones: generated.zones,
+    }) as Record<string, unknown>;
+    if (supportsReceiverFeature(input.receiverCapabilities, "planCeilingsV1")) {
+      const c = DEFAULT_REALISTIC_PLAN_CONFIG;
+      baseline.replan = { schemaVersion: 1, criticalPowerWatts: generated.realistic.assumptions.criticalPowerWatts,
+        wPrimeJoules: generated.realistic.assumptions.wPrimeJoules,
+        wPrimeReserveFraction: c.wPrimeReserveFraction, maxStepWatts: c.maxStepWatts,
+        hardMaxStepWatts: c.hardMaxStepWatts, stepLimitMinGradePct: c.stepLimitMinGradePct };
+      baseline.zones = (baseline.zones as Record<string, unknown>[]).map((zone, i) => ({
+        ...zone, ceilingPowerWatts: generated.realistic.ceilings[i]!.ceilingWatts,
+      }));
+    }
+    return { ok: true, baselinePacingPlan: baseline };
   }
   return {
     ok: true,
