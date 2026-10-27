@@ -19,6 +19,16 @@ export function karooMark(input: { lastSentAtMs?: number; sentFtpWatts?: number;
   return { label: `Last sent ${formatShortDate(input.lastSentAtMs)}`, tone: "success" };
 }
 
+/**
+ * When the plan a segment would send last changed: the later of its plan being replaced and its goal being saved.
+ * A send older than this left the Karoo with an out-of-date plan (see karooMark's planChangedAtMs).
+ */
+export function latestChange(planCreatedAtMs: number | undefined, goalSavedAtMs: number | undefined): number | undefined {
+  if (planCreatedAtMs === undefined) return goalSavedAtMs;
+  if (goalSavedAtMs === undefined) return planCreatedAtMs;
+  return Math.max(planCreatedAtMs, goalSavedAtMs);
+}
+
 export interface RideSegmentHighlight {
   segmentId: string;
   name: string;

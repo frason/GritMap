@@ -10,8 +10,8 @@ import { listAttemptsForSegment, type AttemptSummary } from "../db/listAttemptsF
 import { getAttemptDetail } from "../db/getAttemptDetail";
 import { getAttemptTrack } from "../db/getAttemptTrack";
 import { getAthleteProfile, type AthleteProfile } from "../db/getAthleteProfile";
-import { getActiveGoal, type ActiveGoal } from "../db/getActiveGoal";
-import { setActiveGoal as saveActiveGoal } from "../db/setActiveGoal";
+import { getSegmentGoal, type ActiveGoal } from "../db/getActiveGoal";
+import { setSegmentGoal as saveActiveGoal } from "../db/setActiveGoal";
 import {
   deactivateSegmentPlan,
   getActiveSegmentPlan,
@@ -135,7 +135,7 @@ export function SegmentDetailScreen() {
   const load = useCallback(() => {
     try {
       const currentAttempts = listAttemptsForSegment(database, route.params.segmentId);
-      const currentGoal = getActiveGoal(database);
+      const currentGoal = getSegmentGoal(database, route.params.segmentId);
       const currentSegment = getSegmentDetail(database, route.params.segmentId);
       if (currentSegment === undefined) {
         setSegment(undefined);
@@ -259,7 +259,7 @@ export function SegmentDetailScreen() {
       nowMs: Date.now(),
       ...(removeLongTerm && !longTermTyped ? { longTermDurationMs: null } : longTermDurationMs !== undefined ? { longTermDurationMs } : {}),
     });
-    setActiveGoal(getActiveGoal(database));
+    setActiveGoal(getSegmentGoal(database, segment.segmentId));
     setOtherGoalSegmentName(undefined);
     setGoalMinutesInput("");
     setGoalSecondsInput("");
@@ -274,7 +274,7 @@ export function SegmentDetailScreen() {
   function handleSetNextGoal(targetDurationMs: number) {
     if (!segment) return;
     saveActiveGoal(database, { segmentId: segment.segmentId, targetDurationMs, nowMs: Date.now() });
-    setActiveGoal(getActiveGoal(database));
+    setActiveGoal(getSegmentGoal(database, segment.segmentId));
   }
 
   function handleStartEditingGoal() {

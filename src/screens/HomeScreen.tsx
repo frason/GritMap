@@ -5,7 +5,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { useFocusEffect, useNavigation } from "@react-navigation/native";
 import type { BottomTabNavigationProp } from "@react-navigation/bottom-tabs";
 import { useDatabase } from "../db/DatabaseProvider";
-import { getActiveGoal, type ActiveGoal } from "../db/getActiveGoal";
+import { getActiveGoal, listSegmentGoals, type ActiveGoal } from "../db/getActiveGoal";
 import { setActiveGoal } from "../db/setActiveGoal";
 import { listSegments, type SegmentSummary } from "../db/listSegments";
 import { listAttemptsForSegment, type AttemptSummary } from "../db/listAttemptsForSegment";
@@ -32,6 +32,7 @@ export function HomeScreen() {
   const navigation = useNavigation<Navigation>();
   const [segments, setSegments] = useState<SegmentSummary[]>([]);
   const [goal, setGoal] = useState<ActiveGoal | undefined>(undefined);
+  const [otherGoals, setOtherGoals] = useState<ActiveGoal[]>([]);
   const [attempts, setAttempts] = useState<AttemptSummary[]>([]);
   const [lastRide, setLastRide] = useState<RideSummary | undefined>(undefined);
   const [lastRideHighlights, setLastRideHighlights] = useState<RideSegmentHighlight[]>([]);
@@ -44,6 +45,7 @@ export function HomeScreen() {
     const currentGoal = getActiveGoal(database);
     setSegments(currentSegments);
     setGoal(currentGoal);
+    setOtherGoals(listSegmentGoals(database).filter((other) => other.segmentId !== currentGoal?.segmentId));
     setAttempts(currentGoal === undefined ? [] : listAttemptsForSegment(database, currentGoal.segmentId));
     const newest = listRides(database)[0];
     const cards = loadSegmentCards(database);
@@ -204,6 +206,20 @@ export function HomeScreen() {
             onPress={handleCompareCta}
           />
         </Card>
+        {otherGoals.length === 0 ? null : (
+          <Section title="Other goals" description="Segments where you have also set a goal. Tap one to open it.">
+            {otherGoals.map((other) => (
+              <ListRow
+                key={other.segmentId}
+                icon="flag"
+                title={segments.find((segment) => segment.segmentId === other.segmentId)?.name ?? "Segment"}
+                subtitle={`Target ${formatDurationMinutesSeconds(other.targetDurationMs)}`}
+                onPress={() => navigation.navigate("SegmentsTab", { screen: "SegmentPage", initial: false, params: { segmentId: other.segmentId } })}
+                accessibilityHint="Opens this segment"
+              />
+            ))}
+          </Section>
+        )}
       </ScreenScroll>
     </HomeFrame>
   );

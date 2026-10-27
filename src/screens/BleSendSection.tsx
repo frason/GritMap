@@ -3,7 +3,7 @@ import { AppState } from "react-native";
 import * as Crypto from "expo-crypto";
 import { useFocusEffect } from "@react-navigation/native";
 import { useDatabase } from "../db/DatabaseProvider";
-import { getActiveGoal } from "../db/getActiveGoal";
+import { getSegmentGoal } from "../db/getActiveGoal";
 import { getAthleteProfile } from "../db/getAthleteProfile";
 import type { SegmentDetail } from "../db/getSegmentDetail";
 import { recordPlanSend, type SentBaselinePlan } from "../db/planSends";
@@ -88,7 +88,7 @@ export function BleSendSection({ segment, onUseWifi, wifiOpen }: { segment: Segm
     }
     setState({ phase: "preparing" });
     const profile = getAthleteProfile(database);
-    const goal = getActiveGoal(database);
+    const goal = getSegmentGoal(database, segment.segmentId);
     const activePlan = getActiveSegmentPlan(database, segment.segmentId);
     const goalMs = goal !== undefined && goal.segmentId === segment.segmentId ? goal.targetDurationMs : undefined;
     if (profile.ftpWatts === undefined || (activePlan === undefined && goalMs === undefined)) {

@@ -3,7 +3,7 @@ import { DatabaseSync } from "node:sqlite";
 import { describe, it } from "node:test";
 
 import { applyMigrations } from "./migrations.ts";
-import { getActiveGoal } from "./getActiveGoal.ts";
+import { getActiveGoal, getSegmentGoal } from "./getActiveGoal.ts";
 import { setActiveGoal } from "./setActiveGoal.ts";
 import type { SyncDatabase } from "./types.ts";
 
@@ -67,14 +67,14 @@ describe("staged goal (next goal plus a long-term goal)", () => {
     const { raw, database } = migratedDatabase();
     insertSegment(raw);
     setActiveGoal(database, { segmentId: "segment-1", targetDurationMs: 2_460_000, longTermDurationMs: 2_340_000, nowMs: 1_000 });
-    assert.deepEqual(getActiveGoal(database), { segmentId: "segment-1", targetDurationMs: 2_460_000, longTermDurationMs: 2_340_000 });
+    assert.deepEqual(getActiveGoal(database), { segmentId: "segment-1", targetDurationMs: 2_460_000, longTermDurationMs: 2_340_000, updatedAtMs: 1_000 });
   });
 
   it("a single goal has no long-term goal, exactly as before", () => {
     const { raw, database } = migratedDatabase();
     insertSegment(raw);
     setActiveGoal(database, { segmentId: "segment-1", targetDurationMs: 2_400_000, nowMs: 1_000 });
-    assert.deepEqual(getActiveGoal(database), { segmentId: "segment-1", targetDurationMs: 2_400_000 });
+    assert.deepEqual(getActiveGoal(database), { segmentId: "segment-1", targetDurationMs: 2_400_000, updatedAtMs: 1_000 });
   });
 
   it("re-saving the next goal on the same segment keeps the long-term goal; null removes it", () => {
@@ -85,16 +85,17 @@ describe("staged goal (next goal plus a long-term goal)", () => {
     assert.equal(getActiveGoal(database)?.longTermDurationMs, 2_340_000);
     assert.equal(getActiveGoal(database)?.targetDurationMs, 2_425_000);
     setActiveGoal(database, { segmentId: "segment-1", targetDurationMs: 2_425_000, longTermDurationMs: null, nowMs: 3_000 });
-    assert.deepEqual(getActiveGoal(database), { segmentId: "segment-1", targetDurationMs: 2_425_000 });
+    assert.deepEqual(getActiveGoal(database), { segmentId: "segment-1", targetDurationMs: 2_425_000, updatedAtMs: 3_000 });
   });
 
-  it("moving the goal to another segment drops the old long-term goal", () => {
+  it("a long-term goal belongs to its own segment: saving another segment's goal leaves it alone", () => {
     const { raw, database } = migratedDatabase();
     insertSegment(raw, "segment-1");
     insertSegment(raw, "segment-2");
     setActiveGoal(database, { segmentId: "segment-1", targetDurationMs: 2_460_000, longTermDurationMs: 2_340_000, nowMs: 1_000 });
     setActiveGoal(database, { segmentId: "segment-2", targetDurationMs: 900_000, nowMs: 2_000 });
-    assert.deepEqual(getActiveGoal(database), { segmentId: "segment-2", targetDurationMs: 900_000 });
+    assert.deepEqual(getActiveGoal(database), { segmentId: "segment-2", targetDurationMs: 900_000, updatedAtMs: 2_000 });
+    assert.equal(getSegmentGoal(database, "segment-1")?.longTermDurationMs, 2_340_000);
   });
 
   it("rejects a non-positive long-term goal", () => {
@@ -102,12 +103,4 @@ describe("staged goal (next goal plus a long-term goal)", () => {
     insertSegment(raw);
     assert.throws(() => setActiveGoal(database, { segmentId: "segment-1", targetDurationMs: 2_400_000, longTermDurationMs: 0, nowMs: 1 }));
   });
-
-  it("an existing single goal row keeps working after the migration", () => {
-    const { raw, database } = migratedDatabase();
-    insertSegment(raw);
-    raw.prepare("INSERT INTO active_goal (id, segment_id, target_duration_ms, updated_at_ms) VALUES ('singleton', 'segment-1', 2400000, 5)").run();
-    assert.deepEqual(getActiveGoal(database), { segmentId: "segment-1", targetDurationMs: 2_400_000 });
-  });
 });
-

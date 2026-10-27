@@ -531,6 +531,26 @@ export const migrations: readonly Migration[] = [
       WHERE name IS NULL AND fit_metadata_json IS NOT NULL;
     `,
   },
+  {
+    version: 17,
+    name: "segment_goals",
+    sql: `
+      -- Every segment can hold its own goal (and optional long-term goal). The single active_goal row becomes
+      -- Home's headline pointer only: which segment Home leads with. Its goal is copied here so nothing is lost.
+      -- active_goal keeps its own target column (mirrored on write) so the table stays valid as it was. Rolling back
+      -- means restoring the pre-update database file; an older app refuses a newer user_version.
+      CREATE TABLE segment_goals (
+        segment_id TEXT PRIMARY KEY,
+        target_duration_ms INTEGER NOT NULL CHECK (target_duration_ms > 0),
+        long_term_duration_ms INTEGER CHECK (long_term_duration_ms IS NULL OR long_term_duration_ms > 0),
+        updated_at_ms INTEGER NOT NULL,
+        FOREIGN KEY (segment_id) REFERENCES segments(id) ON DELETE CASCADE
+      ) STRICT;
+
+      INSERT INTO segment_goals (segment_id, target_duration_ms, long_term_duration_ms, updated_at_ms)
+        SELECT segment_id, target_duration_ms, long_term_duration_ms, updated_at_ms FROM active_goal;
+    `,
+  },
 ];
 
 export function configureDatabaseConnection(database: MigrationDatabase): void {

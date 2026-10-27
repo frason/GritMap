@@ -1,6 +1,6 @@
-import { getActiveGoal } from "../db/getActiveGoal";
+import { getSegmentGoal } from "../db/getActiveGoal";
 import { getAthleteProfile } from "../db/getAthleteProfile";
-import { getSegmentDetail, type SegmentDetail } from "../db/getSegmentDetail";
+import type { SegmentDetail } from "../db/getSegmentDetail";
 import { getPlanSentBefore } from "../db/planSends";
 import { createWeightAt } from "../db/profileHistory";
 import { getActiveSegmentPlan } from "../db/segmentPlans";
@@ -12,18 +12,15 @@ import type { PlanScreenInput } from "./planScreenModel";
 /** Reads what the Plan view needs from the database; the rules for what to show are in buildPlanScreenModel. */
 export function loadPlanInput(database: SyncDatabase, segment: SegmentDetail): PlanScreenInput {
   const profile = getAthleteProfile(database);
-  const activeGoal = getActiveGoal(database);
+  const activeGoal = getSegmentGoal(database, segment.segmentId);
   const activePlan = getActiveSegmentPlan(database, segment.segmentId);
   const weightAt = createWeightAt(database);
   const lastSentAtMs = activePlan?.lastSentAtMs ?? getPlanSentBefore(database, segment.segmentId, Date.now())?.sentAtMs;
-  const goalIsElsewhere = activeGoal !== undefined && activeGoal.segmentId !== segment.segmentId;
-  const goalSegmentName = goalIsElsewhere ? getSegmentDetail(database, activeGoal.segmentId)?.name ?? "another segment" : undefined;
   return {
     referencePolyline: segment.referencePolyline,
     ...(profile.ftpWatts === undefined ? {} : { ftpWatts: profile.ftpWatts }),
     ...(profile.weightKg === undefined ? {} : { weightKg: profile.weightKg }),
     ...(activeGoal === undefined ? {} : { activeGoal }),
-    ...(goalSegmentName === undefined ? {} : { otherGoalSegmentName: goalSegmentName }),
     ...(activePlan === undefined ? {} : { activePlan }),
     historyAttempts: loadCalibrationAttempts(database, segment.segmentId, PLAN_HISTORY_EFFORTS, weightAt),
     predictionAttempts: loadCalibrationAttempts(database, segment.segmentId, 3, weightAt),

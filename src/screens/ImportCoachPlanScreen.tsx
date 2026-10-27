@@ -4,7 +4,7 @@ import { useFocusEffect, useNavigation, useRoute, type RouteProp } from "@react-
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import * as Crypto from "expo-crypto";
 import { useDatabase } from "../db/DatabaseProvider";
-import { getActiveGoal } from "../db/getActiveGoal";
+import { getSegmentGoal } from "../db/getActiveGoal";
 import { getAthleteProfile, type AthleteProfile } from "../db/getAthleteProfile";
 import { getSegmentDetail, type SegmentDetail } from "../db/getSegmentDetail";
 import { saveSegmentPlan } from "../db/segmentPlans";
@@ -48,7 +48,7 @@ export function ImportCoachPlanScreen() {
       const detail = getSegmentDetail(database, route.params.segmentId);
       setSegment(detail);
       setProfile(getAthleteProfile(database));
-      const goal = getActiveGoal(database);
+      const goal = getSegmentGoal(database, route.params.segmentId);
       setGoalDurationMs(goal !== undefined && goal.segmentId === route.params.segmentId ? goal.targetDurationMs : undefined);
       setLoaded(detail === undefined ? "missing" : "ready");
     } catch {

@@ -1,10 +1,11 @@
+import { getSegmentGoal } from "../db/getActiveGoal";
 import { getSegmentDetail } from "../db/getSegmentDetail";
 import { getAthleteProfile } from "../db/getAthleteProfile";
 import { getActiveSegmentPlan } from "../db/segmentPlans";
 import { listPlanSendMarks } from "../db/listPlanSendMarks";
 import { listSegments, type SegmentSummary } from "../db/listSegments";
 import type { SyncDatabase } from "../db/types";
-import { karooMark, type KarooMark } from "./karooMarks";
+import { karooMark, latestChange, type KarooMark } from "./karooMarks";
 import { sendLogInventory, type KarooInventory } from "./karooPresence";
 import { thinCourse, type PreviewPoint } from "./segmentListView";
 import { loadPlanInput } from "./loadPlanInput";
@@ -40,10 +41,13 @@ export function loadSegmentCards(database: SyncDatabase, inventory?: KarooInvent
     const model = detail === undefined ? ({ kind: "needs-ftp" } as const) : buildPlanScreenModel(loadPlanInput(database, detail));
     const send = marks.get(summary.segmentId);
     const importedAt = getActiveSegmentPlan(database, summary.segmentId)?.createdAtMs;
+    const goalSavedAt = getSegmentGoal(database, summary.segmentId)?.updatedAtMs;
+    // The plan on the Karoo is out of date if the plan was replaced, or the goal it was built for changed, after the send.
+    const planChangedAt = latestChange(importedAt, goalSavedAt);
     const mark = karooMark({
       ...(send === undefined ? {} : { lastSentAtMs: send.sentAtMs, sentFtpWatts: send.ftpWatts }),
       ...(ftpWatts === undefined ? {} : { currentFtpWatts: ftpWatts }),
-      ...(importedAt === undefined ? {} : { planChangedAtMs: importedAt }),
+      ...(planChangedAt === undefined ? {} : { planChangedAtMs: planChangedAt }),
     });
     const preview = detail === undefined ? [] : thinCourse(detail.referencePolyline, PREVIEW_POINTS);
     return { summary, plan: segmentCardPlan(model), sent: send !== undefined, onKaroo: karoo.hasSegment(summary.segmentId), preview, ...(send === undefined ? {} : { lastSentAtMs: send.sentAtMs }), ...(mark === undefined ? {} : { mark }) };

@@ -3,7 +3,7 @@ import { StyleSheet, View } from "react-native";
 import * as Crypto from "expo-crypto";
 import { useFocusEffect } from "@react-navigation/native";
 import { useDatabase } from "../db/DatabaseProvider";
-import { getActiveGoal, type ActiveGoal } from "../db/getActiveGoal";
+import { getSegmentGoal, type ActiveGoal } from "../db/getActiveGoal";
 import { getAthleteProfile, type AthleteProfile } from "../db/getAthleteProfile";
 import type { SegmentDetail } from "../db/getSegmentDetail";
 import { recordPlanSend } from "../db/planSends";
@@ -44,7 +44,7 @@ export function WifiSendSection({ segment }: { segment: SegmentDetail }) {
       const currentProfile = getAthleteProfile(database);
       const currentPlan = getActiveSegmentPlan(database, segment.segmentId);
       setProfile(currentProfile);
-      setGoal(getActiveGoal(database));
+      setGoal(getSegmentGoal(database, segment.segmentId));
       setActivePlan(currentPlan);
       setAddress((current) => (current === "" ? (getSavedKarooAddress(database) ?? "") : current));
       setPrediction(

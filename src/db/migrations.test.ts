@@ -24,7 +24,7 @@ describe("SQLite migrations", () => {
       .map((row) => String(row.name));
 
     for (const table of CORE_TABLES) assert.ok(tables.includes(table), `missing ${table}`);
-    assert.equal(Number(database.prepare("PRAGMA user_version").get()?.user_version), 16);
+    assert.equal(Number(database.prepare("PRAGMA user_version").get()?.user_version), 17);
 
     assertColumns(database, "imported_files", [
       "id",
@@ -206,7 +206,7 @@ describe("SQLite migrations", () => {
 
     applyMigrations(database);
 
-    assert.equal(Number(database.prepare("PRAGMA user_version").get()?.user_version), 16);
+    assert.equal(Number(database.prepare("PRAGMA user_version").get()?.user_version), 17);
     assert.deepEqual({ ...database.prepare(`
       SELECT rides.id, imported_files.original_filename,
              imported_files.retained_file_uri, imported_files.file_size_bytes,
@@ -330,7 +330,7 @@ describe("SQLite migrations", () => {
 
     applyMigrations(database);
 
-    assert.equal(Number(database.prepare("PRAGMA user_version").get()?.user_version), 16);
+    assert.equal(Number(database.prepare("PRAGMA user_version").get()?.user_version), 17);
     assert.deepEqual({ ...database.prepare(`
       SELECT total_distance_meters, total_ascent_meters FROM rides WHERE id = 'ride-pre-v3'
     `).get() }, { total_distance_meters: null, total_ascent_meters: null });
@@ -461,7 +461,7 @@ describe("SQLite migrations", () => {
 
     applyMigrations(database);
 
-    assert.equal(Number(database.prepare("PRAGMA user_version").get()?.user_version), 16);
+    assert.equal(Number(database.prepare("PRAGMA user_version").get()?.user_version), 17);
     assert.equal(count(database, "segments"), 1);
     assert.equal(count(database, "segment_reference_points"), 2);
     assert.equal(count(database, "segment_attempts"), 1);
@@ -516,7 +516,7 @@ describe("SQLite migrations", () => {
       database.prepare("SELECT id, name FROM rides").all().map((row) => [String(row.id), row.name]),
     );
     assert.deepEqual(names, { "ride-fit": "Road", "ride-gpx": "Evening spin", "ride-none": null, "ride-blank": null });
-    assert.equal(Number(database.prepare("PRAGMA user_version").get()?.user_version), 16);
+    assert.equal(Number(database.prepare("PRAGMA user_version").get()?.user_version), 17);
     assert.equal(count(database, "rides"), 4);
     assert.equal(count(database, "segments"), 1);
     assert.equal(count(database, "segment_attempts"), 1);
@@ -527,6 +527,51 @@ describe("SQLite migrations", () => {
     applyMigrations(database);
     assert.equal(count(database, "rides"), 4);
     assert.equal(database.prepare("SELECT name FROM rides WHERE id = 'ride-fit'").get()?.name, "Road");
+  });
+
+  it("upgrades a populated v16 database to v17: copies the active goal into segment_goals, loses nothing, and is idempotent", () => {
+    using database = new DatabaseSync(":memory:");
+    applyMigrations(database, migrations.slice(0, 16));
+    insertRide(database, "ride-g", "file-g");
+    insertSegment(database, "segment-g1", "ride-g");
+    insertSegment(database, "segment-g2", "ride-g");
+    insertAttempt(database, "attempt-g", "segment-g1", "ride-g");
+    database
+      .prepare("INSERT INTO active_goal (id, segment_id, target_duration_ms, long_term_duration_ms, updated_at_ms) VALUES ('singleton', 'segment-g1', 2400000, 2300000, 5000)")
+      .run();
+    database
+      .prepare(
+        `INSERT INTO plan_sends (id, segment_id, sent_at_ms, package_id, generator_type, generator_model_version, ftp_watts, plan_json)
+         VALUES ('send-g', 'segment-g1', 6000, 'pkg', 'gen', '1', 250, '{}')`,
+      )
+      .run();
+
+    applyMigrations(database);
+
+    assert.equal(Number(database.prepare("PRAGMA user_version").get()?.user_version), 17);
+    assert.deepEqual(database.prepare("SELECT * FROM segment_goals").all().map((row) => ({ ...row })), [
+      { segment_id: "segment-g1", target_duration_ms: 2_400_000, long_term_duration_ms: 2_300_000, updated_at_ms: 5_000 },
+    ]);
+    assert.equal(count(database, "active_goal"), 1);
+    assert.equal(count(database, "plan_sends"), 1);
+    assert.equal(count(database, "segment_attempts"), 1);
+    assert.deepEqual(database.prepare("PRAGMA foreign_key_check").all(), []);
+
+    applyMigrations(database);
+    assert.equal(count(database, "segment_goals"), 1);
+
+    database.prepare("DELETE FROM segments WHERE id = 'segment-g1'").run();
+    assert.equal(count(database, "segment_goals"), 0);
+    assert.equal(count(database, "active_goal"), 0);
+  });
+
+  it("upgrades a v16 database with no goal set to an empty segment_goals", () => {
+    using database = new DatabaseSync(":memory:");
+    applyMigrations(database, migrations.slice(0, 16));
+    insertRide(database, "ride-n", "file-n");
+    applyMigrations(database);
+    assert.equal(count(database, "segment_goals"), 0);
+    assert.equal(count(database, "rides"), 1);
   });
 });
 

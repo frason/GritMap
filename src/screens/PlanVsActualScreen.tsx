@@ -3,7 +3,7 @@ import { StyleSheet, View } from "react-native";
 import { useFocusEffect, useNavigation, useRoute, type RouteProp } from "@react-navigation/native";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { useDatabase } from "../db/DatabaseProvider";
-import { getActiveGoal } from "../db/getActiveGoal";
+import { getSegmentGoal } from "../db/getActiveGoal";
 import { getAthleteProfile } from "../db/getAthleteProfile";
 import { getAttemptDetail } from "../db/getAttemptDetail";
 import { getAttemptTrack } from "../db/getAttemptTrack";
@@ -77,7 +77,7 @@ export function PlanVsActualScreen() {
       setSegmentIdForLinks(segment.segmentId);
 
       const profile = getAthleteProfile(database);
-      const goal = getActiveGoal(database);
+      const goal = getSegmentGoal(database, segment.segmentId);
       const activePlan = getActiveSegmentPlan(database, segment.segmentId);
       const sentPlan = getPlanSentBefore(database, segment.segmentId, attempt.startTimestampMs);
       const plan = resolvePlanForEffort({

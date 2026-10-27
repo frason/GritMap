@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 
-import { karooMark, rideHighlights } from "./karooMarks.ts";
+import { karooMark, latestChange, rideHighlights } from "./karooMarks.ts";
 
 const oct5 = new Date(2026, 9, 5, 12).getTime();
 
@@ -31,5 +31,20 @@ describe("rideHighlights", () => {
       bestMsBySegment: new Map([["a", 590], ["b", 280]]),
     });
     assert.deepEqual(result.map((r) => [r.segmentId, r.durationMs, r.personalBest]), [["a", 590, true], ["b", 300, false]]);
+  });
+});
+
+describe("older plan on Karoo after a goal change", () => {
+  it("flags a send that is older than the goal's last save, and keeps a newer send as current", () => {
+    const sent = 5_000;
+    assert.deepEqual(karooMark({ lastSentAtMs: sent, planChangedAtMs: latestChange(undefined, 9_000) }), { label: "Older plan on Karoo", tone: "warning" });
+    assert.equal(karooMark({ lastSentAtMs: sent, planChangedAtMs: latestChange(undefined, 4_000) })?.tone, "success");
+    assert.equal(karooMark({ planChangedAtMs: latestChange(1_000, 9_000) }), undefined);
+  });
+
+  it("takes the later of the plan and goal times", () => {
+    assert.equal(latestChange(3, 7), 7);
+    assert.equal(latestChange(9, 7), 9);
+    assert.equal(latestChange(undefined, undefined), undefined);
   });
 });

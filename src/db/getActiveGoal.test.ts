@@ -3,8 +3,8 @@ import { DatabaseSync } from "node:sqlite";
 import { describe, it } from "node:test";
 
 import { applyMigrations } from "./migrations.ts";
-import { getActiveGoal } from "./getActiveGoal.ts";
-import { setActiveGoal } from "./setActiveGoal.ts";
+import { getActiveGoal, getSegmentGoal, listSegmentGoals } from "./getActiveGoal.ts";
+import { setActiveGoal, setSegmentGoal } from "./setActiveGoal.ts";
 import type { SyncDatabase } from "./types.ts";
 
 function toTestSyncDatabase(database: DatabaseSync): SyncDatabase {
@@ -56,16 +56,40 @@ describe("getActiveGoal", () => {
     const { raw, database } = migratedDatabase();
     insertSegment(raw);
     setActiveGoal(database, { segmentId: "segment-1", targetDurationMs: 39 * 60_000, nowMs: 1_000 });
-    assert.deepEqual(getActiveGoal(database), { segmentId: "segment-1", targetDurationMs: 39 * 60_000 });
+    assert.deepEqual(getActiveGoal(database), { segmentId: "segment-1", targetDurationMs: 39 * 60_000, updatedAtMs: 1_000 });
   });
 
-  it("a second save overwrites the first (singleton row, not a new one)", () => {
+  it("each segment keeps its own goal; the latest setActiveGoal is Home's headline", () => {
     const { raw, database } = migratedDatabase();
     insertSegment(raw, "segment-1");
     insertSegment(raw, "segment-2");
     setActiveGoal(database, { segmentId: "segment-1", targetDurationMs: 2_000_000, nowMs: 1_000 });
     setActiveGoal(database, { segmentId: "segment-2", targetDurationMs: 3_000_000, nowMs: 2_000 });
-    assert.deepEqual(getActiveGoal(database), { segmentId: "segment-2", targetDurationMs: 3_000_000 });
+    assert.deepEqual(getActiveGoal(database), { segmentId: "segment-2", targetDurationMs: 3_000_000, updatedAtMs: 2_000 });
+    assert.deepEqual(getSegmentGoal(database, "segment-1"), { segmentId: "segment-1", targetDurationMs: 2_000_000, updatedAtMs: 1_000 });
+    assert.equal(getSegmentGoal(database, "segment-3"), undefined);
+    assert.deepEqual(listSegmentGoals(database).map((goal) => goal.segmentId), ["segment-2", "segment-1"]);
+  });
+
+  it("setSegmentGoal does not move the headline, except to fill an empty one", () => {
+    const { raw, database } = migratedDatabase();
+    insertSegment(raw, "segment-1");
+    insertSegment(raw, "segment-2");
+    setSegmentGoal(database, { segmentId: "segment-1", targetDurationMs: 2_000_000, nowMs: 1_000 });
+    assert.equal(getActiveGoal(database)?.segmentId, "segment-1");
+    setSegmentGoal(database, { segmentId: "segment-2", targetDurationMs: 3_000_000, nowMs: 2_000 });
+    assert.equal(getActiveGoal(database)?.segmentId, "segment-1");
+    assert.equal(getSegmentGoal(database, "segment-2")?.targetDurationMs, 3_000_000);
+  });
+
+  it("falls back to the newest goal when the headline segment is deleted", () => {
+    const { raw, database } = migratedDatabase();
+    insertSegment(raw, "segment-1");
+    insertSegment(raw, "segment-2");
+    setActiveGoal(database, { segmentId: "segment-1", targetDurationMs: 2_000_000, nowMs: 1_000 });
+    setSegmentGoal(database, { segmentId: "segment-2", targetDurationMs: 3_000_000, nowMs: 2_000 });
+    raw.prepare("DELETE FROM segments WHERE id = 'segment-1'").run();
+    assert.equal(getActiveGoal(database)?.segmentId, "segment-2");
   });
 
   it("rejects setting a goal for a segment that doesn't exist", () => {

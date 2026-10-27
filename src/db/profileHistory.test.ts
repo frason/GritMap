@@ -52,7 +52,7 @@ describe("athlete_profile_history migration", () => {
     const rows = raw.prepare("SELECT effective_from_ms, ftp_watts, weight_kg, max_heart_rate_bpm, source, recorded_at_ms FROM athlete_profile_history").all();
     assert.equal(rows.length, 1);
     assert.deepEqual({ ...rows[0] }, { effective_from_ms: 5000, ftp_watts: 280, weight_kg: 92.5, max_heart_rate_bpm: 175, source: "backfill", recorded_at_ms: 5000 });
-    assert.equal(Number(raw.prepare("PRAGMA user_version").get()?.user_version), 16);
+    assert.equal(Number(raw.prepare("PRAGMA user_version").get()?.user_version), 17);
     // the profile itself is untouched
     assert.equal(raw.prepare("SELECT weight_kg AS w FROM athlete_profile WHERE id = 'singleton'").get()?.w, 92.5);
   });

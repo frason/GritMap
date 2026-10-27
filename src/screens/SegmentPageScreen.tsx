@@ -5,7 +5,7 @@ import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { useDatabase } from "../db/DatabaseProvider";
 import { getSegmentDetail, type SegmentDetail } from "../db/getSegmentDetail";
 import { listAttemptsForSegment, type AttemptSummary } from "../db/listAttemptsForSegment";
-import { setActiveGoal as saveActiveGoal } from "../db/setActiveGoal";
+import { setSegmentGoal as saveActiveGoal } from "../db/setActiveGoal";
 import { deactivateSegmentPlan } from "../db/segmentPlans";
 import { deleteSegment } from "../db/deleteSegment";
 import type { RideTrackPoint } from "../db/getRideTrack";
