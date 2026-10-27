@@ -1,0 +1,263 @@
+{
+  "schemaVersion": 1,
+  "packageType": "gritmap-transfer",
+  "packageId": "synthetic-ceilings-v1",
+  "createdAtMs": 1000,
+  "baselinePacingPlan": {
+    "schemaVersion": 1,
+    "id": "synthetic-plan-v1",
+    "segmentFingerprint": "abababababababababababababababababababababababababababababababab",
+    "createdAtMs": 1000,
+    "generator": {
+      "type": "phone-ai",
+      "modelVersion": "synthetic-realistic-v1"
+    },
+    "ftpWatts": 250,
+    "targetFinishTimeSeconds": 2400,
+    "replan": {
+      "schemaVersion": 1,
+      "criticalPowerWatts": 250,
+      "wPrimeJoules": 20000,
+      "wPrimeReserveFraction": 0.15,
+      "maxStepWatts": 20,
+      "hardMaxStepWatts": 80,
+      "stepLimitMinGradePct": 1.5
+    },
+    "zones": [
+      {
+        "startDistanceMeters": 0.0,
+        "endDistanceMeters": 402.336,
+        "targetPowerWatts": 219,
+        "ceilingPowerWatts": 244,
+        "classification": "HOLD",
+        "icon": "HOLD",
+        "instruction": "Hold a controlled effort"
+      },
+      {
+        "startDistanceMeters": 402.336,
+        "endDistanceMeters": 804.672,
+        "targetPowerWatts": 214,
+        "ceilingPowerWatts": 241,
+        "classification": "HOLD",
+        "icon": "HOLD",
+        "instruction": "Hold a controlled effort"
+      },
+      {
+        "startDistanceMeters": 804.672,
+        "endDistanceMeters": 1207.008,
+        "targetPowerWatts": 175,
+        "ceilingPowerWatts": 276,
+        "classification": "HOLD",
+        "icon": "HOLD",
+        "instruction": "Hold a controlled effort"
+      },
+      {
+        "startDistanceMeters": 1207.008,
+        "endDistanceMeters": 1609.344,
+        "targetPowerWatts": 241,
+        "ceilingPowerWatts": 257,
+        "classification": "HOLD",
+        "icon": "HOLD",
+        "instruction": "Hold a controlled effort"
+      },
+      {
+        "startDistanceMeters": 1609.344,
+        "endDistanceMeters": 2011.68,
+        "targetPowerWatts": 222,
+        "ceilingPowerWatts": 247,
+        "classification": "HOLD",
+        "icon": "HOLD",
+        "instruction": "Hold a controlled effort"
+      },
+      {
+        "startDistanceMeters": 2011.68,
+        "endDistanceMeters": 2414.016,
+        "targetPowerWatts": 227,
+        "ceilingPowerWatts": 249,
+        "classification": "HOLD",
+        "icon": "HOLD",
+        "instruction": "Hold a controlled effort"
+      },
+      {
+        "startDistanceMeters": 2414.016,
+        "endDistanceMeters": 2816.352,
+        "targetPowerWatts": 247,
+        "ceilingPowerWatts": 272,
+        "classification": "HOLD",
+        "icon": "HOLD",
+        "instruction": "Hold a controlled effort"
+      },
+      {
+        "startDistanceMeters": 2816.352,
+        "endDistanceMeters": 3218.688,
+        "targetPowerWatts": 267,
+        "ceilingPowerWatts": 272,
+        "classification": "HOLD",
+        "icon": "HOLD",
+        "instruction": "Hold a controlled effort"
+      },
+      {
+        "startDistanceMeters": 3218.688,
+        "endDistanceMeters": 3621.024,
+        "targetPowerWatts": 263,
+        "ceilingPowerWatts": 265,
+        "classification": "HOLD",
+        "icon": "HOLD",
+        "instruction": "Hold a controlled effort"
+      },
+      {
+        "startDistanceMeters": 3621.024,
+        "endDistanceMeters": 4023.36,
+        "targetPowerWatts": 256,
+        "ceilingPowerWatts": 260,
+        "classification": "HOLD",
+        "icon": "HOLD",
+        "instruction": "Hold a controlled effort"
+      },
+      {
+        "startDistanceMeters": 4023.36,
+        "endDistanceMeters": 4425.696,
+        "targetPowerWatts": 249,
+        "ceilingPowerWatts": 253,
+        "classification": "HOLD",
+        "icon": "HOLD",
+        "instruction": "Hold a controlled effort"
+      },
+      {
+        "startDistanceMeters": 4425.696,
+        "endDistanceMeters": 4828.032,
+        "targetPowerWatts": 264,
+        "ceilingPowerWatts": 272,
+        "classification": "HOLD",
+        "icon": "HOLD",
+        "instruction": "Hold a controlled effort"
+      },
+      {
+        "startDistanceMeters": 4828.032,
+        "endDistanceMeters": 5230.368,
+        "targetPowerWatts": 274,
+        "ceilingPowerWatts": 278,
+        "classification": "HOLD",
+        "icon": "HOLD",
+        "instruction": "Hold a controlled effort"
+      },
+      {
+        "startDistanceMeters": 5230.368,
+        "endDistanceMeters": 5632.704,
+        "targetPowerWatts": 262,
+        "ceilingPowerWatts": 262,
+        "classification": "HOLD",
+        "icon": "HOLD",
+        "instruction": "Hold a controlled effort"
+      },
+      {
+        "startDistanceMeters": 5632.704,
+        "endDistanceMeters": 6035.04,
+        "targetPowerWatts": 247,
+        "ceilingPowerWatts": 247,
+        "classification": "HOLD",
+        "icon": "HOLD",
+        "instruction": "Hold a controlled effort"
+      },
+      {
+        "startDistanceMeters": 6035.04,
+        "endDistanceMeters": 6437.376,
+        "targetPowerWatts": 253,
+        "ceilingPowerWatts": 253,
+        "classification": "HOLD",
+        "icon": "HOLD",
+        "instruction": "Hold a controlled effort"
+      },
+      {
+        "startDistanceMeters": 6437.376,
+        "endDistanceMeters": 6839.712,
+        "targetPowerWatts": 264,
+        "ceilingPowerWatts": 264,
+        "classification": "HOLD",
+        "icon": "HOLD",
+        "instruction": "Hold a controlled effort"
+      },
+      {
+        "startDistanceMeters": 6839.712,
+        "endDistanceMeters": 7242.048,
+        "targetPowerWatts": 268,
+        "ceilingPowerWatts": 268,
+        "classification": "HOLD",
+        "icon": "HOLD",
+        "instruction": "Hold a controlled effort"
+      },
+      {
+        "startDistanceMeters": 7242.048,
+        "endDistanceMeters": 7644.384,
+        "targetPowerWatts": 272,
+        "ceilingPowerWatts": 272,
+        "classification": "HOLD",
+        "icon": "HOLD",
+        "instruction": "Hold a controlled effort"
+      },
+      {
+        "startDistanceMeters": 7644.384,
+        "endDistanceMeters": 8046.72,
+        "targetPowerWatts": 260,
+        "ceilingPowerWatts": 260,
+        "classification": "HOLD",
+        "icon": "HOLD",
+        "instruction": "Hold a controlled effort"
+      },
+      {
+        "startDistanceMeters": 8046.72,
+        "endDistanceMeters": 8449.056,
+        "targetPowerWatts": 266,
+        "ceilingPowerWatts": 266,
+        "classification": "HOLD",
+        "icon": "HOLD",
+        "instruction": "Hold a controlled effort"
+      },
+      {
+        "startDistanceMeters": 8449.056,
+        "endDistanceMeters": 8851.392,
+        "targetPowerWatts": 260,
+        "ceilingPowerWatts": 260,
+        "classification": "HOLD",
+        "icon": "HOLD",
+        "instruction": "Hold a controlled effort"
+      },
+      {
+        "startDistanceMeters": 8851.392,
+        "endDistanceMeters": 9253.728,
+        "targetPowerWatts": 256,
+        "ceilingPowerWatts": 268,
+        "classification": "HOLD",
+        "icon": "HOLD",
+        "instruction": "Hold a controlled effort"
+      },
+      {
+        "startDistanceMeters": 9253.728,
+        "endDistanceMeters": 9656.064,
+        "targetPowerWatts": 250,
+        "ceilingPowerWatts": 257,
+        "classification": "HOLD",
+        "icon": "HOLD",
+        "instruction": "Hold a controlled effort"
+      },
+      {
+        "startDistanceMeters": 9656.064,
+        "endDistanceMeters": 10058.4,
+        "targetPowerWatts": 250,
+        "ceilingPowerWatts": 266,
+        "classification": "HOLD",
+        "icon": "HOLD",
+        "instruction": "Hold a controlled effort"
+      },
+      {
+        "startDistanceMeters": 10058.4,
+        "endDistanceMeters": 10460.736,
+        "targetPowerWatts": 250,
+        "ceilingPowerWatts": 264,
+        "classification": "HOLD",
+        "icon": "HOLD",
+        "instruction": "Hold a controlled effort"
+      }
+    ]
+  }
+}

@@ -4,6 +4,8 @@ import { buildTransferBaselinePlan, buildTransferSegmentJson } from "../karoo/bu
 import type { PlanHistoryInput } from "../pacing/generateRealisticPlan.ts";
 import { buildRiderHistoryPackage } from "../pacing/buildRiderHistoryPackage.ts";
 import { isTransferId } from "./transferId.ts";
+import type { ReceiverCapabilities } from "./receiverCapabilities.ts";
+import { MAX_RECORD_BYTES } from "./segmentRecord.ts";
 
 /**
  * Phone-side implementation of docs/BLE_DIRECT_TRANSFER_CONTRACT.md (v2): build the exact bytes
@@ -22,13 +24,19 @@ export const MIN_CHUNK_BYTES = 20;
 export const MAX_PLAN_BYTES = 128 * 1024;
 export const MAX_SEGMENT_BYTES = 512 * 1024;
 export const MAX_RIDER_BYTES = 16 * 1024;
+export { MAX_RECORD_BYTES };
 /** Where a published segment lives (src/registry/registryConfig.ts); the manifest only says "public: true". */
 export const OPEN_SEGMENTS_BASE_URL = "https://raw.githubusercontent.com/frason/GritMap/main/registry/segments/";
 export const MAX_REQUEST_BYTES = 64;
 export const MAX_STATUS_BYTES = 128;
 
-export type ResourceName = "plan" | "segment" | "rider";
-export const RESOURCE_CAPS: Record<ResourceName, number> = { plan: MAX_PLAN_BYTES, segment: MAX_SEGMENT_BYTES, rider: MAX_RIDER_BYTES };
+export type ResourceName = "plan" | "segment" | "rider" | "record";
+export const RESOURCE_CAPS: Record<ResourceName, number> = {
+  plan: MAX_PLAN_BYTES,
+  segment: MAX_SEGMENT_BYTES,
+  rider: MAX_RIDER_BYTES,
+  record: MAX_RECORD_BYTES,
+};
 
 export interface ManifestResource {
   bytes: number;
@@ -44,6 +52,8 @@ export interface TransferManifest {
   plan: ManifestResource;
   segment: ManifestResource & { public?: true };
   rider?: ManifestResource;
+  /** Only in an offer made for a receiver that advertised segmentRecordV1. */
+  record?: ManifestResource;
 }
 
 const encoder = new TextEncoder();
@@ -60,6 +70,7 @@ export interface DirectTransfer {
   planBytes: Uint8Array;
   segmentBytes: Uint8Array;
   riderBytes: Uint8Array | undefined;
+  recordBytes: Uint8Array | undefined;
   /** The plan as built, for the caller's records. */
   baselinePacingPlan: object;
 }
@@ -83,6 +94,10 @@ export async function buildDirectTransfer(input: {
   segmentIsPublic?: boolean | undefined;
   /** The rider's past efforts on this segment, so a generated plan is made realistic (see buildTransferBaselinePlan). */
   planHistory?: PlanHistoryInput | undefined;
+  /** What the receiver advertised. Undefined (every released Karoo) means the baseline plan: no ceilings, no record. */
+  receiverCapabilities?: ReceiverCapabilities | undefined;
+  /** An already validated `segmentRecord` (see validateSegmentRecord); sent only when the receiver advertised segmentRecordV1. */
+  record?: object | undefined;
 }): Promise<BuildDirectTransferResult> {
   if (!isTransferId(input.transferId)) return { ok: false, message: "Invalid transfer id" };
   const plan = buildTransferBaselinePlan({
@@ -93,6 +108,7 @@ export async function buildDirectTransfer(input: {
     packageId: input.transferId,
     nowMs: input.nowMs,
     planHistory: input.planHistory,
+    receiverCapabilities: input.receiverCapabilities,
   });
   if (!plan.ok) return { ok: false, message: plan.message };
 
@@ -109,16 +125,21 @@ export async function buildDirectTransfer(input: {
           }),
         );
 
+  const recordBytes =
+    input.record !== undefined && input.receiverCapabilities?.features.includes("segmentRecordV1") === true ? jsonBytes(input.record) : undefined;
+
   const over: string[] = [];
   if (planBytes.length > MAX_PLAN_BYTES) over.push(`plan is ${planBytes.length} bytes (limit ${MAX_PLAN_BYTES})`);
   if (segmentBytes.length > MAX_SEGMENT_BYTES) over.push(`segment is ${segmentBytes.length} bytes (limit ${MAX_SEGMENT_BYTES})`);
   if (riderBytes !== undefined && riderBytes.length > MAX_RIDER_BYTES) over.push(`rider is ${riderBytes.length} bytes (limit ${MAX_RIDER_BYTES})`);
+  if (recordBytes !== undefined && recordBytes.length > MAX_RECORD_BYTES) over.push(`record is ${recordBytes.length} bytes (limit ${MAX_RECORD_BYTES})`);
   if (over.length > 0) return { ok: false, message: over.join("; ") };
 
-  const [planSha, segmentSha, riderSha] = await Promise.all([
+  const [planSha, segmentSha, riderSha, recordSha] = await Promise.all([
     input.sha256Hex(planBytes),
     input.sha256Hex(segmentBytes),
     riderBytes === undefined ? Promise.resolve(undefined) : input.sha256Hex(riderBytes),
+    recordBytes === undefined ? Promise.resolve(undefined) : input.sha256Hex(recordBytes),
   ]);
 
   const manifest: TransferManifest = {
@@ -130,12 +151,13 @@ export async function buildDirectTransfer(input: {
     plan: { bytes: planBytes.length, sha256: planSha },
     segment: { bytes: segmentBytes.length, sha256: segmentSha, ...(input.segmentIsPublic === true ? { public: true as const } : {}) },
     ...(riderBytes === undefined || riderSha === undefined ? {} : { rider: { bytes: riderBytes.length, sha256: riderSha } }),
+    ...(recordBytes === undefined || recordSha === undefined ? {} : { record: { bytes: recordBytes.length, sha256: recordSha } }),
   };
   const manifestJson = JSON.stringify(manifest);
   const problems = validateManifest(manifestJson);
   if (problems.length > 0) return { ok: false, message: `Manifest is invalid: ${problems.join("; ")}` };
 
-  return { ok: true, transfer: { manifest, manifestJson, planBytes, segmentBytes, riderBytes, baselinePacingPlan: plan.baselinePacingPlan } };
+  return { ok: true, transfer: { manifest, manifestJson, planBytes, segmentBytes, riderBytes, recordBytes, baselinePacingPlan: plan.baselinePacingPlan } };
 }
 
 /** Everything the Karoo's strict manifest parser should reject, as readable strings; empty means accepted. */
@@ -150,7 +172,7 @@ export function validateManifest(json: string): string[] {
   if (typeof value !== "object" || value === null || Array.isArray(value)) return ["manifest is not an object"];
   const m = value as Record<string, unknown>;
   const problems: string[] = [];
-  const allowed = ["v", "transferId", "createdAtMs", "segmentFingerprint", "chunkBytes", "plan", "segment", "rider"];
+  const allowed = ["v", "transferId", "createdAtMs", "segmentFingerprint", "chunkBytes", "plan", "segment", "rider", "record"];
   for (const key of Object.keys(m)) if (!allowed.includes(key)) problems.push(`unknown field ${key}`);
   for (const key of ["v", "transferId", "createdAtMs", "segmentFingerprint", "chunkBytes", "plan", "segment"]) {
     if (!(key in m)) problems.push(`missing ${key}`);
@@ -162,7 +184,7 @@ export function validateManifest(json: string): string[] {
   if (typeof m.chunkBytes !== "number" || !Number.isInteger(m.chunkBytes) || m.chunkBytes < MIN_CHUNK_BYTES || m.chunkBytes > CHUNK_BYTES) {
     problems.push(`chunkBytes must be ${MIN_CHUNK_BYTES} to ${CHUNK_BYTES}`);
   }
-  for (const name of ["plan", "segment", "rider"] as const) {
+  for (const name of ["plan", "segment", "rider", "record"] as const) {
     if (!(name in m)) continue;
     const resource = m[name];
     if (typeof resource !== "object" || resource === null) {
@@ -227,7 +249,7 @@ export interface DirectTransferTransport {
 }
 
 export type ReadResult =
-  | { ok: true; segment: Uint8Array | undefined; plan: Uint8Array; rider: Uint8Array | undefined; manifest: TransferManifest }
+  | { ok: true; segment: Uint8Array | undefined; plan: Uint8Array; rider: Uint8Array | undefined; record: Uint8Array | undefined; manifest: TransferManifest }
   | { ok: false; code: "bad_manifest" | "too_large" | "bad_hash" | "timeout"; message: string };
 
 /**
@@ -276,7 +298,13 @@ export async function readDirectTransfer(
     if (!(fetched instanceof Uint8Array)) return fetched;
     rider = fetched;
   }
-  return { ok: true, segment, plan, rider, manifest };
+  let record: Uint8Array | undefined;
+  if (manifest.record !== undefined) {
+    const fetched = await fetchResource("record", manifest.record);
+    if (!(fetched instanceof Uint8Array)) return fetched;
+    record = fetched;
+  }
+  return { ok: true, segment, plan, rider, record, manifest };
 }
 
 /** The existing `gritmap-transfer` package the Karoo then hands to its unchanged strict parser. */
@@ -289,6 +317,7 @@ export function assembleTransferPackage(result: Extract<ReadResult, { ok: true }
     createdAtMs: result.manifest.createdAtMs,
     ...(result.segment === undefined ? {} : { segment: parse(result.segment) }),
     ...(result.rider === undefined ? {} : { riderHistory: parse(result.rider) }),
+    ...(result.record === undefined ? {} : { segmentRecord: parse(result.record) }),
     baselinePacingPlan: parse(result.plan),
   };
 }

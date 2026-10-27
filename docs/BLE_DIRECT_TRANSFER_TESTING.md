@@ -58,6 +58,31 @@ Optional on a Mac (also needs the physical iPhone): `swiftc -o /tmp/fake-karoo s
 [--skip-segment] [--receipt imported|rejected]` scans, reads the manifest, walks the chunks, verifies the hashes and writes a receipt, printing
 sizes and OK/FAIL only. Untested against a real iPhone as of this commit.
 
+## Pacing extensions over Bluetooth (plan ceilings, `segmentRecord`): phone side, needs a native build
+
+Contract: `docs/RECEIVER_CAPABILITIES_CONTRACT.md` (Codex's branch `codex/karoo-receiver-capabilities`); shared fixtures `fixtures/contracts/`.
+The phone stages several complete offers (variants) before it advertises: the **baseline** (exactly what every phone has always sent, for any
+Karoo that never writes the capabilities characteristic) and richer ones. The Karoo (the central) writes its advertisement to the optional
+characteristic `9aa66e90-1c9e-46e1-9e52-45fd6a40847a` (write with response) before its first manifest read; the native layer picks the one
+variant that carries the most features the Karoo advertised, freezes its manifest and bytes for that central, and reports which one in a
+`variant` event. No advertisement, a malformed one, a future version, or unknown features: baseline.
+
+- Variants: `full` (ceilings + record), `ceilings`, `record`, `baseline`. Targets are identical in every variant; only `replan` and each
+  zone's `ceilingPowerWatts` differ. Imported coach plans never get ceilings.
+- A first write or the first manifest read claims the session; another central is refused. An identical rewrite on reconnect is a no-op (no
+  regeneration, no offset reset); a changed one, or one after the manifest was chosen, is refused. A malformed write is accepted and means baseline.
+- The 512-byte manifest cap holds for every variant. The `record` descriptor does not fit next to a rider profile and a public segment flag;
+  then the record is left out (`pacing.recordOmitted = "manifest_too_large"`), the rider profile is never dropped and nothing is truncated.
+  A record that fails `validateSegmentRecord` is never staged (the Karoo rejects the whole package atomically).
+- Wording: when the plan had ceilings to send but the Karoo took the baseline, the result says "Your Karoo's GritMap is too old for pacing limits,
+  so it used the basic plan. Update GritMap on your Karoo to use them." (`describePacingNote`); a richer variant says the Karoo also received
+  the pacing limits. A build without the native change (`bleCapabilityNegotiationAvailable` false) sends the baseline and says nothing.
+- Tests: `src/transfer/pacingTransfer.test.ts` and `segmentRecord.test.ts` (against the Karoo-side fixtures, and against Codex's
+  `gateTransferExtensions` for 15 advertisements); `scripts/test-transfer-session.swift` (the native serving logic; run with the swiftc command above).
+- **Not yet verified:** the Swift module has only been syntax-checked, not compiled (no native build was made); nothing has run on a radio.
+  First device check: nRF Connect, write the fixture JSON to the capabilities characteristic before reading the Manifest, and confirm the manifest
+  and Data bytes are the richer variant's; a second connection that writes nothing and reads gets refused.
+
 ## Known limits and decisions open
 
 - No link-layer encryption (see the contract's threat model); decision for Jason/Codex.

@@ -30,6 +30,9 @@ export function reduceBleEvent(state: BleSendState, event: BlePeripheralEvent): 
       return { phase: "advertising" };
     case "connected":
       return { phase: "connected" };
+    case "variant":
+      // Which offer the Karoo was given; it changes no phase (the component keeps it for the pacing note).
+      return state;
     case "progress": {
       const previousPlanDone = state.phase === "sending" ? state.planDone : false;
       const planDone = previousPlanDone || (event.resource === "plan" && event.served >= event.total);
@@ -131,4 +134,27 @@ export function shouldHintOlderKaroo(state: BleSendState, waitedMs: number): boo
 /** Whether the Wi-Fi route is offered: always, except while a Bluetooth transfer is under way or has just succeeded. */
 export function offersWifiFallback(state: BleSendState): boolean {
   return state.phase !== "preparing" && state.phase !== "imported" && state.phase !== "connected" && state.phase !== "sending";
+}
+
+/**
+ * What the phone says about the pacing fields (plan ceilings, personal best), after the Karoo has read the plan.
+ * The Karoo chose by what it advertised: a variant carrying the fields means it understood them; the baseline, when the
+ * phone had pacing fields to offer, means its GritMap is too old for them (or does not advertise them yet), and it
+ * imported the plain plan. `variant` is undefined when the native build cannot tell (a build without negotiation).
+ */
+export type PacingNote = { kind: "delivered" | "tooOld"; text: string; tone: "info" | "success" | "warning" };
+
+export const PACING_DELIVERED_TEXT = "Your Karoo also received your pacing limits, so it can keep your effort within them.";
+export const KAROO_TOO_OLD_FOR_PACING_TEXT =
+  "Your Karoo's GritMap is too old for pacing limits, so it used the basic plan. Update GritMap on your Karoo to use them.";
+
+export function describePacingNote(pacing: { ceilings: boolean; record: boolean }, variant: string | undefined): PacingNote | undefined {
+  if (variant === undefined || (!pacing.ceilings && !pacing.record)) return undefined;
+  if (variant === "baseline") return { kind: "tooOld", text: KAROO_TOO_OLD_FOR_PACING_TEXT, tone: "info" };
+  return { kind: "delivered", text: PACING_DELIVERED_TEXT, tone: "success" };
+}
+
+/** The note belongs under the result only once the Karoo has read the plan: "Imported" or "Sent; check your Karoo". */
+export function showsPacingNote(state: BleSendState): boolean {
+  return state.phase === "imported" || state.phase === "sentUnconfirmed";
 }
