@@ -20,7 +20,11 @@ Old405/404/error receivers still receive their unchanged baseline package. A POS
 not imported; import validation remains asynchronous. Only generated realistic plans get extensions;
 manual/imported plans are never rewritten.
 
-**Bluetooth Karoo half implemented; PHONE NATIVE FOLLOW-UP REQUIRED:** phone is the GATT peripheral,
+**Bluetooth source status,2026-10-27:** phone source is now pushed on `origin/ble-pacing-fields`
+(e0bacb1, includes1dead18), separate from this receiver branch. No native/device build readiness confirmed.
+The source requirements below still apply; do not interpret the presence of source as a passed transfer.
+
+**Bluetooth handshake:** phone is the GATT peripheral,
 Karoo the central. Phone must add an OPTIONAL writable-with-response characteristic
 `9aa66e90-1c9e-46e1-9e52-45fd6a40847a` on the existing service. Before its first manifest read,
 Karoo writes the above UTF-8 JSON. An old phone without that characteristic follows the original flow.
@@ -36,7 +40,7 @@ Four resource descriptors may exceed that cap. Omit the optional record in that 
 or omit rider only when the matching profile is already installed. Never silently discard a needed rider profile,
 truncate hashes or raise this cap. A richer manifest needs a separately versioned chunked-manifest protocol.
 The new pure TypeScript gate in `src/transfer/receiverCapabilities.ts` is shared preparation, not native BLE wiring.
-Current iOS module/sender still stages a fixed baseline, so it cannot send the new BLE extensions yet.
+Older installed phone builds stage only baseline. The new sender branch stages variants; a matching native phone build is still required.
 Do not label an old-phone diagnostic transfer a successful ceiling transfer.
 
 ## Exact pacing fields
@@ -88,8 +92,16 @@ flat/downhill/missing grades, energy reserve, unsafe transitions and exact numer
 20W applies between climbs >=1.5%; the existing shared contract permits80W across flat/recovery transitions.
 These replays validate the normalized deterministic response, not real-world finish accuracy or physiological calibration.
 
-Do one supervised ride only after exact APK approval and a verified ceiling-bearing plan import
-(updated phone Wi-Fi source or matching future native BLE phone build). Verify stored replan metadata
+Do one supervised ride only after exact APK approval, Jason confirms the matching native BLE phone build
+exists and Karoo is connected/unlocked/authorized, and a ceiling-bearing plan is imported via Bluetooth.
+The supervised test is Bluetooth-only; no Wi-Fi substitution. Verify stored replan metadata
 before riding, power/GPS live, confirm an estimate/target change at a boundary while behind, no early
 spend while ahead, then save and inspect evidence. Device safety/ride success is not established by unit tests.
 No public flag enablement, installation, phone build, release tag or publication is authorized by this document.
+
+## 2026-10-27 answers to phone sender questions
+
+1. **Manifest / record:** for the supervised pacing test, send rider + plan with ceilings, OMIT record when it does not fit; omission is a nonfatal optional-feature note, not a failed pacing send. Never drop the rider, truncate hashes, shorten existing descriptor keys, raise the512-byte cap, or infer installed rider state from phone send history. For the later plan-free BLE+PR milestone, choose a **separately versioned chunked-manifest protocol**, jointly designed/tested before either side ships it. Do not make current pacing work wait for inventory or PR. No BLEv2 wire change now.
+2. **Stable owner:** phone owns generation: create one opaque ID per logical rider, suggested16 cryptographically random bytes encoded as32 lowercase hex characters, during explicit initial record-owner setup. Persist/read it through non-synchronizing iOS Keychain storage, not only app_settings; reuse it across segments, transfers and profile/FTP edits. Do not regenerate on lookup errors, upgrades or reinstall. Do not promise OS storage can never be lost: missing/unreadable identity for an existing owner means withhold the optional record and require explicit recovery; baseline/ceilings remain usable. Diagnostic74 has **no owner reset UI or reset endpoint**. First accepted record pins the owner; mismatch rolls the whole package back. A future owner-change flow must require explicit user confirmation and atomically clear only the old owner+record tables, preserving segments/plans/attempts/H10. That flow and sender record construction are deferred to PR work; keep production record sending disabled for this test. An opaque ID is an ownership namespace, not BLE authentication.
+3. **Capabilities write:** YES, accept a malformed/unsupported INITIAL advertisement from the owning central with ATT success and freeze baseline. The Karoo does not swallow write failure: a refused/non-success write, start failure, disconnect or timeout fails that connection/open path, so do not use ATT failure merely to mean unsupported JSON. Ownership checks still apply; do not accept another central. Karoo writes capabilities in Connection.open on **every connection**, including resource and receipt reconnects, whenever the characteristic exists, after service discovery and **before first manifest read**. Old phone with no characteristic skips the write. Identical reconnect bytes must succeed idempotently with no manifest/resource/progress change; changed bytes after freeze are refused. The phone's writeCapabilities implementation at remote e0bacb1 follows that ordering/idempotence pattern by inspection; this is not native/device validation.
+4. **Actual receipt codes in approved74:** imported: `ok`, `ok_segment_existing`. Rejected: `timeout`, `bad_hash`, `bad_segment`, `bad_plan`, `fingerprint_mismatch`, `ftp_mismatch`, `too_large`, `other`. **No `bad_replan`, `bad_record` or `record_owner_mismatch` exists.** Mapping is message-based and precedence matters: timeout exception → hash mismatch → message contains segment → plan → fingerprint → FTP → size/large → other. Thus bad replan metadata normally yields `bad_plan`; malformed record parser failures are prefixed Invalid segment record and normally yield `bad_segment`; Record belongs to another rider yields `other`. Some fingerprint/FTP errors are masked by earlier segment/plan wording. UI should use broad truthful wording (bad_segment = segment or attached record rejected; other = transfer rejected, inspect Karoo details), not infer a specific owner failure. Unknown future codes need generic fallback. Connect/capability/invalid-manifest failures before a usable manifest may have **no receipt at all**; transport failure is not an imported/rejected receipt. Do not wait for finer codes to test ceilings; adding typed reasons later would change receiver code and require a new exact candidate approval.
