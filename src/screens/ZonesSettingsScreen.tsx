@@ -14,7 +14,9 @@ import {
   parseWeightInput,
   type WeightUnit,
 } from "../onboarding/riderNumbers";
-import { colors } from "../theme/colors";
+import { APPEARANCE_OPTIONS } from "../theme/appearance";
+import { useAppearance } from "../theme/AppearanceProvider";
+import { useColors } from "../theme/useColors";
 import { AppText, Button, SegmentedControl, TextField } from "../theme/components";
 import { SCREEN_PADDING } from "../theme/layout";
 import { spacing } from "../theme/spacing";
@@ -29,6 +31,8 @@ import { formatRideDate } from "./formatRideStats";
 export function ZonesSettingsScreen() {
   const database = useDatabase();
   const navigation = useNavigation();
+  const colors = useColors();
+  const appearance = useAppearance();
   const route = useRoute<RouteProp<SegmentsStackParamList, "ZonesSettings">>();
   const returnAfterSave = route.params?.returnAfterSave === true;
   const [ftpInput, setFtpInput] = useState("");
@@ -113,12 +117,27 @@ export function ZonesSettingsScreen() {
 
   return (
     <ScrollView
-      style={styles.container}
+      style={[styles.container, { backgroundColor: colors.background }]}
       contentContainerStyle={styles.content}
       keyboardShouldPersistTaps="handled"
       keyboardDismissMode="interactive"
       automaticallyAdjustKeyboardInsets
     >
+      <View style={styles.appearanceGroup}>
+        <AppText variant="headline" accessibilityRole="header">
+          Appearance
+        </AppText>
+        <SegmentedControl
+          accessibilityLabel="Appearance"
+          value={appearance.preference}
+          onChange={appearance.setPreference}
+          options={APPEARANCE_OPTIONS.map((option) => ({ value: option.value, label: option.label }))}
+        />
+        <AppText variant="footnote" color="textSecondary">
+          System follows your phone's light or dark setting.
+        </AppText>
+      </View>
+
       <AppText variant="body" color="textSecondary">
         GritMap uses these to build pacing plans, predict your finish time, and show which power and heart-rate zone you were in. They stay on your phone.
       </AppText>
@@ -245,7 +264,8 @@ function deviceLocale(): string | undefined {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: colors.background },
+  container: { flex: 1 },
+  appearanceGroup: { gap: spacing.space8 },
   content: { paddingHorizontal: SCREEN_PADDING, paddingTop: spacing.space16, paddingBottom: spacing.space32, gap: spacing.space20 },
   weightGroup: { gap: spacing.space12 },
   pastGroup: { gap: spacing.space12 },

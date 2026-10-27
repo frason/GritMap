@@ -13,6 +13,8 @@ export interface SegmentSummary {
   distanceMeters?: number;
   /** Efforts that count: accepted by the matcher or approved by the rider. */
   effortCount: number;
+  /** When the most recent counted effort started; absent for a segment with no efforts yet. */
+  lastEffortAtMs?: number;
 }
 
 interface StoredSegmentSummary {
@@ -22,6 +24,7 @@ interface StoredSegmentSummary {
   created_at_ms: number;
   distance_meters: number | null;
   effort_count: number;
+  last_effort_ms: number | null;
 }
 
 /** Lists every segment, newest first, for the Segments tab. */
@@ -34,7 +37,10 @@ export function listSegments(database: ListSegmentsDatabase): SegmentSummary[] {
            WHERE segment_reference_points.segment_id = segments.id) AS distance_meters,
          (SELECT COUNT(*) FROM segment_attempts
            WHERE segment_attempts.segment_id = segments.id
-             AND (segment_attempts.decision = 'accept' OR segment_attempts.manually_approved = 1)) AS effort_count
+             AND (segment_attempts.decision = 'accept' OR segment_attempts.manually_approved = 1)) AS effort_count,
+         (SELECT MAX(segment_attempts.start_timestamp_ms) FROM segment_attempts
+           WHERE segment_attempts.segment_id = segments.id
+             AND (segment_attempts.decision = 'accept' OR segment_attempts.manually_approved = 1)) AS last_effort_ms
        FROM segments
        ORDER BY segments.created_at_ms DESC, segments.id DESC`,
     )
@@ -47,5 +53,6 @@ export function listSegments(database: ListSegmentsDatabase): SegmentSummary[] {
     createdAtMs: row.created_at_ms,
     ...(row.distance_meters === null ? {} : { distanceMeters: row.distance_meters }),
     effortCount: row.effort_count,
+    ...(row.last_effort_ms === null ? {} : { lastEffortAtMs: row.last_effort_ms }),
   }));
 }

@@ -1,20 +1,19 @@
 import type { BottomTabNavigationProp } from "@react-navigation/bottom-tabs";
 import { SEGMENT_PAGE_ENABLED } from "../plans/featureFlag";
-import { useCallback, useState } from "react";
-import { Alert, FlatList, Pressable, StyleSheet, View } from "react-native";
+import { useCallback, useMemo, useState } from "react";
+import { ActionSheetIOS, Alert, FlatList, Platform, Pressable, StyleSheet, View } from "react-native";
 import { useFocusEffect, useNavigation } from "@react-navigation/native";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { useDatabase } from "../db/DatabaseProvider";
-import type { SegmentSummary } from "../db/listSegments";
 import { loadSegmentCards, type SegmentCardData } from "../plans/loadSegmentCards";
 import { SegmentCard } from "../plans/SegmentCard";
-import { deleteSegment } from "../db/deleteSegment";
+import { DEFAULT_SEGMENT_SORT, SEGMENT_SORTS, sortSegments, type SegmentSort } from "../plans/segmentListView";
 import type { RootTabParamList, SegmentsStackParamList } from "../navigation/types";
 import { Icon } from "../theme/Icon";
 import { MIN_TOUCH_TARGET } from "../theme/layout";
 import { spacing } from "../theme/spacing";
 import { useColors } from "../theme/useColors";
-import { EmptyState } from "../theme/components";
+import { AppText, EmptyState } from "../theme/components";
 
 type Navigation = NativeStackNavigationProp<SegmentsStackParamList>;
 
@@ -23,6 +22,9 @@ export function SegmentListScreen() {
   const navigation = useNavigation<Navigation>();
   const colors = useColors();
   const [cards, setCards] = useState<SegmentCardData[]>([]);
+  const [sort, setSort] = useState<SegmentSort>(DEFAULT_SEGMENT_SORT);
+  const sorted = useMemo(() => sortSegments(cards.map((card) => ({ ...card.summary, card })), sort).map((row) => row.card), [cards, sort]);
+  const sortLabel = SEGMENT_SORTS.find((option) => option.value === sort)?.label ?? "";
 
   const refresh = useCallback(() => {
     setCards(loadSegmentCards(database));
@@ -36,18 +38,16 @@ export function SegmentListScreen() {
     navigation.getParent<BottomTabNavigationProp<RootTabParamList>>()?.navigate("RidesTab", { screen: "Import", initial: false });
   }
 
-  function handleDelete(segment: SegmentSummary) {
-    Alert.alert("Delete segment?", `"${segment.name}" and the efforts found on it will be removed. Your rides are not affected.`, [
-      { text: "Cancel", style: "cancel" },
-      {
-        text: "Delete",
-        style: "destructive",
-        onPress: () => {
-          deleteSegment(database, segment.segmentId);
-          refresh();
-        },
-      },
-    ]);
+  function chooseSort() {
+    const labels = SEGMENT_SORTS.map((option) => option.label);
+    if (Platform.OS === "ios") {
+      ActionSheetIOS.showActionSheetWithOptions({ title: "Sort segments by", options: [...labels, "Cancel"], cancelButtonIndex: labels.length }, (index) => {
+        const option = SEGMENT_SORTS[index];
+        if (option !== undefined) setSort(option.value);
+      });
+      return;
+    }
+    Alert.alert("Sort segments by", undefined, [...SEGMENT_SORTS.map((option) => ({ text: option.label, onPress: () => setSort(option.value) })), { text: "Cancel", style: "cancel" as const }]);
   }
 
   if (cards.length === 0) {
@@ -76,25 +76,27 @@ export function SegmentListScreen() {
     <FlatList
       style={[styles.container, { backgroundColor: colors.background }]}
       contentContainerStyle={styles.list}
-      data={cards}
+      data={sorted}
       keyExtractor={(card) => card.summary.segmentId}
+      ListHeaderComponent={
+        <Pressable
+          onPress={chooseSort}
+          accessibilityRole="button"
+          accessibilityLabel={`Sort by ${sortLabel}`}
+          accessibilityHint="Choose how segments are ordered"
+          style={styles.sortButton}
+        >
+          <AppText variant="subheadline" color="textSecondary">
+            {`Sort: ${sortLabel}`}
+          </AppText>
+          <Icon name="chevronDown" size={16} color="textSecondary" />
+        </Pressable>
+      }
       renderItem={({ item: card }) => (
-        <View style={styles.row}>
-          <View style={styles.rowMain}>
-            <SegmentCard
-              data={card}
-              onPress={() => navigation.navigate(SEGMENT_PAGE_ENABLED ? "SegmentPage" : "SegmentDetail", { segmentId: card.summary.segmentId })}
-            />
-          </View>
-          <Pressable
-            onPress={() => handleDelete(card.summary)}
-            accessibilityRole="button"
-            accessibilityLabel={`Delete ${card.summary.name}`}
-            style={styles.deleteButton}
-          >
-            <Icon name="trash" color="statusDanger" size={20} />
-          </Pressable>
-        </View>
+        <SegmentCard
+          data={card}
+          onPress={() => navigation.navigate(SEGMENT_PAGE_ENABLED ? "SegmentPage" : "SegmentDetail", { segmentId: card.summary.segmentId })}
+        />
       )}
     />
   );
@@ -105,12 +107,5 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   list: { paddingHorizontal: spacing.space16, paddingVertical: spacing.space12, gap: spacing.space12 },
-  row: { flexDirection: "row", alignItems: "center" },
-  rowMain: { flex: 1 },
-  deleteButton: {
-    minWidth: MIN_TOUCH_TARGET,
-    minHeight: MIN_TOUCH_TARGET,
-    alignItems: "center",
-    justifyContent: "center",
-  },
+  sortButton: { minHeight: MIN_TOUCH_TARGET, flexDirection: "row", alignItems: "center", alignSelf: "flex-start", gap: spacing.space4 },
 });

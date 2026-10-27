@@ -1,5 +1,5 @@
 import { useCallback, useLayoutEffect, useState } from "react";
-import { StyleSheet, View } from "react-native";
+import { ActionSheetIOS, Alert, Platform, StyleSheet, View } from "react-native";
 import { useFocusEffect, useNavigation, useRoute, type RouteProp } from "@react-navigation/native";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { useDatabase } from "../db/DatabaseProvider";
@@ -7,6 +7,7 @@ import { getSegmentDetail, type SegmentDetail } from "../db/getSegmentDetail";
 import { listAttemptsForSegment, type AttemptSummary } from "../db/listAttemptsForSegment";
 import { setActiveGoal as saveActiveGoal } from "../db/setActiveGoal";
 import { deactivateSegmentPlan } from "../db/segmentPlans";
+import { deleteSegment } from "../db/deleteSegment";
 import type { RideTrackPoint } from "../db/getRideTrack";
 import { computeSegmentElevationStats } from "../segments/computeSegmentElevationStats";
 import { PHONE_SEND_BUTTON } from "../onboarding/onboardingCopy";
@@ -17,7 +18,7 @@ import { PlanTab } from "../plans/PlanTab";
 import type { SegmentsStackParamList } from "../navigation/types";
 import { MIN_TOUCH_TARGET } from "../theme/layout";
 import { spacing } from "../theme/spacing";
-import { AppText, Button, Card, ErrorState, ListRow, LoadingState, Notice, ScreenScroll, StatRow, StatTile, TextField, UnderlineTabs } from "../theme/components";
+import { AppText, Button, Card, ErrorState, HeaderButton, ListRow, LoadingState, Notice, ScreenScroll, StatRow, StatTile, TextField, UnderlineTabs } from "../theme/components";
 import { ElevationProfileChart } from "./ElevationProfileChart";
 import { RouteMapView } from "./RouteMapView";
 import { formatDistanceMiles, formatDurationMinutesSeconds, formatElevationFeet, formatGradePercent, formatRideDate } from "./formatRideStats";
@@ -50,9 +51,40 @@ export function SegmentPageScreen() {
   const [draftError, setDraftError] = useState<string | undefined>(undefined);
   const segmentId = route.params.segmentId;
 
+  const segmentName = loaded?.segment.name;
   useLayoutEffect(() => {
-    navigation.setOptions({ title: "" });
-  }, [navigation]);
+    navigation.setOptions({
+      title: "",
+      headerRight: () =>
+        segmentName === undefined ? null : (
+          <HeaderButton icon="more" accessibilityLabel="More actions" accessibilityHint="Delete this segment" onPress={() => openMenu(segmentName)} />
+        ),
+    });
+    // openMenu only uses values that change with segmentName, the database and the navigation.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [navigation, segmentName]);
+
+  function openMenu(name: string) {
+    const confirmDelete = () =>
+      Alert.alert("Delete segment?", `"${name}" and the efforts found on it will be removed. Your rides are not affected.`, [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Delete",
+          style: "destructive",
+          onPress: () => {
+            deleteSegment(database, segmentId);
+            navigation.goBack();
+          },
+        },
+      ]);
+    if (Platform.OS === "ios") {
+      ActionSheetIOS.showActionSheetWithOptions({ options: ["Delete segment", "Cancel"], destructiveButtonIndex: 0, cancelButtonIndex: 1 }, (index) => {
+        if (index === 0) confirmDelete();
+      });
+      return;
+    }
+    Alert.alert(name, undefined, [{ text: "Delete segment", style: "destructive", onPress: confirmDelete }, { text: "Cancel", style: "cancel" }]);
+  }
 
   const load = useCallback(() => {
     try {

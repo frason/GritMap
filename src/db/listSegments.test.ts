@@ -54,6 +54,9 @@ describe("listSegments", () => {
     assert.equal(byId["segment-b"]!.distanceMeters, 300);
     assert.equal(byId["segment-b"]!.effortCount, 0);
     assert.equal("distanceMeters" in byId["segment-empty"]!, false);
+    // Only counted efforts set the latest-effort time: the pending borderline one is ignored.
+    assert.equal(byId["segment-a"]!.lastEffortAtMs, 1_000);
+    assert.equal("lastEffortAtMs" in byId["segment-b"]!, false);
   });
 });
 

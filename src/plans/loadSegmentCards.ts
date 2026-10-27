@@ -5,6 +5,8 @@ import { listPlanSendMarks } from "../db/listPlanSendMarks";
 import { listSegments, type SegmentSummary } from "../db/listSegments";
 import type { SyncDatabase } from "../db/types";
 import { karooMark, type KarooMark } from "./karooMarks";
+import { sendLogInventory, type KarooInventory } from "./karooPresence";
+import { thinCourse, type PreviewPoint } from "./segmentListView";
 import { loadPlanInput } from "./loadPlanInput";
 import { buildPlanScreenModel } from "./planScreenModel";
 import { segmentCardPlan, type SegmentCardPlan } from "./segmentCardView";
@@ -16,11 +18,22 @@ export interface SegmentCardData {
   /** True when this phone has sent the segment to a Karoo at least once. */
   sent: boolean;
   lastSentAtMs?: number;
+  /** True when the Karoo is known to hold this segment (see karooPresence.ts). The list shows a bare "Karoo" check. */
+  onKaroo: boolean;
+  /** The course thinned to a few dozen points, for the list's small route preview. */
+  preview: PreviewPoint[];
 }
 
-/** Everything the Segments list and Home cards show, in the list's order (newest segment first). */
-export function loadSegmentCards(database: SyncDatabase): SegmentCardData[] {
-  const marks = new Map(listPlanSendMarks(database).map((mark) => [mark.segmentId, mark]));
+const PREVIEW_POINTS = 40;
+
+/**
+ * Everything the Segments list and Home cards show, in the database's order (newest segment first; the
+ * list sorts them itself). `inventory` says which segments a Karoo holds; it defaults to this phone's send log.
+ */
+export function loadSegmentCards(database: SyncDatabase, inventory?: KarooInventory): SegmentCardData[] {
+  const sendMarks = listPlanSendMarks(database);
+  const marks = new Map(sendMarks.map((mark) => [mark.segmentId, mark]));
+  const karoo = inventory ?? sendLogInventory(sendMarks);
   const ftpWatts = getAthleteProfile(database).ftpWatts;
   return listSegments(database).map((summary) => {
     const detail = getSegmentDetail(database, summary.segmentId);
@@ -32,6 +45,7 @@ export function loadSegmentCards(database: SyncDatabase): SegmentCardData[] {
       ...(ftpWatts === undefined ? {} : { currentFtpWatts: ftpWatts }),
       ...(importedAt === undefined ? {} : { planChangedAtMs: importedAt }),
     });
-    return { summary, plan: segmentCardPlan(model), sent: send !== undefined, ...(send === undefined ? {} : { lastSentAtMs: send.sentAtMs }), ...(mark === undefined ? {} : { mark }) };
+    const preview = detail === undefined ? [] : thinCourse(detail.referencePolyline, PREVIEW_POINTS);
+    return { summary, plan: segmentCardPlan(model), sent: send !== undefined, onKaroo: karoo.hasSegment(summary.segmentId), preview, ...(send === undefined ? {} : { lastSentAtMs: send.sentAtMs }), ...(mark === undefined ? {} : { mark }) };
   });
 }

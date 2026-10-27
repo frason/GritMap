@@ -1,7 +1,24 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 
-import { DEFAULT_APPEARANCE, parseAppearance, resolveScheme } from "./appearance.ts";
+import { APPEARANCE_OPTIONS, DEFAULT_APPEARANCE, parseAppearance, resolveScheme } from "./appearance.ts";
+
+describe("the default", () => {
+  it("follows the phone", () => {
+    assert.equal(DEFAULT_APPEARANCE, "system");
+  });
+
+  it("offers System, Light and Dark, in that order", () => {
+    assert.deepEqual(
+      APPEARANCE_OPTIONS.map((option) => option.value),
+      ["system", "light", "dark"],
+    );
+    assert.deepEqual(
+      APPEARANCE_OPTIONS.map((option) => option.label),
+      ["System", "Light", "Dark"],
+    );
+  });
+});
 
 describe("parseAppearance", () => {
   it("accepts the three choices", () => {

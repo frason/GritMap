@@ -6,12 +6,15 @@ export type ColorScheme = "light" | "dark";
 
 export const APPEARANCE_SETTING_KEY = "appearance";
 
-/**
- * What a rider with no saved choice gets. Light until every screen has moved to the themed
- * components; then change this one line to "system" to turn dark mode on for everyone who has not
- * chosen.
- */
-export const DEFAULT_APPEARANCE: AppearancePreference = "light";
+/** What a rider with no saved choice gets: follow the phone's light or dark setting. */
+export const DEFAULT_APPEARANCE: AppearancePreference = "system";
+
+/** The three choices in the order Settings shows them, with their labels. */
+export const APPEARANCE_OPTIONS: readonly { value: AppearancePreference; label: string }[] = [
+  { value: "system", label: "System" },
+  { value: "light", label: "Light" },
+  { value: "dark", label: "Dark" },
+];
 
 /** A saved value, or the default when it is missing or not one of ours (never throws). */
 export function parseAppearance(stored: string | undefined): AppearancePreference {

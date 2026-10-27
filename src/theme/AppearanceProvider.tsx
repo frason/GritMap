@@ -1,5 +1,5 @@
-import { createContext, useCallback, useContext, useMemo, useState, type ReactNode } from "react";
-import { useColorScheme } from "react-native";
+import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
+import { Appearance, useColorScheme } from "react-native";
 import { getAppSetting, setAppSetting } from "../db/appSettings";
 import { useDatabase } from "../db/DatabaseProvider";
 import { APPEARANCE_SETTING_KEY, DEFAULT_APPEARANCE, parseAppearance, resolveScheme, type AppearancePreference, type ColorScheme } from "./appearance";
@@ -21,6 +21,11 @@ export function AppearanceProvider({ children }: { children: ReactNode }) {
   const system = useColorScheme();
   const [preference, setPreferenceState] = useState<AppearancePreference>(() => parseAppearance(getAppSetting(database, APPEARANCE_SETTING_KEY)));
 
+  // Tell iOS too, so alerts, action sheets and the keyboard match an explicit Light or Dark choice.
+  useEffect(() => {
+    Appearance.setColorScheme(preference === "system" ? "unspecified" : preference);
+  }, [preference]);
+
   const setPreference = useCallback(
     (next: AppearancePreference) => {
       setPreferenceState(next);
@@ -33,7 +38,7 @@ export function AppearanceProvider({ children }: { children: ReactNode }) {
   return <AppearanceContext.Provider value={value}>{children}</AppearanceContext.Provider>;
 }
 
-/** The appearance choice and the scheme in use. Outside the provider (tests, previews) it is the default, light. */
+/** The appearance choice and the scheme in use. Outside the provider (tests, previews) it is the default, which follows the phone. */
 export function useAppearance(): AppearanceContextValue {
   const context = useContext(AppearanceContext);
   const system = useColorScheme();

@@ -33,7 +33,7 @@ export function SegmentsStackNavigator() {
         options={{ title: "Compare Efforts" }}
       />
       <Stack.Screen name="RegistryBrowse" component={RegistryBrowseScreen} options={{ title: "Open Segments" }} />
-      <Stack.Screen name="ZonesSettings" component={ZonesSettingsScreen} options={{ title: "Your Profile" }} />
+      <Stack.Screen name="ZonesSettings" component={ZonesSettingsScreen} options={{ title: "Settings" }} />
       <Stack.Screen name="HistoricalBand" component={HistoricalBandScreen} options={{ title: "Progress Over Time" }} />
       <Stack.Screen name="SendToKaroo" component={SendToKarooScreen} options={{ title: "Send to Karoo" }} />
       <Stack.Screen
