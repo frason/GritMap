@@ -1,5 +1,11 @@
 # Karoo: track every segment you start, and show your PR when there is no plan
 
+2026-10-26 receiver update: strict diagnostic record import/storage is implemented behind the default-off
+`SEGMENT_RECORDS_ENABLED` flag. The current exact v1 fields, opaque rider ownership rules, capability
+gating and shared fixtures are in [RECEIVER_CAPABILITIES_CONTRACT.md](RECEIVER_CAPABILITIES_CONTRACT.md).
+That contract supersedes the record wire proposal below (it adds `schemaVersion` and `riderId`).
+PR display, local-best merging and plan-free Bluetooth remain pending; nothing enabled publicly.
+
 Status: **development runtime integrated behind a default-off flag; PR import/display pending.** Written 2026-10-19 by the coordinator after Jason's direction. Post-beta work, queued behind
 the direct-Bluetooth fix. Needs Codex review (Karoo) and the phone session (contract fixtures) before any code.
 

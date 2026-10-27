@@ -1,3 +1,13 @@
+# Receiver gates/record storage implemented; diagnostic74 prepared, NOT installed (2026-10-26)
+
+Own branch `codex/karoo-receiver-capabilities`, source `eac155f` (plus implementation6d6af67, merge1328870). Receiver capabilities and strict record storage/Room4 are implemented; shared invented fixtures under `fixtures/contracts/`. Wi-Fi source gates generated-plan ceilings after GET/capabilities. **BLE needs phone native optional characteristic/variant selection before new fields can travel**; old phone/old receiver remain baseline. Exact fields and512-byte manifest constraint: `docs/RECEIVER_CAPABILITIES_CONTRACT.md`.
+
+271 Karoo unit tests,219 phone transfer/pacing tests,2 monitor tests, root TypeScript check and lint verified; load-sensitive legacy70ms timing test failure and quiet rerun detailed in archive. Synthetic short/long climb replays validate bounds,20W climbing steps, deficit/ahead/unreachable behavior. No real ride validation.
+
+Diagnostic74 **0.10.46-replanner-test1**, source `eac155f3401d0c689729704260996a1106f38aae`, SHA256 **d8bca0eb8c841c5490d11cb6837630cc1918e9087e2e7371a28c168ad69d9d32** prepared/signed; ceilings+records+live-replanner on, concurrency off, injection0. Flag-off fallback75 prepared, SHA256 **3d2cf84e0661e29cbe3600866968ca0e438caf8801964a36d30b1f0bb11dd95d**. Both persistent certificate `eac4c309da0e0410b2926c6a478b17038cdf7407fe3d4d86341eebf53a90f5f6`. **Neither installed/published; no install approval yet; ADB device list empty.** Public73 unchanged. Room4 requires newer flag-off75 to disable; cannot return to public73/Room3 without a migration solution. Never clear/uninstall.
+
+Next: exact diagnostic approval, matching phone sender or updated Wi-Fi source, verify retained ceiling metadata, then ONE supervised test. Plan-free/PR next, On Karoo note later, Needle stays backlogged. Full exact commands/artifacts/limitations: `handoffs/archive/2026-10-26-receiver-capabilities-and-replanner-diagnostic74.md`. Earlier coordinator instructions retained below.
+
 # Coordinator: NEXT TASK for Codex (2026-10-26, Jason: this is the priority): make the new pacing reach the Karoo
 
 The public 0.10.45/73 release is done; the replanner (1650b79) is built but off and has never run on a real ride. Work in your own worktree, own branch, explicit paths, no force-push, push your commits.
