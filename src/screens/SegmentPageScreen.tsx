@@ -1,5 +1,5 @@
 import { useCallback, useLayoutEffect, useState } from "react";
-import { ActionSheetIOS, Alert, Platform, StyleSheet, View } from "react-native";
+import { ActionSheetIOS, Alert, Modal, Platform, ScrollView, StyleSheet, View } from "react-native";
 import { useFocusEffect, useNavigation, useRoute, type RouteProp } from "@react-navigation/native";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { useDatabase } from "../db/DatabaseProvider";
@@ -10,7 +10,7 @@ import { deactivateSegmentPlan } from "../db/segmentPlans";
 import { deleteSegment } from "../db/deleteSegment";
 import type { RideTrackPoint } from "../db/getRideTrack";
 import { computeSegmentElevationStats } from "../segments/computeSegmentElevationStats";
-import { PHONE_SEND_BUTTON } from "../onboarding/onboardingCopy";
+import { SEGMENT_MENU_ACTIONS, segmentMenuKeyAt, segmentMenuOptions, type SegmentMenuKey } from "../plans/segmentMenu";
 import { buildPlanScreenModel, type PlanScreenModel } from "../plans/planScreenModel";
 import { loadPlanInput } from "../plans/loadPlanInput";
 import { durationToInputs, validateGoalDraft } from "../plans/goalDraft";
@@ -18,6 +18,7 @@ import { PlanTab } from "../plans/PlanTab";
 import type { SegmentsStackParamList } from "../navigation/types";
 import { MIN_TOUCH_TARGET } from "../theme/layout";
 import { spacing } from "../theme/spacing";
+import { useColors } from "../theme/useColors";
 import { AppText, Button, Card, ErrorState, HeaderButton, ListRow, LoadingState, Notice, ScreenScroll, StatRow, StatTile, TextField, UnderlineTabs } from "../theme/components";
 import { ElevationProfileChart } from "./ElevationProfileChart";
 import { RouteMapView } from "./RouteMapView";
@@ -43,6 +44,7 @@ export function SegmentPageScreen() {
   const database = useDatabase();
   const route = useRoute<PageRoute>();
   const navigation = useNavigation<Navigation>();
+  const colors = useColors();
   const [tab, setTab] = useState<TabKey>("efforts");
   const [state, setState] = useState<"loading" | "ready" | "missing" | "error">("loading");
   const [loaded, setLoaded] = useState<Loaded | undefined>(undefined);
@@ -52,18 +54,17 @@ export function SegmentPageScreen() {
   const segmentId = route.params.segmentId;
 
   const segmentName = loaded?.segment.name;
-  const canSend = loaded?.plan.kind === "plan" && loaded.plan.outdated === undefined;
   useLayoutEffect(() => {
     navigation.setOptions({
       title: "",
       headerRight: () =>
         segmentName === undefined ? null : (
-          <HeaderButton icon="more" accessibilityLabel="More actions" accessibilityHint={canSend ? "Send to your Karoo or delete this segment" : "Delete this segment"} onPress={() => openMenu(segmentName)} />
+          <HeaderButton icon="more" accessibilityLabel="More actions" accessibilityHint="Send to your Karoo or delete this segment" onPress={() => openMenu(segmentName)} />
         ),
     });
     // openMenu only uses values that change with segmentName, the database and the navigation.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [navigation, segmentName, canSend]);
+  }, [navigation, segmentName]);
 
   function openMenu(name: string) {
     const confirmDelete = () =>
@@ -78,18 +79,17 @@ export function SegmentPageScreen() {
           },
         },
       ]);
-    const send = () => navigation.navigate("SendToKaroo", { segmentId });
+    const run = (key: SegmentMenuKey | undefined) => {
+      if (key === "send") navigation.navigate("SendToKaroo", { segmentId });
+      else if (key === "delete") confirmDelete();
+    };
     if (Platform.OS === "ios") {
-      const options = canSend ? [PHONE_SEND_BUTTON, "Delete segment", "Cancel"] : ["Delete segment", "Cancel"];
-      ActionSheetIOS.showActionSheetWithOptions({ options, destructiveButtonIndex: options.length - 2, cancelButtonIndex: options.length - 1 }, (index) => {
-        if (canSend && index === 0) send();
-        else if (index === options.length - 2) confirmDelete();
-      });
+      const options = segmentMenuOptions();
+      ActionSheetIOS.showActionSheetWithOptions({ options, destructiveButtonIndex: 1, cancelButtonIndex: options.length - 1 }, (index) => run(segmentMenuKeyAt(index)));
       return;
     }
     Alert.alert(name, undefined, [
-      ...(canSend ? [{ text: PHONE_SEND_BUTTON, onPress: send }] : []),
-      { text: "Delete segment", style: "destructive" as const, onPress: confirmDelete },
+      ...SEGMENT_MENU_ACTIONS.map((action) => ({ text: action.label, ...(action.destructive ? { style: "destructive" as const } : {}), onPress: () => run(action.key) })),
       { text: "Cancel", style: "cancel" as const },
     ]);
   }
@@ -177,47 +177,19 @@ export function SegmentPageScreen() {
         <UnderlineTabs tabs={TABS} selected={tab} onSelect={setTab} />
 
         {tab === "plan" ? (
-          editingGoal ? (
-            <Card>
-              <AppText variant="headline">Your goal time</AppText>
-              <View style={styles.inputRow}>
-                <View style={styles.input}>
-                  <TextField label="Minutes" value={draft.minutes} onChangeText={(minutes) => setDraft({ ...draft, minutes })} keyboardType="number-pad" />
-                </View>
-                <View style={styles.input}>
-                  <TextField label="Seconds" value={draft.seconds} onChangeText={(seconds) => setDraft({ ...draft, seconds })} keyboardType="number-pad" placeholder="00" />
-                </View>
-              </View>
-              <AppText variant="subheadline" color="textSecondary">
-                Long-term goal (optional): a faster time to keep working towards. Your plan is built for the goal above.
-              </AppText>
-              <View style={styles.inputRow}>
-                <View style={styles.input}>
-                  <TextField label="Long-term minutes" value={draft.longTermMinutes} onChangeText={(longTermMinutes) => setDraft({ ...draft, longTermMinutes, removeLongTerm: false })} keyboardType="number-pad" />
-                </View>
-                <View style={styles.input}>
-                  <TextField label="Long-term seconds" value={draft.longTermSeconds} onChangeText={(longTermSeconds) => setDraft({ ...draft, longTermSeconds, removeLongTerm: false })} keyboardType="number-pad" placeholder="00" />
-                </View>
-              </View>
-              {draftError === undefined ? null : <Notice tone="error" live>{draftError}</Notice>}
-              <Button label="Save goal" onPress={saveGoal} />
-              <Button label="Cancel" variant="tertiary" fullWidth={false} onPress={() => setEditingGoal(false)} />
-            </Card>
-          ) : (
-            <PlanTab
-              model={plan}
-              referencePolyline={segment.referencePolyline}
-              onEditGoal={startEditingGoal}
-              onSetGoalToBeatBest={setGoalMs}
-              onSetNextGoal={setGoalMs}
-              onImportPlan={() => navigation.navigate("ImportCoachPlan", { segmentId: segment.segmentId })}
-              onUseGeneratedPlan={() => {
-                deactivateSegmentPlan(database, segment.segmentId);
-                load();
-              }}
-              onOpenProfile={() => navigation.navigate("ZonesSettings", { returnAfterSave: true })}
-            />
-          )
+          <PlanTab
+            model={plan}
+            referencePolyline={segment.referencePolyline}
+            onEditGoal={startEditingGoal}
+            onSetGoalToBeatBest={setGoalMs}
+            onSetNextGoal={setGoalMs}
+            onImportPlan={() => navigation.navigate("ImportCoachPlan", { segmentId: segment.segmentId })}
+            onUseGeneratedPlan={() => {
+              deactivateSegmentPlan(database, segment.segmentId);
+              load();
+            }}
+            onOpenProfile={() => navigation.navigate("ZonesSettings", { returnAfterSave: true })}
+          />
         ) : null}
 
         {tab === "efforts" ? (
@@ -243,6 +215,7 @@ export function SegmentPageScreen() {
                     key={attempt.attemptId}
                     title={formatDurationMinutesSeconds(attempt.endTimestampMs - attempt.startTimestampMs)}
                     subtitle={formatRideDate(attempt.startTimestampMs)}
+                    {...(attempt.attemptId === route.params.highlightAttemptId ? { selected: true } : {})}
                     onPress={() => navigation.navigate("AttemptReview", { attemptId: attempt.attemptId })}
                   />
                 ))}
@@ -252,6 +225,35 @@ export function SegmentPageScreen() {
 
         {tab === "course" ? <ElevationProfileChart referencePolyline={segment.referencePolyline} /> : null}
       </View>
+      <Modal visible={editingGoal} animationType="slide" presentationStyle="pageSheet" onRequestClose={() => setEditingGoal(false)}>
+        <ScrollView style={{ backgroundColor: colors.surface }} contentContainerStyle={styles.sheetScroll} keyboardShouldPersistTaps="handled">
+          <View style={styles.sheetContent}>
+            <AppText variant="title2" accessibilityRole="header">Your goal time</AppText>
+            <View style={styles.inputRow}>
+              <View style={styles.input}>
+                <TextField label="Minutes" value={draft.minutes} onChangeText={(minutes) => setDraft({ ...draft, minutes })} keyboardType="number-pad" />
+              </View>
+              <View style={styles.input}>
+                <TextField label="Seconds" value={draft.seconds} onChangeText={(seconds) => setDraft({ ...draft, seconds })} keyboardType="number-pad" placeholder="00" />
+              </View>
+            </View>
+            <AppText variant="subheadline" color="textSecondary">
+              Long-term goal (optional): a faster time to keep working towards. Your plan is built for the goal above.
+            </AppText>
+            <View style={styles.inputRow}>
+              <View style={styles.input}>
+                <TextField label="Long-term minutes" value={draft.longTermMinutes} onChangeText={(longTermMinutes) => setDraft({ ...draft, longTermMinutes, removeLongTerm: false })} keyboardType="number-pad" />
+              </View>
+              <View style={styles.input}>
+                <TextField label="Long-term seconds" value={draft.longTermSeconds} onChangeText={(longTermSeconds) => setDraft({ ...draft, longTermSeconds, removeLongTerm: false })} keyboardType="number-pad" placeholder="00" />
+              </View>
+            </View>
+            {draftError === undefined ? null : <Notice tone="error" live>{draftError}</Notice>}
+            <Button label="Save goal" onPress={saveGoal} />
+            <Button label="Cancel" variant="tertiary" fullWidth={false} onPress={() => setEditingGoal(false)} />
+          </View>
+        </ScrollView>
+      </Modal>
     </ScreenScroll>
   );
 }
@@ -270,6 +272,8 @@ function toRouteMapPoints(segment: SegmentDetail): RideTrackPoint[] {
 const styles = StyleSheet.create({
   map: { height: 260 },
   content: { padding: spacing.space16, gap: spacing.space16 },
+  sheetScroll: { padding: spacing.space16 },
+  sheetContent: { gap: spacing.space16 },
   inputRow: { flexDirection: "row", gap: spacing.space12 },
   input: { flex: 1, minHeight: MIN_TOUCH_TARGET },
 });

@@ -8,6 +8,7 @@ import { getRideTrack, type RideTrackPoint } from "../db/getRideTrack";
 import { getSegmentDetail } from "../db/getSegmentDetail";
 import { confirmAttempt, rejectAttempt } from "../db/reviewAttempt";
 import type { SegmentsStackParamList } from "../navigation/types";
+import { SHOW_MATCH_DETAIL } from "../plans/featureFlag";
 import { AppText, Button, Card, ErrorState, ListRow, LoadingState, Notice, ScreenScroll, Section } from "../theme/components";
 import { radius, spacing } from "../theme/spacing";
 import { useColors } from "../theme/useColors";
@@ -131,16 +132,18 @@ export function AttemptReviewScreen() {
         </Section>
       ) : null}
 
-      <Section title="How well it matched" description="The numbers GritMap used to decide this ride covered the segment.">
-        <View>
-          {details.map((detail) => (
-            <ListRow key={detail.label} title={detail.label} subtitle={detail.meaning} value={detail.value} />
-          ))}
-        </View>
-        <AppText variant="caption1" color="textSecondary">
-          Checked by match analysis version {current.matcherVersion}.
-        </AppText>
-      </Section>
+      {SHOW_MATCH_DETAIL ? (
+        <Section title="How well it matched" description="The numbers GritMap used to decide this ride covered the segment.">
+          <View>
+            {details.map((detail) => (
+              <ListRow key={detail.label} title={detail.label} subtitle={detail.meaning} value={detail.value} />
+            ))}
+          </View>
+          <AppText variant="caption1" color="textSecondary">
+            Checked by match analysis version {current.matcherVersion}.
+          </AppText>
+        </Section>
+      ) : null}
 
       <Button
         label="Compare with your pacing plan"

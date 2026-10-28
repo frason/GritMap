@@ -18,6 +18,8 @@ import { ChannelChart, type ChannelSeriesPoint } from "./ChannelChart";
 import { averageOf, describeChannelAverages, describeOverallGap } from "./describeComparison";
 import { formatDurationMinutesSeconds, formatRideDate } from "./formatRideStats";
 
+import { ZoneDonut } from "./ZoneDonut";
+
 type ComparisonRoute = RouteProp<SegmentsStackParamList, "AttemptComparison">;
 type Navigation = NativeStackNavigationProp<SegmentsStackParamList, "AttemptComparison">;
 
@@ -298,7 +300,6 @@ function ZoneCard({
 }
 
 function ZoneRow({ label, breakdown }: { label: string; breakdown: Breakdown }) {
-  const palette = useColors();
   if (breakdown.length === 0) {
     return (
       <View style={styles.zoneRow}>
@@ -313,19 +314,14 @@ function ZoneRow({ label, breakdown }: { label: string; breakdown: Breakdown }) 
   }
   const legend = breakdown.map(({ zone, percent }) => `Z${zone} ${Math.round(percent)}%`).join(" · ");
   return (
-    <View style={styles.zoneRow} accessible accessibilityLabel={`${label}: ${legend}`}>
-      <AppText variant="footnote" color="textSecondary">
-        {label}
-      </AppText>
-      <View style={[styles.zoneBar, { backgroundColor: palette.disabledBackground }]}>
-        {/* Zones are ordered, so one hue getting stronger with the zone number reads as effort rising. */}
-        {breakdown.map(({ zone, percent }) => (
-          <View key={zone} style={{ flexGrow: percent, flexBasis: 0, backgroundColor: palette.brandFill, opacity: 0.2 + 0.8 * (Math.min(zone, 7) / 7) }} />
-        ))}
+    <View style={styles.zoneDonutRow} accessible accessibilityLabel={`${label}: ${legend}`}>
+      <ZoneDonut breakdown={breakdown} />
+      <View style={styles.zoneDonutText}>
+        <AppText variant="subheadlineEmphasized">{label}</AppText>
+        <AppText variant="footnote" color="textSecondary">
+          {legend}
+        </AppText>
       </View>
-      <AppText variant="caption1" color="textSecondary">
-        {legend}
-      </AppText>
     </View>
   );
 }
@@ -403,6 +399,8 @@ function toSegmentAttempt(database: ReturnType<typeof useDatabase>, detail: Atte
 
 const styles = StyleSheet.create({
   cardTitle: { fontWeight: "600" },
+  zoneDonutRow: { flexDirection: "row", alignItems: "center", gap: spacing.space16 },
+  zoneDonutText: { flex: 1, gap: spacing.space4 },
   zoneRow: { gap: spacing.space4 },
   zoneBar: { flexDirection: "row", height: 12, borderRadius: radius.sm, overflow: "hidden" },
   sheetBackdrop: { flex: 1, justifyContent: "flex-end" },

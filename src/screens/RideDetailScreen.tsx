@@ -3,12 +3,15 @@ import { StyleSheet, View } from "react-native";
 import { useFocusEffect, useNavigation, useRoute, type RouteProp } from "@react-navigation/native";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import type { BottomTabNavigationProp } from "@react-navigation/bottom-tabs";
+import { getSegmentDetail } from "../db/getSegmentDetail";
+import { RideSegmentRow } from "../plans/RideSegmentRow";
+import { thinCourse, type PreviewPoint } from "../plans/segmentListView";
 import { useDatabase } from "../db/DatabaseProvider";
 import { getRideDetail, type RideDetail } from "../db/getRideDetail";
 import { getRideTrack, type RideTrackPoint } from "../db/getRideTrack";
 import { listAttemptsForRide, type RideAttemptSummary } from "../db/listAttemptsForRide";
 import type { RidesStackParamList, RootTabParamList } from "../navigation/types";
-import { AppText, BottomSheet, Button, Card, ErrorState, ListRow, LoadingState, Notice, ScreenScroll, Section, StatRow, StatTile } from "../theme/components";
+import { AppText, BottomSheet, Button, Card, ErrorState, LoadingState, Notice, ScreenScroll, Section, StatRow, StatTile } from "../theme/components";
 import { rideHasPower } from "../db/rideHasPower";
 import { NO_POWER_RIDE_NOTE } from "./describeNoPower";
 import { spacing } from "../theme/spacing";
@@ -17,6 +20,7 @@ import { RouteMapView } from "./RouteMapView";
 import {
   formatDistanceMiles,
   formatDurationHoursMinutes,
+  formatDurationMinutesSeconds,
   formatElevationFeet,
   formatRideDate,
   rideTitle,
@@ -37,6 +41,7 @@ export function RideDetailScreen() {
   const [track, setTrack] = useState<RideTrackPoint[]>([]);
   const [attempts, setAttempts] = useState<RideAttemptSummary[]>([]);
   const [hasPower, setHasPower] = useState(true);
+  const [courses, setCourses] = useState<Record<string, PreviewPoint[]>>({});
 
   const load = useCallback(() => {
     try {
@@ -47,7 +52,15 @@ export function RideDetailScreen() {
         return;
       }
       setTrack(getRideTrack(database, route.params.rideId));
-      setAttempts(listAttemptsForRide(database, route.params.rideId));
+      const rideAttempts = listAttemptsForRide(database, route.params.rideId);
+      setAttempts(rideAttempts);
+      const byId: Record<string, PreviewPoint[]> = {};
+      for (const attempt of rideAttempts) {
+        if (byId[attempt.segmentId] !== undefined) continue;
+        const segment = getSegmentDetail(database, attempt.segmentId);
+        byId[attempt.segmentId] = segment === undefined ? [] : thinCourse(segment.referencePolyline, 24);
+      }
+      setCourses(byId);
       setHasPower(rideHasPower(database, route.params.rideId));
       setState("ready");
     } catch {
@@ -57,10 +70,10 @@ export function RideDetailScreen() {
 
   useFocusEffect(load);
 
-  function openAttemptReview(attemptId: string) {
+  function openSegment(segmentId: string, attemptId: string) {
     navigation
       .getParent<BottomTabNavigationProp<RootTabParamList>>()
-      ?.navigate("SegmentsTab", { screen: "AttemptReview", initial: false, params: { attemptId } });
+      ?.navigate("SegmentsTab", { screen: "SegmentPage", initial: false, params: { segmentId, highlightAttemptId: attemptId } });
   }
 
   if (state === "loading") {
@@ -115,15 +128,12 @@ export function RideDetailScreen() {
               {attempts.map((attempt) => {
                 const confirmed = attempt.manuallyApproved || attempt.decision === "accept";
                 return (
-                  <ListRow
+                  <RideSegmentRow
                     key={attempt.attemptId}
-                    icon={confirmed ? "checkCircle" : "alertTriangle"}
                     title={attempt.segmentName}
-                    subtitle={`${formatDurationHoursMinutes(attempt.endTimestampMs - attempt.startTimestampMs)} · ${
-                      confirmed ? (attempt.manuallyApproved ? "Approved by you" : "Matched") : "Needs your review"
-                    } · ${Math.round(attempt.confidenceScore * 100)}% match`}
-                    onPress={() => openAttemptReview(attempt.attemptId)}
-                    accessibilityHint="Opens the details of this effort"
+                    subtitle={`${formatDurationMinutesSeconds(attempt.endTimestampMs - attempt.startTimestampMs)}${confirmed ? "" : " · Needs your review"}`}
+                    course={courses[attempt.segmentId] ?? []}
+                    onPress={() => openSegment(attempt.segmentId, attempt.attemptId)}
                   />
                 );
               })}
