@@ -1,5 +1,11 @@
 # Handoff: redesign build, step (a) tokens (2026-10-24)
 
+## Build 12 candidate: local commits above the pushed tip — 2026-10-27
+- Full handoff: `handoffs/archive/2026-10-27-2229-claude-redesign-build12-candidate.md` (read it first).
+- Branch `claude/redesign-foundation` head 6e04ee5; origin has only 346b860. Six local commits (bf9a054, dec2414, 2a61adf, 9703058, 44fe117, 6e04ee5) carry the bare Karoo mark, ride detail changes, Efforts-first segment page with the results chart, goal bottom sheet, doughnuts, quarter-mile toggle and Home Latest segments.
+- Verified: `npm test` 960 pass, 0 fail, 24 skipped; typecheck clean. Several items are not seen on screen (listed in the archive file). Course tab not built.
+- Push needs Jason's own chat yes. Never commit `ios/Podfile.lock`.
+
 ## Post-(f): pushed branch and Figma screens — 2026-10-26
 - Pushed `claude/redesign-foundation` to origin as a new branch (tip 10db77a, six commits on build 8 = origin/main 75427dd; main untouched). Jason approved in chat.
 - Figma file `cyaMDDfLBKFc4NNK1SUUnb`, page "GritMap Redesign Options", section "Final screens — build 9": editable layers bound to the GritMap v2/Color variables (Light and Dark modes via explicit frame mode) and Type/* text styles. 20 frames: Home (first run, active), Rides, Ride page, Segments, Segment page Plan tab, Open Segments, Compare efforts, Create segment (Start, Finish). Maps and charts are placeholders; sample names/times are invented. Added `radius/xl` (24) to GritMap/Spacing. Efforts/Course tabs and Settings are not drawn.
