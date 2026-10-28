@@ -30,8 +30,8 @@ type PageRoute = RouteProp<SegmentsStackParamList, "SegmentPage">;
 type Navigation = NativeStackNavigationProp<SegmentsStackParamList>;
 type TabKey = "plan" | "efforts" | "course";
 const TABS = [
-  { key: "plan", label: "Plan" },
   { key: "efforts", label: "Efforts" },
+  { key: "plan", label: "Plan" },
   { key: "course", label: "Course" },
 ] as const;
 
