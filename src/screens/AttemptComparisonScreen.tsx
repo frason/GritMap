@@ -9,7 +9,7 @@ import { getAttemptDetail, type AttemptDetail } from "../db/getAttemptDetail";
 import { getAttemptTrack } from "../db/getAttemptTrack";
 import { listAttemptsForSegment, type AttemptSummary } from "../db/listAttemptsForSegment";
 import type { SegmentsStackParamList } from "../navigation/types";
-import { AppText, Button, Card, ErrorState, ListRow, LoadingState, Notice, ScreenScroll, Section } from "../theme/components";
+import { AppText, Button, Card, ErrorState, ListRow, LoadingState, Notice, ScreenScroll, Section, SegmentedControl } from "../theme/components";
 import { SCREEN_PADDING } from "../theme/layout";
 import { radius, spacing } from "../theme/spacing";
 import { useColors } from "../theme/useColors";
@@ -18,6 +18,7 @@ import { ChannelChart, type ChannelSeriesPoint } from "./ChannelChart";
 import { averageOf, describeChannelAverages, describeOverallGap } from "./describeComparison";
 import { formatDurationMinutesSeconds, formatRideDate } from "./formatRideStats";
 
+import { binByDistance } from "../comparison/binSeries";
 import { ZoneDonut } from "./ZoneDonut";
 
 type ComparisonRoute = RouteProp<SegmentsStackParamList, "AttemptComparison">;
@@ -242,6 +243,7 @@ function ChannelSection({
   noData: string;
   summary?: string | undefined;
 }) {
+  const [detail, setDetail] = useState<"quarter" | "detail">("quarter");
   const hasAnyData = series.some((point) => point.primary !== null || point.comparison !== null);
   if (!hasAnyData) {
     return (
@@ -256,14 +258,25 @@ function ChannelSection({
     );
   }
   return (
-    <ChannelChart
-      title={title}
-      unit={unit}
-      series={series}
-      primaryLabel={primaryLabel}
-      comparisonLabel={comparisonLabel}
-      {...(summary === undefined ? {} : { summary })}
-    />
+    <>
+      <SegmentedControl
+        accessibilityLabel={`${title} detail`}
+        options={[
+          { value: "quarter", label: "Per quarter mile" },
+          { value: "detail", label: "Detailed" },
+        ]}
+        value={detail}
+        onChange={setDetail}
+      />
+      <ChannelChart
+        title={title}
+        unit={unit}
+        series={detail === "quarter" ? binByDistance(series) : series}
+        primaryLabel={primaryLabel}
+        comparisonLabel={comparisonLabel}
+        {...(summary === undefined ? {} : { summary })}
+      />
+    </>
   );
 }
 

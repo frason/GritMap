@@ -14,6 +14,8 @@ import { SEGMENT_MENU_ACTIONS, segmentMenuKeyAt, segmentMenuOptions, type Segmen
 import { buildPlanScreenModel, type PlanScreenModel } from "../plans/planScreenModel";
 import { loadPlanInput } from "../plans/loadPlanInput";
 import { durationToInputs, validateGoalDraft } from "../plans/goalDraft";
+import { ResultsChart } from "../plans/ResultsChart";
+import { gapToBestLabel, resultsPoints } from "../plans/resultsView";
 import { PlanTab } from "../plans/PlanTab";
 import type { SegmentsStackParamList } from "../navigation/types";
 import { MIN_TOUCH_TARGET } from "../theme/layout";
@@ -46,6 +48,7 @@ export function SegmentPageScreen() {
   const navigation = useNavigation<Navigation>();
   const colors = useColors();
   const [tab, setTab] = useState<TabKey>("efforts");
+  const [selectedId, setSelectedId] = useState<string | undefined>(route.params.highlightAttemptId);
   const [state, setState] = useState<"loading" | "ready" | "missing" | "error">("loading");
   const [loaded, setLoaded] = useState<Loaded | undefined>(undefined);
   const [editingGoal, setEditingGoal] = useState(false);
@@ -129,6 +132,11 @@ export function SegmentPageScreen() {
     .filter((attempt) => attempt.decision === "accept" || attempt.manuallyApproved)
     .sort((a, b) => a.endTimestampMs - a.startTimestampMs - (b.endTimestampMs - b.startTimestampMs));
 
+  const resultPoints = resultsPoints(counted.map((attempt) => ({ attemptId: attempt.attemptId, startTimestampMs: attempt.startTimestampMs, durationMs: attempt.endTimestampMs - attempt.startTimestampMs })));
+  const bestMs = resultPoints.find((point) => point.isBest)?.durationMs;
+  // Without a tapped or passed-in effort, the latest counted one is selected.
+  const activeId = selectedId ?? resultPoints.at(-1)?.attemptId;
+
   function startEditingGoal() {
     const goalMs = plan.kind === "plan" ? plan.goal?.nextMs : undefined;
     const longTermMs = plan.kind === "plan" ? plan.goal?.longTermMs : undefined;
@@ -199,7 +207,11 @@ export function SegmentPageScreen() {
               <AppText variant="subheadline" color="textSecondary">Ride this segment and import the ride. Your times show up here.</AppText>
             </Card>
           ) : (
-            <View>
+            <View style={styles.results}>
+              <AppText variant="headline" accessibilityRole="header">
+                Your results
+              </AppText>
+              {resultPoints.length === 0 ? null : <ResultsChart points={resultPoints} selectedId={activeId} onSelect={setSelectedId} />}
               {counted.length < 2 ? null : (
                 <Button
                   label="Compare your two best efforts"
@@ -208,17 +220,25 @@ export function SegmentPageScreen() {
                   accessibilityHint="Shows where you gained or lost time. You can swap either effort there."
                 />
               )}
-              {[...attempts]
-                .sort((a, b) => b.startTimestampMs - a.startTimestampMs)
-                .map((attempt) => (
-                  <ListRow
-                    key={attempt.attemptId}
-                    title={formatDurationMinutesSeconds(attempt.endTimestampMs - attempt.startTimestampMs)}
-                    subtitle={formatRideDate(attempt.startTimestampMs)}
-                    {...(attempt.attemptId === route.params.highlightAttemptId ? { selected: true } : {})}
-                    onPress={() => navigation.navigate("AttemptReview", { attemptId: attempt.attemptId })}
-                  />
-                ))}
+              <View>
+                {[...attempts]
+                  .sort((a, b) => b.startTimestampMs - a.startTimestampMs)
+                  .map((attempt) => {
+                    const durationMs = attempt.endTimestampMs - attempt.startTimestampMs;
+                    const isCounted = attempt.decision === "accept" || attempt.manuallyApproved;
+                    const gap = isCounted ? gapToBestLabel(durationMs, bestMs, formatDurationMinutesSeconds) : "Needs your review";
+                    return (
+                      <ListRow
+                        key={attempt.attemptId}
+                        title={formatDurationMinutesSeconds(durationMs)}
+                        subtitle={[formatRideDate(attempt.startTimestampMs), gap].filter(Boolean).join(" · ")}
+                        {...(attempt.attemptId === activeId ? { selected: true } : {})}
+                        onPress={() => (attempt.attemptId === activeId || !isCounted ? navigation.navigate("AttemptReview", { attemptId: attempt.attemptId }) : setSelectedId(attempt.attemptId))}
+                        accessibilityHint={attempt.attemptId === activeId || !isCounted ? "Opens this effort" : "Selects this effort"}
+                      />
+                    );
+                  })}
+              </View>
             </View>
           )
         ) : null}
@@ -272,6 +292,7 @@ function toRouteMapPoints(segment: SegmentDetail): RideTrackPoint[] {
 const styles = StyleSheet.create({
   map: { height: 260 },
   content: { padding: spacing.space16, gap: spacing.space16 },
+  results: { gap: spacing.space12 },
   sheetScroll: { padding: spacing.space16 },
   sheetContent: { gap: spacing.space16 },
   inputRow: { flexDirection: "row", gap: spacing.space12 },

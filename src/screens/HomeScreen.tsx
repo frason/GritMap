@@ -16,6 +16,7 @@ import { setupSteps, shouldShowSetupChecklist, type SetupProgress, type SetupSte
 import { loadRideHighlights } from "../plans/loadRideHighlights";
 import { loadRideSegmentLines } from "../plans/loadRideSegmentLines";
 import type { PreviewPoint } from "../plans/segmentListView";
+import { loadSegmentInsights, type HomeSegmentInsight } from "../plans/loadSegmentInsights";
 import { loadSegmentCards, type SegmentCardData } from "../plans/loadSegmentCards";
 import type { RideSegmentHighlight } from "../plans/karooMarks";
 import { RideMapCard } from "../plans/RideMapCard";
@@ -39,6 +40,7 @@ export function HomeScreen() {
   const [lastRide, setLastRide] = useState<RideSummary | undefined>(undefined);
   const [lastRideHighlights, setLastRideHighlights] = useState<RideSegmentHighlight[]>([]);
   const [lastRideLines, setLastRideLines] = useState<PreviewPoint[][]>([]);
+  const [insights, setInsights] = useState<HomeSegmentInsight[]>([]);
   const [sentCards, setSentCards] = useState<SegmentCardData[]>([]);
   const [setup, setSetup] = useState<SetupProgress>({ hasFtp: true, hasSegment: true, hasRide: true, hasSent: true });
   const [editingGoal, setEditingGoal] = useState(false);
@@ -49,6 +51,7 @@ export function HomeScreen() {
     setSegments(currentSegments);
     setGoal(currentGoal);
     setOtherGoals(listSegmentGoals(database).filter((other) => other.segmentId !== currentGoal?.segmentId));
+    setInsights(loadSegmentInsights(database, currentGoal?.segmentId));
     setAttempts(currentGoal === undefined ? [] : listAttemptsForSegment(database, currentGoal.segmentId));
     const newest = listRides(database)[0];
     const cards = loadSegmentCards(database);
@@ -204,6 +207,30 @@ export function HomeScreen() {
             onPress={handleCompareCta}
           />
         </Card>
+        {insights.length === 0 ? null : (
+          <Section title="Latest segments" description="Your most recent effort on segments where you have a goal or a plan.">
+            {insights.map((insight) => (
+              <Card
+                key={insight.segmentId}
+                onPress={() => navigation.navigate("SegmentsTab", { screen: "SegmentPage", initial: false, params: { segmentId: insight.segmentId, highlightAttemptId: insight.attemptId } })}
+                accessibilityLabel={[insight.name, formatDurationMinutesSeconds(insight.durationMs), ...insight.lines].join(". ")}
+                accessibilityHint="Opens this segment"
+              >
+                <View style={styles.insightTop}>
+                  <AppText variant="headline" style={styles.goalHeaderText}>
+                    {insight.name}
+                  </AppText>
+                  <AppText variant="headline">{formatDurationMinutesSeconds(insight.durationMs)}</AppText>
+                </View>
+                {insight.lines.map((line) => (
+                  <AppText key={line} variant="subheadline" color="textSecondary">
+                    {line}
+                  </AppText>
+                ))}
+              </Card>
+            ))}
+          </Section>
+        )}
         {sentCards.length === 0 ? null : (
           <Section title="Sent from this phone" description="Segments you have sent to a Karoo. The check shows this phone has sent it.">
             {sentCards.map((card) => (
@@ -216,9 +243,9 @@ export function HomeScreen() {
             ))}
           </Section>
         )}
-        {otherGoals.length === 0 ? null : (
+        {otherGoals.filter((other) => !insights.some((insight) => insight.segmentId === other.segmentId)).length === 0 ? null : (
           <Section title="Other goals" description="Segments where you have also set a goal. Your Karoo shows one goal at a time for now. Tap one to open it.">
-            {otherGoals.map((other) => (
+            {otherGoals.filter((other) => !insights.some((insight) => insight.segmentId === other.segmentId)).map((other) => (
               <ListRow
                 key={other.segmentId}
                 icon="flag"
@@ -320,6 +347,7 @@ function GoalSetupForm({
 
 const styles = StyleSheet.create({
   frame: { flex: 1 },
+  insightTop: { flexDirection: "row", alignItems: "center", gap: spacing.space8 },
   goalHeader: { flexDirection: "row", alignItems: "flex-start", justifyContent: "space-between", gap: spacing.space8 },
   goalHeaderText: { flex: 1, gap: spacing.space4 },
   status: { gap: spacing.space4 },
