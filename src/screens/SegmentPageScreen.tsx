@@ -43,7 +43,7 @@ export function SegmentPageScreen() {
   const database = useDatabase();
   const route = useRoute<PageRoute>();
   const navigation = useNavigation<Navigation>();
-  const [tab, setTab] = useState<TabKey>("plan");
+  const [tab, setTab] = useState<TabKey>("efforts");
   const [state, setState] = useState<"loading" | "ready" | "missing" | "error">("loading");
   const [loaded, setLoaded] = useState<Loaded | undefined>(undefined);
   const [editingGoal, setEditingGoal] = useState(false);
@@ -52,17 +52,18 @@ export function SegmentPageScreen() {
   const segmentId = route.params.segmentId;
 
   const segmentName = loaded?.segment.name;
+  const canSend = loaded?.plan.kind === "plan" && loaded.plan.outdated === undefined;
   useLayoutEffect(() => {
     navigation.setOptions({
       title: "",
       headerRight: () =>
         segmentName === undefined ? null : (
-          <HeaderButton icon="more" accessibilityLabel="More actions" accessibilityHint="Delete this segment" onPress={() => openMenu(segmentName)} />
+          <HeaderButton icon="more" accessibilityLabel="More actions" accessibilityHint={canSend ? "Send to your Karoo or delete this segment" : "Delete this segment"} onPress={() => openMenu(segmentName)} />
         ),
     });
     // openMenu only uses values that change with segmentName, the database and the navigation.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [navigation, segmentName]);
+  }, [navigation, segmentName, canSend]);
 
   function openMenu(name: string) {
     const confirmDelete = () =>
@@ -77,13 +78,20 @@ export function SegmentPageScreen() {
           },
         },
       ]);
+    const send = () => navigation.navigate("SendToKaroo", { segmentId });
     if (Platform.OS === "ios") {
-      ActionSheetIOS.showActionSheetWithOptions({ options: ["Delete segment", "Cancel"], destructiveButtonIndex: 0, cancelButtonIndex: 1 }, (index) => {
-        if (index === 0) confirmDelete();
+      const options = canSend ? [PHONE_SEND_BUTTON, "Delete segment", "Cancel"] : ["Delete segment", "Cancel"];
+      ActionSheetIOS.showActionSheetWithOptions({ options, destructiveButtonIndex: options.length - 2, cancelButtonIndex: options.length - 1 }, (index) => {
+        if (canSend && index === 0) send();
+        else if (index === options.length - 2) confirmDelete();
       });
       return;
     }
-    Alert.alert(name, undefined, [{ text: "Delete segment", style: "destructive", onPress: confirmDelete }, { text: "Cancel", style: "cancel" }]);
+    Alert.alert(name, undefined, [
+      ...(canSend ? [{ text: PHONE_SEND_BUTTON, onPress: send }] : []),
+      { text: "Delete segment", style: "destructive" as const, onPress: confirmDelete },
+      { text: "Cancel", style: "cancel" as const },
+    ]);
   }
 
   const load = useCallback(() => {
@@ -199,8 +207,6 @@ export function SegmentPageScreen() {
             <PlanTab
               model={plan}
               referencePolyline={segment.referencePolyline}
-              sendLabel={PHONE_SEND_BUTTON}
-              onSend={() => navigation.navigate("SendToKaroo", { segmentId: segment.segmentId })}
               onEditGoal={startEditingGoal}
               onSetGoalToBeatBest={setGoalMs}
               onSetNextGoal={setGoalMs}
@@ -235,7 +241,6 @@ export function SegmentPageScreen() {
                 .map((attempt) => (
                   <ListRow
                     key={attempt.attemptId}
-                    icon="clock"
                     title={formatDurationMinutesSeconds(attempt.endTimestampMs - attempt.startTimestampMs)}
                     subtitle={formatRideDate(attempt.startTimestampMs)}
                     onPress={() => navigation.navigate("AttemptReview", { attemptId: attempt.attemptId })}

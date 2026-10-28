@@ -25,7 +25,7 @@ type Which = "primary" | "comparison";
 
 /**
  * Two efforts on the same segment, side by side: who finished ahead, how much time each had in each
- * training zone, and power, heart rate, elevation and the running time gap along the segment. Both
+ * training zone, and power, heart rate and the running time gap along the segment. Both
  * efforts are named at the top and either can be swapped for another effort on the segment.
  */
 export function AttemptComparisonScreen() {
@@ -151,11 +151,6 @@ export function AttemptComparisonScreen() {
     primary: sample.primaryHeartRate,
     comparison: sample.comparisonHeartRate,
   }));
-  const elevationSeries: ChannelSeriesPoint[] = samples.map((sample) => ({
-    distanceMeters: sample.distanceMeters,
-    primary: sample.primaryElevation,
-    comparison: sample.comparisonElevation,
-  }));
   const zoneBreakdown = computeZoneBreakdown(samples, athleteProfile);
   const overall = describeOverallGap(primaryDurationMs, comparisonDurationMs);
 
@@ -204,16 +199,6 @@ export function AttemptComparisonScreen() {
             comparisonLabel="Other effort"
             noData="No heart rate was recorded in either effort."
             summary={describeChannelAverages({ name: "Heart rate", unit: "bpm", primary: averageOf(heartRateSeries.map((p) => p.primary)), comparison: averageOf(heartRateSeries.map((p) => p.comparison)) })}
-          />
-        </Card>
-        <Card>
-          <ChannelSection
-            title="Elevation"
-            unit="m"
-            series={elevationSeries}
-            primaryLabel="This effort"
-            comparisonLabel="Other effort"
-            noData="No elevation was recorded in either effort."
           />
         </Card>
       </Section>

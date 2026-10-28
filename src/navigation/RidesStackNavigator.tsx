@@ -16,7 +16,11 @@ export function RidesStackNavigator() {
         component={RideListScreen}
         options={{ title: "Rides", header: (props) => <RidesHeader {...props} /> }}
       />
-      <Stack.Screen name="RideDetail" component={RideDetailScreen} options={{ title: "" }} />
+      <Stack.Screen
+        name="RideDetail"
+        component={RideDetailScreen}
+        options={{ title: "", headerTransparent: true, headerShadowVisible: false, headerBackButtonDisplayMode: "minimal" }}
+      />
       <Stack.Screen
         name="Import"
         component={ImportScreen}

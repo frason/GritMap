@@ -17,8 +17,6 @@ const TONE_COLORS: Record<PlanTone, { text: "intensityRest" | "intensityHold" | 
 export interface PlanTabProps {
   model: PlanScreenModel;
   referencePolyline: Parameters<typeof ElevationProfileChart>[0]["referencePolyline"];
-  sendLabel: string;
-  onSend: () => void;
   onEditGoal: () => void;
   onSetGoalToBeatBest: (durationMs: number) => void;
   onSetNextGoal: (durationMs: number) => void;
@@ -118,6 +116,19 @@ function PlanBody(props: PlanTabProps & { model: Extract<PlanScreenModel, { kind
         {model.origin === "generated" ? (
           <Button label="Change goal" variant="tertiary" fullWidth={false} onPress={props.onEditGoal} accessibilityHint="Edit your goal time" />
         ) : null}
+        <View style={styles.footerRow}>
+          <Icon name="file" size={16} color="textSecondary" />
+          <AppText variant="footnote" color="textSecondary" style={styles.footerText}>{model.sourceLabel}</AppText>
+          <Button
+            label={model.origin === "imported" ? "Replace" : "Import a coach plan"}
+            variant="tertiary"
+            fullWidth={false}
+            onPress={props.onImportPlan}
+          />
+          {model.origin === "imported" ? (
+            <Button label="Use GritMap's plan" variant="tertiary" fullWidth={false} onPress={props.onUseGeneratedPlan} />
+          ) : null}
+        </View>
       </Card>
 
       {model.prediction === undefined ? (
@@ -164,26 +175,6 @@ function PlanBody(props: PlanTabProps & { model: Extract<PlanScreenModel, { kind
         {model.notes === undefined ? null : <AppText variant="subheadline" color="textSecondary">{model.notes}</AppText>}
       </Card>
 
-      <Button
-        label={props.sendLabel}
-        icon="bluetooth"
-        disabled={model.outdated !== undefined}
-        onPress={props.onSend}
-        accessibilityHint="Opens the screen that sends this segment and plan to your Karoo"
-      />
-      <View style={styles.footerRow}>
-        <Icon name="file" size={16} color="textSecondary" />
-        <AppText variant="footnote" color="textSecondary" style={styles.footerText}>{model.sourceLabel}</AppText>
-        <Button
-          label={model.origin === "imported" ? "Replace" : "Import a coach plan"}
-          variant="tertiary"
-          fullWidth={false}
-          onPress={props.onImportPlan}
-        />
-        {model.origin === "imported" ? (
-          <Button label="Use GritMap's plan" variant="tertiary" fullWidth={false} onPress={props.onUseGeneratedPlan} />
-        ) : null}
-      </View>
     </View>
   );
 }

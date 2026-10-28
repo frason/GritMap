@@ -146,27 +146,20 @@ export function HomeScreen() {
     <HomeFrame>
       <ScreenScroll>
         {lastRide === undefined ? null : (
+          <Section title="Latest ride">
           <RideMapCard
             ride={lastRide}
             highlights={lastRideHighlights}
             segmentLines={lastRideLines}
             onPress={() => navigation.navigate("RidesTab", { screen: "RideDetail", initial: false, params: { rideId: lastRide.rideId } })}
           />
-        )}
-        {sentCards.length === 0 ? null : (
-          <Section title="Sent from this phone" description="Segments you have sent to a Karoo. The check shows this phone has sent it.">
-            {sentCards.map((card) => (
-              <SegmentCard
-                key={card.summary.segmentId}
-                data={card}
-                compact
-                onPress={() => navigation.navigate("SegmentsTab", { screen: "SegmentPage", initial: false, params: { segmentId: card.summary.segmentId } })}
-              />
-            ))}
           </Section>
         )}
         <View style={styles.goalHeader}>
           <View style={styles.goalHeaderText}>
+            <AppText variant="subheadlineEmphasized" color="textSecondary">
+              Pinned segment
+            </AppText>
             <AppText variant="title2" accessibilityRole="header">
               {goalSegment?.name ?? "Goal"}
             </AppText>
@@ -211,6 +204,18 @@ export function HomeScreen() {
             onPress={handleCompareCta}
           />
         </Card>
+        {sentCards.length === 0 ? null : (
+          <Section title="Sent from this phone" description="Segments you have sent to a Karoo. The check shows this phone has sent it.">
+            {sentCards.map((card) => (
+              <SegmentCard
+                key={card.summary.segmentId}
+                data={card}
+                compact
+                onPress={() => navigation.navigate("SegmentsTab", { screen: "SegmentPage", initial: false, params: { segmentId: card.summary.segmentId } })}
+              />
+            ))}
+          </Section>
+        )}
         {otherGoals.length === 0 ? null : (
           <Section title="Other goals" description="Segments where you have also set a goal. Your Karoo shows one goal at a time for now. Tap one to open it.">
             {otherGoals.map((other) => (
