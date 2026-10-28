@@ -46,3 +46,26 @@ export function gapToBestLabel(durationMs: number, bestMs: number | undefined, f
   if (durationMs <= bestMs) return "Best";
   return `+${format(durationMs - bestMs)} off your best`;
 }
+
+export interface AxisTick {
+  /** Same scale as ResultsPoint.y: 0 is the top (fastest), 1 the bottom (slowest). */
+  y: number;
+  durationMs: number;
+}
+
+/**
+ * The time labels that ground the results chart: fastest at the top, slowest at the bottom, halfway between in the
+ * middle. When every effort has the same time there is only one value to show, at the middle.
+ */
+export function axisTicks(points: readonly ResultsPoint[]): AxisTick[] {
+  if (points.length === 0) return [];
+  const durations = points.map((point) => point.durationMs);
+  const fastest = Math.min(...durations);
+  const slowest = Math.max(...durations);
+  if (fastest === slowest) return [{ y: 0.5, durationMs: fastest }];
+  return [
+    { y: 0, durationMs: fastest },
+    { y: 0.5, durationMs: (fastest + slowest) / 2 },
+    { y: 1, durationMs: slowest },
+  ];
+}

@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 
-import { gapToBestLabel, resultsPoints } from "./resultsView.ts";
+import { axisTicks, gapToBestLabel, resultsPoints } from "./resultsView.ts";
 
 describe("resultsPoints", () => {
   it("places efforts by date and time, faster higher up, and ranks them", () => {
@@ -35,5 +35,25 @@ describe("gapToBestLabel", () => {
     assert.equal(gapToBestLabel(100_000, 100_000, format), "Best");
     assert.equal(gapToBestLabel(142_000, 100_000, format), "+42s off your best");
     assert.equal(gapToBestLabel(1, undefined, format), undefined);
+  });
+});
+
+describe("axisTicks", () => {
+  it("labels fastest at the top, the midpoint, and slowest at the bottom", () => {
+    const points = resultsPoints([
+      { attemptId: "a", startTimestampMs: 1, durationMs: 600_000 },
+      { attemptId: "b", startTimestampMs: 2, durationMs: 700_000 },
+    ]);
+    assert.deepEqual(axisTicks(points), [
+      { y: 0, durationMs: 600_000 },
+      { y: 0.5, durationMs: 650_000 },
+      { y: 1, durationMs: 700_000 },
+    ]);
+  });
+
+  it("shows one middle value when every time is the same, and none without efforts", () => {
+    const points = resultsPoints([{ attemptId: "a", startTimestampMs: 1, durationMs: 600_000 }]);
+    assert.deepEqual(axisTicks(points), [{ y: 0.5, durationMs: 600_000 }]);
+    assert.deepEqual(axisTicks([]), []);
   });
 });
