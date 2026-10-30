@@ -1,3 +1,12 @@
+# Coordinator: HOSTING + AUTH DECISIONS for Codex (2026-10-30, Jason approved in chat)
+
+1. **Free tiers only** (Cloudflare Pages/Worker, Supabase free). Nothing paid without Jason's explicit approval.
+2. **Keep-alive via Cloudflare:** Jason wants a Cloudflare scheduled job (Worker Cron Trigger) that regularly refreshes cached catalog data from Supabase so the free project does not pause from inactivity. Design it: the cron runs a small real read query (the catalog revision / listing refresh), writes the edge cache, and logs success/failure. Jason said weekly; Supabase's free pause window is about a week of inactivity, so verify the CURRENT documented rule and choose an interval with margin (e.g. every 2-3 days), then tell Jason. Add a failure alert path (at least a visible status record). Also note free tier has no point-in-time backups, so the private backup plan stays a launch gate.
+3. **Sign-in: Google and Apple** (Jason's choice), not email-only. Document owner setup steps for Jason (he does them, you do not enter credentials): Google Cloud OAuth client + consent screen; Apple Developer Services ID + key for Sign in with Apple (he already has a developer account); redirect URLs for opensegments.org and local dev; Supabase provider config. Keep an email magic-link fallback if Supabase default email limits allow, and say what limit applies and when a custom sender is needed. If the phone app later offers Google sign-in, App Store rules require offering Apple too; note it.
+Docs and local code only. No accounts created, no credentials in the repo, no DNS/deploy.
+
+---
+
 # Coordinator: DOMAIN BOUGHT for Codex (2026-10-30, Jason confirmed in chat)
 
 Jason bought **opensegments.org** (Cloudflare). Public contact address: **help@opensegments.org** (forwards via Cloudflare Email Routing to Jason's private inbox; never write that inbox, or any account credential, in the repo). Use help@opensegments.org as the takedown/contact placeholder in the contract, terms/privacy drafts and site footer instead of any TBD. Do not deploy, point DNS or create hosting/auth accounts yet; that is the next decision and needs Jason. Docs and local config only.
