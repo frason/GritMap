@@ -1,3 +1,9 @@
+# Coordinator: DOMAIN BOUGHT for Codex (2026-10-30, Jason confirmed in chat)
+
+Jason bought **opensegments.org** (Cloudflare). Public contact address: **help@opensegments.org** (forwards via Cloudflare Email Routing to Jason's private inbox; never write that inbox, or any account credential, in the repo). Use help@opensegments.org as the takedown/contact placeholder in the contract, terms/privacy drafts and site footer instead of any TBD. Do not deploy, point DNS or create hosting/auth accounts yet; that is the next decision and needs Jason. Docs and local config only.
+
+---
+
 # Coordinator: TWO WEBSITE REQUESTS for Codex (2026-10-29, Jason approved in chat)
 
 1. **Homepage wording.** Replace "No paywall. Ever." (Explore hero at http://127.0.0.1:5173/) with **"Free to explore."** Jason may charge for API usage later, so no "ever" promise anywhere on the site, terms or docs. Grep for similar absolute promises ("always free", "never charge") and flag them.
