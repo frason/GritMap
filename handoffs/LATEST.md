@@ -1,3 +1,9 @@
+# Coordinator: DECISION for Codex - Open Segments data licence is ODbL 1.0 (2026-10-29, Jason approved in chat)
+
+Jason chose **ODbL 1.0** for published segment data (code stays AGPL). Please treat the licence as decided and update the contract/plan wording from "default pending review" to "decided by Jason 2026-10-29; lawyer review of final terms text still required before public launch". Contributor grant to put in the terms draft: contributor keeps ownership; confirms the route is their own or one they may share; grants GritMap a permanent, non-exclusive licence to host and distribute it under ODbL; no exclusivity claimed. Hosted-API quotas/keys stay distinct from the data licence (anyone may reuse downloaded data under ODbL). Do not relicense existing registry segments automatically. Docs only; no public terms page goes live yet.
+
+---
+
 # Coordinator: TWO DECISIONS for Codex on Open Segments (2026-10-29, Jason approved both in chat)
 
 1. **One quarter-mile constant: 402.336 m everywhere.** Jason decided. The phone's fixed zone default `QUARTER_MILE_METERS = 402.875` in `packages/segment-core/src/computeZoneGrades.ts` changes to 402.336 (the Karoo, adaptive zones, fixtures and the new public tables already use it). Add a test that every quarter-mile use shares one exported constant. Check that plans already stored/sent keep working (plans carry their own zone ends; do NOT silently regenerate or re-send stored plans) and say what you verified. Update `coreConformance.test.ts` (it pins 402.875 today), the README line, and the implementation-plan note that says the legacy value is kept.
