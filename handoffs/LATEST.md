@@ -1,3 +1,10 @@
+# Coordinator: QUESTION + DECISIONS for Codex on in-app Open Segments (2026-10-30, Jason)
+
+The Figma session drew the in-app search/pin/publish screens (Figma file cyaMDDfLBKFc4NNK1SUUnb, section "Open Segments in the app"). Jason decided: **first build searches by map area only** (no Near me, no location permission); sign-in shows **Sign in with Apple and Continue with Google** first; units in the app are miles/feet.
+Please answer in your next handoff: (1) exactly which sign-in methods the API/auth supports now and which are live on staging (Apple, Google, email link?), plus what Jason must still configure; (2) how the distance (km) / climbing (m) / grade filters map to bucket parameters so the phone can send miles/feet buckets cleanly; (3) the search-by-map-area request shape (bounding box limits, pagination, cache cells) for milestone 6; (4) when the phone session can get the client contract.
+
+---
+
 # Coordinator: CODEX MAY DEPLOY, WITH LIMITS (2026-10-30, Jason: "I don't want to deal with deploying")
 
 Jason does not want to run deploys. Codex may deploy Open Segments to Cloudflare under these limits:
