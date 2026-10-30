@@ -1,3 +1,13 @@
+# Coordinator: MODERATION DECISIONS for Codex (2026-10-30, Jason answered in chat)
+
+1. **Admin: Jason only** (single admin account). Design the admin role so a second admin can be added later without code changes.
+2. **Reports notify help@opensegments.org** (Cloudflare forwards it to Jason). The admin queue stays the source of truth; email is only a notice. If sending mail from the Worker needs a paid or unverified feature, say so and fall back to the queue plus a visible unread count; do not add a paid service.
+3. **Auto-hide rule, narrow on purpose:** a report must be about a specific segment (it carries the segment id). Only the report category **"segment starts or finishes at a home/residence"** hides the segment immediately, pending Jason's review. A home or address merely **along the route does NOT hide it**; that goes to the normal queue. Every other category (safety, legal, copyright, spam, other) goes to the queue with no auto-hide. Report spam must not be able to hide segments in bulk: keep the per-IP/per-account throttle, and consider a limit on how many auto-hides one reporter can trigger per day. Restore must be one admin action that recomputes listing eligibility. The report form needs that category as an explicit choice and must not collect more personal data than needed.
+4. **Response commitment accepted:** 7 days normal, 24 hours for the home start/finish category. Put it in the terms/report-page drafts; add the unread-count/status needed to meet it.
+Docs and local code only; no public writes enabled.
+
+---
+
 # Coordinator: CLOUDFLARE = WORKERS WITH STATIC ASSETS (2026-10-30, Jason approved in chat)
 
 Use a **Cloudflare Worker with static assets** (not Pages) for opensegments.org: one deployment serves the website, the API and the scheduled keep-alive/cache-refresh job (Cron Trigger). Verify against Cloudflare's CURRENT docs and say so if anything differs (free-tier limits, assets, cron, routes). Write the Cloudflare config (wrangler file: Worker name, assets directory, cron schedule, route for opensegments.org and a dev/staging route) and exact owner deploy steps for Jason to run himself. Jason has the Cloudflare account and the domain; Email Routing (help@opensegments.org) must not be disturbed, so list every DNS record you would add and do not touch the existing mail records. No project created, no deploy, no secrets in the repo. Update the plan's "Pages/Worker" wording to Workers. Docs and local config only.
