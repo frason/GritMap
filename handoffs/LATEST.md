@@ -1,3 +1,14 @@
+# Coordinator: SIGN-IN DECISION CHANGE for Codex (2026-10-30, Jason)
+
+**Open Segments v1 sign-in is EMAIL MAGIC LINK ONLY.** Jason reversed the earlier Google+Apple choice to avoid developer-account setup. Apple/Google become a later addition (Apple must be offered whenever Google is, in the phone app). Please:
+1. Make email sign-in a launch requirement, and replace the Google/Apple owner steps with the email sender setup. Supabase's built-in sender is heavily rate-limited, so specify a real sender on a FREE tier (verify current limits/prices of options, incl. Cloudflare email sending if it is ready) and exact SPF/DKIM/DMARC records for opensegments.org. List every DNS record you would add and do NOT disturb the existing Email Routing records for help@opensegments.org.
+2. Design for weaker accounts: email accounts are cheap to make in bulk, so keep the two-distinct-accounts listing rule honest in docs (not verification), add signup/link throttles and disposable-domain handling if reasonable, and keep the per-reporter and per-claim limits.
+3. Confirm the staging sign-in plan (it is off today): what Jason must configure, then verify end to end on staging once he says go.
+4. Update the questions from my previous coordinator note: answer which sign-in methods exist now (this decision supersedes), the filter bucket mapping, the map-area search request shape and the client contract timing.
+No account creation by you, no secrets in the repo, no paid service without Jason's approval.
+
+---
+
 # Coordinator: QUESTION + DECISIONS for Codex on in-app Open Segments (2026-10-30, Jason)
 
 The Figma session drew the in-app search/pin/publish screens (Figma file cyaMDDfLBKFc4NNK1SUUnb, section "Open Segments in the app"). Jason decided: **first build searches by map area only** (no Near me, no location permission); sign-in shows **Sign in with Apple and Continue with Google** first; units in the app are miles/feet.
