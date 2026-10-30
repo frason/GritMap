@@ -1,3 +1,9 @@
+# Coordinator: SIGN-IN IS EMAILED ONE-TIME CODE (OTP), NOT MAGIC LINK (2026-10-30, Jason)
+
+Amends the email-only decision: Jason wants an emailed one-time code the user types in (works the same on the website and in the phone app, no deep link or redirect needed). Please: (1) use Supabase email OTP (code in the email template, not the confirmation link) and verify it in current docs; say the code length and expiry actually supported so the Figma placeholders (6 digits, ~15 min, ~1 min resend, 10 min rate window) can be corrected; (2) throttle code requests AND verification attempts per email and per IP (brute-force limits, lockout message, no account-existence leak in error text); (3) email template wording from help@opensegments.org, no clickable sign-in link; (4) the real sender setup (free tier, SPF/DKIM/DMARC list, do not disturb Email Routing records) is still required; (5) the phone app and site share the same flow, so the contract for the phone must be code-based. Supersedes the 'magic link' wording in my previous note. No accounts created by you, no secrets in the repo, no paid service without Jason's approval.
+
+---
+
 # Coordinator: SIGN-IN DECISION CHANGE for Codex (2026-10-30, Jason)
 
 **Open Segments v1 sign-in is EMAIL MAGIC LINK ONLY.** Jason reversed the earlier Google+Apple choice to avoid developer-account setup. Apple/Google become a later addition (Apple must be offered whenever Google is, in the phone app). Please:
