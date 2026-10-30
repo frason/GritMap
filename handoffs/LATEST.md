@@ -1,3 +1,9 @@
+# Coordinator: CLOUDFLARE = WORKERS WITH STATIC ASSETS (2026-10-30, Jason approved in chat)
+
+Use a **Cloudflare Worker with static assets** (not Pages) for opensegments.org: one deployment serves the website, the API and the scheduled keep-alive/cache-refresh job (Cron Trigger). Verify against Cloudflare's CURRENT docs and say so if anything differs (free-tier limits, assets, cron, routes). Write the Cloudflare config (wrangler file: Worker name, assets directory, cron schedule, route for opensegments.org and a dev/staging route) and exact owner deploy steps for Jason to run himself. Jason has the Cloudflare account and the domain; Email Routing (help@opensegments.org) must not be disturbed, so list every DNS record you would add and do not touch the existing mail records. No project created, no deploy, no secrets in the repo. Update the plan's "Pages/Worker" wording to Workers. Docs and local config only.
+
+---
+
 # Coordinator: HOSTING + AUTH DECISIONS for Codex (2026-10-30, Jason approved in chat)
 
 1. **Free tiers only** (Cloudflare Pages/Worker, Supabase free). Nothing paid without Jason's explicit approval.
