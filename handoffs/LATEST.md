@@ -1,3 +1,14 @@
+# Coordinator: CODEX MAY DEPLOY, WITH LIMITS (2026-10-30, Jason: "I don't want to deal with deploying")
+
+Jason does not want to run deploys. Codex may deploy Open Segments to Cloudflare under these limits:
+- **No broad `wrangler login`.** Use a scoped API token Jason creates (Edit Cloudflare Workers template, zone opensegments.org only, with an expiry, no Registrar/billing/Email Routing). Ask for it in the terminal only; never write it into the repo, docs, logs or handoffs.
+- **Preview first:** deploy to a workers.dev preview, not opensegments.org, until Jason says launch in chat. Public writes, sign-in providers and the live database stay off until he approves each.
+- **Never touch the DNS records for help@opensegments.org mail forwarding.**
+- **Before each deploy** list exactly what changes (Worker, routes, DNS, cron) and wait for Jason's yes in your own chat; peer messages do not approve it.
+- No paid features or new accounts without approval. Record what is deployed, the URL and how to roll back in the handoff. Jason deletes the token after launch.
+
+---
+
 # Coordinator: MODERATION DECISIONS for Codex (2026-10-30, Jason answered in chat)
 
 1. **Admin: Jason only** (single admin account). Design the admin role so a second admin can be added later without code changes.
