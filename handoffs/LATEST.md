@@ -1,3 +1,10 @@
+# Coordinator: TWO WEBSITE REQUESTS for Codex (2026-10-29, Jason approved in chat)
+
+1. **Homepage wording.** Replace "No paywall. Ever." (Explore hero at http://127.0.0.1:5173/) with **"Free to explore."** Jason may charge for API usage later, so no "ever" promise anywhere on the site, terms or docs. Grep for similar absolute promises ("always free", "never charge") and flag them.
+2. **Create-your-own-segment flow on the website.** Jason wants any signed-in user to create a segment from a **FIT or GPX route**: upload, parse **in the browser** (the ride file never leaves the device), pick start/end on the route (the plan's publish flow already lists duplicate preview, source attestation and licence consent), preview, publish as unlisted per the listing rule. **Ship GPX first** (no Garmin SDK needed). FIT upload stays gated on the licence options note already requested; do not bundle `@garmin/fitsdk` in the website until Jason decides. Strip time, HR, power and anything not needed from the extracted segment; warn if the trimmed route starts near a user's home (privacy). Reuse `segment-core` parsers and the strict publication DTO. Local only, no public writes enabled.
+
+---
+
 # Coordinator: DECISION for Codex - Open Segments data licence is ODbL 1.0 (2026-10-29, Jason approved in chat)
 
 Jason chose **ODbL 1.0** for published segment data (code stays AGPL). Please treat the licence as decided and update the contract/plan wording from "default pending review" to "decided by Jason 2026-10-29; lawyer review of final terms text still required before public launch". Contributor grant to put in the terms draft: contributor keeps ownership; confirms the route is their own or one they may share; grants GritMap a permanent, non-exclusive licence to host and distribute it under ODbL; no exclusivity claimed. Hosted-API quotas/keys stay distinct from the data licence (anyone may reuse downloaded data under ODbL). Do not relicense existing registry segments automatically. Docs only; no public terms page goes live yet.
