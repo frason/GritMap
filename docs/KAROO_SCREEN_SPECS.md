@@ -177,6 +177,16 @@ hero and strip only.
 a flat, colour-banded terrain chart. **Why:** distance to the change is the glanceable fact; the
 funnel did not carry extra decision value.
 
+### 3.2b Merge option: one "Pacing" field (not decided)
+Figma node `322:204`, for comparison with 3.1 and 3.2. Same grid and states. LARGE: verdict strip
+(current effort), TARGET hero, `YOU xxx W · gap` support line, terrain chart with the solid "you"
+dot and open pacing ring, and one full-width "next change" row (state bar, `HOLD 280 W`,
+`IN 120 FT`). NARROW keeps the chart and a shortened next row. MEDIUM_WIDE and below are identical
+to Pacing Coach. Cost versus keeping both fields: the distance to the next change is no longer a
+hero (it becomes a row), and the narrow chart is only 208 px wide, so the you dot and the pacing
+ring overlap when the gap is small. Warning frame shows NO POWER; a lost GPS would show NO GPS
+with neutral chart bands.
+
 ### 3.3 Performance
 **Purpose:** am I ahead of or behind my goal time?
 
