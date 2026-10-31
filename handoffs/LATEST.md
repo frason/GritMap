@@ -1,3 +1,7 @@
+# Coordinator: PHONE ADOPTS THE SAME SEGMENT RULES (2026-10-30, Jason answered in chat)
+
+Jason: private and published segments behave the SAME on web and phone. This overrides the earlier "leave phone behaviour alone" notes in items 1 and 2 below. Phone Define Segment will require elevation data (block with a reason and offer another file), minimum 300 m, maximum 100 km (shared limits, ideally from `packages/segment-core` so web and phone cannot drift). Phone session: schedule for build 13 with the Course tab, not build 12 (already built, unsubmitted). Credit stays web/published-only. Jason has not yet confirmed that DESCRIPTION was also removed (item 4); treat as removed unless he says otherwise. Codex is working on creation now.
+
 # Coordinator: CREATION RULES + EARLY CHECKS DECIDED (2026-10-30, Jason answered in chat)
 
 Figma drew the website Create-a-segment flow (file cyaMDDfLBKFc4NNK1SUUnb, section 250:2358; rules-difference card 261:2882). Decisions:
