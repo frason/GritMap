@@ -146,6 +146,18 @@ Hero: distance to the next effort change (`distanceToNextZoneMeters`, FT or M), 
 NEXT effort's state. Strip shows the CURRENT effort. Supporting: `THEN PUSH 300 W` (`nextPacingZone`).
 Secondary (LARGE): terrain chart (`elevationProfile`, section bands from `pacingZones`, white dot
 at `progressFraction`), cards YOU (`rollingPowerWatts3s`) and TARGET (`recommendation`).
+**Pacing dot (added on Jason's request):** the terrain chart shows two markers. A solid white dot
+is you (`progressFraction`). An open white ring, 36 px with a 6 px stroke and no fill, is the
+pacing dot: where the plan says you should be right now (`targetProgressMeters`). Ring ahead of
+the dot means behind plan; ring behind it means ahead. It is drawn in LARGE and NARROW only, and
+it is hidden when `targetProgressMeters` is null (needs `plannedFinishSeconds` and
+`elapsedAttemptSeconds`). Until the phone sends time anchors, that position is the
+distance-proportional fallback schedule documented on `targetProgressMeters`, so it is an
+even-pace estimate, not a per-section plan. Sample frames: normal has the ring just behind the
+dot (slightly ahead of plan), hard effort has the ring ahead (behind plan), matching the
+Performance frames. Open question: when the plan has real section times, should the ring follow
+them? That needs the phone/Karoo plan contract, so it is not assumed here.
+
 Note: at LARGE the TARGET card label is `GOAL`; keep one word across screens, `TARGET`, if the
 card is widened.
 
