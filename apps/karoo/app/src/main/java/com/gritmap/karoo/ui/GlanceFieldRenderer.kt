@@ -244,9 +244,14 @@ internal class GlanceFieldRenderer(
         }
     }
     private fun terrain(c:Canvas,m:GlancePresentation,s:LiveUiState,r:RectF) {
-        if(r.width()<50 || r.height()<50 || !s.hasCompleteElevationProfile || s.totalDistanceMeters<=0 || s.pacingZones.isEmpty()) return
+        if (r.width() < 50 || r.height() < 50 || !s.hasCompleteElevationProfile ||
+            s.totalDistanceMeters <= 0 || s.pacingZones.isEmpty()) {
+            return
+        }
         val points=s.elevationProfile.filter { it.distanceMeters.isFinite() && it.elevationMeters.isFinite() }.sortedBy {it.distanceMeters}
-        if(points.size<2) return
+        if (points.size < 2) {
+            return
+        }
         c.save();c.clipRect(r)
         c.drawRoundRect(r,10f,10f,paint(surface))
         fun x(d:Double)=r.left+(d/s.totalDistanceMeters).coerceIn(0.0,1.0).toFloat()*r.width()
