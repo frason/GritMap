@@ -1,3 +1,18 @@
+# Coordinator: CREATION RULES + EARLY CHECKS DECIDED (2026-10-30, Jason answered in chat)
+
+Figma drew the website Create-a-segment flow (file cyaMDDfLBKFc4NNK1SUUnb, section 250:2358; rules-difference card 261:2882). Decisions:
+1. **No elevation = BLOCKED.** The website must not publish a route without elevation; show why and offer another file. (The phone today just hides climb/grade; leave phone behaviour alone unless Jason says.)
+2. **Segment length: minimum 300 m, maximum 100 km** (replaces 100 m). Jason: Strava's original minimum was 300 m. Phone currently clamps only a 10 m gap; do not change the phone without Jason.
+3. Keep the near-home start/finish reminder on Review.
+4. **Fields: name + credit only.** REMOVE segment TYPE (Climb/Ride) and the optional DESCRIPTION from the page, DTO, API and database use where possible (additive/compatible; do not rewrite old migrations; tell Jason what hosted data/schema is affected).
+5. **FIT files are ACCEPTED on the website and the phone** until Jason says otherwise. This is Jason's informed decision despite the unresolved Garmin SDK licence (Section 2(c), see earlier notes; a Garmin question is drafted, unsent). Browser-side decode only, ride never uploaded; keep the licence risk visible in docs and the launch checklist.
+6. Turnstile stays. 7. Shorter phone-style consent sentence plus Figma's added line; terms v1 stay provisional pending lawyer review.
+8. **EARLY 'similar segments' CHECK, no sign-in:** in the Choose-your-segment step, once start/finish are set, the browser sends only a coarse cell area (public, cacheable, rate limited, listed segments ONLY, never unlisted/flagged/removed), compares the trimmed route locally with the shared duplicate comparator and shows matches with 'open it' / 'use this one instead'. The authoritative atomic duplicate check at publish stays (it includes unlisted; its message must not reveal an unlisted segment's link). Disclose that an approximate area is sent.
+9. **PHONE RIDE LOOKUP, 'ask once, remember':** after a ride import the phone asks once (remembered, changeable in Settings) whether to find Open Segments on its rides; if yes it requests listed segments for coarse route cells (leave out roughly the first and last kilometre, cap cells for long rides, no request-body location logging), matches locally, and shows 'N Open Segments on this ride' with pin actions. No account needed. Include this in the phone client contract.
+Report the exact request shapes (coarse cell/bbox limits, pagination, caching) and what changes for the phone contract.
+
+---
+
 # Coordinator: SEGMENT CREATION MUST MATCH THE PHONE, INCLUDING ELEVATION (2026-10-30, Jason)
 
 Jason: website segment creation needs elevation and should be the **same experience as the phone's Define Segment flow**. Reference implementation (read it, do not redesign): `src/screens/DefineSegmentScreen.tsx` (ride route on a map + elevation chart + draggable start/end range + live distance/climb stats + name + duplicate decision), `RideElevationChart.tsx`, `ElevationProfileChart.tsx`, `DistanceRangeScrubber.tsx`, `DuplicateDecisionModal.tsx`, and the pure logic `clampSegmentRange`, `computeVisibleDistanceRange`, `nearestTrackPoint`, `cumulativeTrackDistance`, `resamplePolyline`, constants RESAMPLE_INTERVAL_METERS=10 and CORRIDOR_METERS=30 (docs/MVP.md "Segment definition"). The current web draft (`apps/web/src/draft.ts`, `ContributionPages.tsx`) carries elevation optionally and the page has no scrubber/profile yet.
