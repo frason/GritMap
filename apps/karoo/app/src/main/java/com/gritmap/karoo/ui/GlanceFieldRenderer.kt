@@ -32,15 +32,12 @@ internal class GlanceFieldRenderer(
         val model=present(state)
         val margin=min(16f,min(w,h)*.13f)
         val content=RectF(margin,margin,w-margin,h-margin)
-        // Short wide fields compose horizontally, never a miniature vertical dashboard.
-        if(layout==KarooFieldLayout.SMALL_WIDE || layout==KarooFieldLayout.MEDIUM_WIDE) {
-            wide(canvas,model,content,h>=160f)
-        } else if(h<190f || content.height()<120f) {
-            block(canvas,model,content)
-        } else if(layout==KarooFieldLayout.LARGE && h>=560 && w>=320) {
-            large(canvas,model,state,content)
-        } else {
-            vertical(canvas,model,state,content,layout==KarooFieldLayout.NARROW && h>=560)
+        when (glanceComposition(layout,w,h)) {
+            GlanceComposition.HORIZONTAL -> wide(canvas,model,content,h>=160f)
+            GlanceComposition.COMPACT -> block(canvas,model,content)
+            GlanceComposition.FULL -> large(canvas,model,state,content)
+            GlanceComposition.TALL -> vertical(canvas,model,state,content,true)
+            GlanceComposition.STACKED -> vertical(canvas,model,state,content,false)
         }
         return bitmap
     }
@@ -281,6 +278,18 @@ internal class GlanceFieldRenderer(
         return if(units==UnitSystem.IMPERIAL) { if(d<160.9344) "${(d*3.28084).roundToInt()} FT" else String.format(java.util.Locale.US,"%.1f MI",d/1609.344) }
         else if(d<1000) "${d.roundToInt()} M" else String.format(java.util.Locale.US,"%.1f KM",d/1000)
     }
+}
+
+internal enum class GlanceComposition { HORIZONTAL, COMPACT, FULL, TALL, STACKED }
+
+/** Semantic small fields never become miniature dashboards at the199/200px boundary. */
+internal fun glanceComposition(layout:KarooFieldLayout,width:Float,height:Float):GlanceComposition = when {
+    layout==KarooFieldLayout.SMALL_WIDE || layout==KarooFieldLayout.MEDIUM_WIDE ||
+        (layout==KarooFieldLayout.LARGE && height<400) -> GlanceComposition.HORIZONTAL
+    layout==KarooFieldLayout.SMALL || height<280 -> GlanceComposition.COMPACT
+    layout==KarooFieldLayout.LARGE && height>=560 && width>=320 -> GlanceComposition.FULL
+    layout==KarooFieldLayout.NARROW && height>=560 -> GlanceComposition.TALL
+    else -> GlanceComposition.STACKED
 }
 
 private object GlanceIcons {

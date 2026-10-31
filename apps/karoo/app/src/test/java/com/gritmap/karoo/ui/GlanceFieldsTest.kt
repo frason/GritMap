@@ -77,6 +77,13 @@ class GlanceFieldsTest {
         clock=6000
         assertEquals("--",renderer.present(baseline.copy(currentHeartRateBpm=null,sensorStatus=baseline.sensorStatus.copy(heartRate=false))).hero)
     }
+    @Test fun `short semantic cells use simple layouts at boundary heights`() {
+        assertEquals(GlanceComposition.COMPACT,glanceComposition(KarooFieldLayout.SMALL,240f,199f))
+        assertEquals(GlanceComposition.COMPACT,glanceComposition(KarooFieldLayout.MEDIUM,240f,200f))
+        assertEquals(GlanceComposition.STACKED,glanceComposition(KarooFieldLayout.MEDIUM,240f,320f))
+        assertEquals(GlanceComposition.HORIZONTAL,glanceComposition(KarooFieldLayout.LARGE,480f,250f))
+        assertEquals(GlanceComposition.FULL,glanceComposition(KarooFieldLayout.LARGE,480f,620f))
+    }
     @Test fun `render matrix covers all layouts themes and states including pathological geometry`() {
         val dimensions=listOf(Triple(KarooFieldLayout.LARGE,480,620),Triple(KarooFieldLayout.MEDIUM_WIDE,480,200),Triple(KarooFieldLayout.SMALL_WIDE,480,120),Triple(KarooFieldLayout.NARROW,240,620),Triple(KarooFieldLayout.MEDIUM,240,320),Triple(KarooFieldLayout.SMALL,240,120))
         val samples=listOf(state,state.copy(progressMeters=533*.55,elapsedAttemptSeconds=99.2,predictedFinishSeconds=168,cardiacDriftPct=4.2,cardiacDriftHistory=state.cardiacDriftHistory.map {it.copy(driftPct=it.driftPct*4.2/1.8)},recommendation=Recommendation(300,"Push",GuidanceIcon.PUSH),rollingPowerWatts3s=255,pacingZones=listOf(PacingZone(0.0,300.0,300,Effort.PUSH),PacingZone(300.0,533.0,280,Effort.HOLD)),wPrime=state.wPrime!!.copy(projectedFinishBalanceJoules=800.0)),LiveUiState.Idle,state.copy(sensorStatus=state.sensorStatus.copy(power=false,gps=false,heartRate=false)))
