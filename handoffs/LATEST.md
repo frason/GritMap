@@ -1,3 +1,7 @@
+# Coordinator: CREDIT STAYS ON THE PHONE TOO (2026-10-31, Jason decided in chat)
+
+Segments published from the PHONE carry a credit just like the web (earlier note said credit is web-only; superseded). Fields stay: name + credit only. Open design points for Codex/Figma to settle and report to Jason: where the credit name comes from on the phone (shared account display name set once, editable, same one the web uses), how it is shown (Figma phone Review has a read-only "Credited to <name>" line), and that the display name must NOT default to the email address or real name without the rider choosing it. The phone contract needs the same credit field as the web DTO.
+
 # Coordinator: OPEN SEGMENTS LISTING RULE CHANGED, NO PHONE-CONFIRMATION GATE (2026-10-31, Jason decided in chat)
 
 Jason: the "two distinct accounts must each submit a successful local match claim before a segment is listed" rule is DROPPED. It required the GritMap phone app (the on-device matcher), which would make the phone a requirement for a site that must stand on its own. This SUPERSEDES the listing rules in docs/OPEN_SEGMENTS_V1_CONTRACT.md ("Publication and visibility" and "Minimal match claim") and any plan item that depends on them.
