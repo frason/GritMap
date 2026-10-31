@@ -133,11 +133,14 @@ internal class GlanceFieldRenderer(
         val size=min(37f,r.height()*.35f)
         if(icon!=null) c.drawBitmap(icon,null,RectF(r.left+12,r.centerY()-size/2,r.left+12+size,r.centerY()+size/2),Paint(Paint.FILTER_BITMAP_FLAG))
         // Unit remains with the hero when the label is absent, to distinguish seconds/percent/watts.
-        text(c,m.hero+(if(m.hero=="--") "" else if(m.unit=="SEC") "s" else m.unit),RectF(r.left+(if(icon==null) 8f else size+24),r.top+6,r.right-8,r.bottom-6),80f,color)
+        val estimate=kind==GlanceField.BALANCE && m.label.contains("EST")
+        val right=r.right-(if(estimate)52f else 8f)
+        text(c,m.hero+(if(m.hero=="--") "" else if(m.unit=="SEC") "s" else m.unit),RectF(r.left+(if(icon==null) 8f else size+24),r.top+6,right,r.bottom-6),80f,color)
+        if(estimate) text(c,"EST",RectF(right+4,r.top+6,r.right-6,r.bottom-6),28f,color)
     }
     private fun large(c:Canvas,m:GlancePresentation,s:LiveUiState,r:RectF) {
         text(c,m.title,RectF(r.left,r.top,r.centerX()+10,r.top+32),28f,secondary,Paint.Align.LEFT)
-        val context=if(kind==GlanceField.DRIFT) glanceClock(s.cardiacDriftValidSeconds.toDouble())+" VALID" else distance(s.progressMeters,s.distanceUnitSystem)+" / "+distance(s.totalDistanceMeters,s.distanceUnitSystem)
+        val context=if(kind==GlanceField.DRIFT) glanceClock(s.cardiacDriftValidSeconds.toDouble())+" VALID" else if(s.totalDistanceMeters>0) distance(s.progressMeters,s.distanceUnitSystem)+" / "+distance(s.totalDistanceMeters,s.distanceUnitSystem) else ""
         text(c,context,RectF(r.centerX(),r.top,r.right,r.top+32),28f,secondary,Paint.Align.RIGHT)
         badge(c,m,RectF(r.left,r.top+40,r.right,r.top+128))
         text(c,m.label,RectF(r.left,r.top+132,r.right,r.top+166),28f,secondary)

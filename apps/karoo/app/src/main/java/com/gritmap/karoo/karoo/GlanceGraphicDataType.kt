@@ -29,13 +29,13 @@ abstract class GlanceGraphicDataType internal constructor(
             var lastEmit:Long?=null
             suspend fun submit(value:LiveUiState) {
                 val now=SystemClock.elapsedRealtime()
-                lastEmit?.let { last -> delay((1000-(now-last)).coerceAtLeast(0)) }
+                lastEmit?.let { last -> delay((MIN_UPDATE_INTERVAL_MS-(now-last)).coerceAtLeast(0)) }
                 // Take the newest conflated state after throttling, not a stale queued sample.
                 val latest=if(config.preview)value else state.value
                 val bitmap=renderer.render(latest,config.viewSize.first,config.viewSize.second,karooFieldLayout(config))
                 val views=RemoteViews(context.packageName,R.layout.karoo_glance_field)
                 views.setImageViewBitmap(R.id.karoo_glance_image,bitmap)
-                views.setContentDescription(R.id.karoo_glance_image,glancePresentation(kind,latest).let { "${it.title}, ${it.verdict}, ${it.hero} ${it.unit}, ${it.support}" })
+                views.setContentDescription(R.id.karoo_glance_image,glancePresentation(kind,latest).let { "${it.title}, ${it.verdict}, ${it.label}, ${it.hero} ${it.unit}, ${it.support}" })
                 emitter.updateView(views)
                 lastEmit=SystemClock.elapsedRealtime()
             }
@@ -44,4 +44,5 @@ abstract class GlanceGraphicDataType internal constructor(
         }
         emitter.setCancellable {scope.cancel()}
     }
+    companion object { const val MIN_UPDATE_INTERVAL_MS = 1000L }
 }

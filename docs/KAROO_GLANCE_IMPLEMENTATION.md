@@ -46,6 +46,8 @@ anchors remain future wire-contract work. Constraint conflict is labelled limite
 it does not assert every limited adjustment proves a goal unreachable. Missing W' finish
 projection is NO ESTIMATE, not OK or0%. No new registered data type/sensor stream/wire key.
 Small layouts retain a unit alongside the hero because dropping both label and unit is ambiguous.
+The smallest Power Balance layout also keeps an EST reference label; accessibility descriptions
+include the label/estimate qualifier at every size.
 Light plots use contrast-aware dark lines/marks rather than invisible white-on-white.
 
 ## Verification and device gates
