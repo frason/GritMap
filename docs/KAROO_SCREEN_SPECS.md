@@ -9,8 +9,9 @@ Figma: file `cyaMDDfLBKFc4NNK1SUUnb`, page **Karoo** (phone pages untouched).
 | Section | Node |
 |---|---|
 | Design system | `306:204` |
-| Pacing Coach | `305:204` |
-| Pacing Profile | `305:634` |
+| Pacing (merged; replaces Coach and Profile) | `322:204` |
+| Pacing Coach (superseded) | `305:204` |
+| Pacing Profile (superseded) | `305:634` |
 | Performance | `304:204` |
 | Cardiac Drift | `305:1101` |
 | Power Balance | `305:1517` |
@@ -25,9 +26,8 @@ Light modes); text styles are `Karoo/*`.
    The phone's intensity palette is rest teal, hold green, push orange, max red. The proposal
    follows the phone: HOLD green, PUSH orange, REST/EASE blue, red only for warnings. Beta riders
    will have to relearn HOLD and PUSH.
-2. **Pacing Coach and Pacing Profile overlap.** Both answer "what effort now". I split the jobs
-   (Coach: target now; Profile: what changes ahead), but it may be better to merge them into one
-   field. Your call.
+2. **Decided: Pacing Coach and Pacing Profile are merged** into one "Pacing" field (section 3.1).
+   Open for Codex: how to migrate riders who already placed either field.
 3. **New verdict thresholds** I had to invent because the code has none (all marked PROPOSED
    below): Performance ON GOAL deadband, Power Balance OK/LOW/EMPTY bands.
 4. **Pixel sizes are representative, not measured.** The code has only height breakpoints and a
@@ -101,7 +101,7 @@ Narrow/wide split is `gridSize.first >= 50` of 60 columns; I assumed 480 and 240
 - Units follow the rider's existing unit setting (`distanceUnitSystem`, `elevationUnitSystem`).
   Labels: FT/MI or M/KM, never mixed case.
 - Sensor-loss rule (all screens): lost power shows NO POWER, lost heart rate NO HR, lost GPS NO GPS,
-  as a WARN strip; the hero keeps its last valid value in neutral ink (see Coach warning frame).
+  as a WARN strip; the hero keeps its last valid value in neutral ink (see the Pacing warning frame).
 - Light mode: same layout, tokens switch mode. Fixes today's fixed dark card fills.
 
 ## 3. Per-screen specs
@@ -109,85 +109,71 @@ Narrow/wide split is `gridSize.first >= 50` of 60 columns; I assumed 480 and 240
 Data sources are `LiveUiState` fields (`ui/state/LiveUiState.kt`). Power, heart rate, cadence,
 speed and elevation come from Karoo streams (`OnStreamState`) in `LiveSegmentService`; the 3 s
 rolling power is computed there from recent samples. The data-field views re-render on every
-`LiveUiState` publish; the Pacing Profile view is throttled to at most one update per second
+`LiveUiState` publish; the Pacing Profile field (`LivePacingDataType`, which the merged field would inherit) is throttled to at most one update per second
 (`MIN_UPDATE_INTERVAL_MS`). The exact stream sample rate is set by Karoo, and I did not verify it
 in code, so treat "about 1 Hz" as an assumption.
 
-### 3.1 Pacing Coach
-**Purpose:** tell me what effort to ride right now.
+### 3.1 Pacing (replaces Pacing Coach and Pacing Profile)
+**Decided by Jason:** one merged "Pacing" field replaces the two separate fields.
+**Purpose:** tell me what effort to ride right now, and what is changing ahead.
 
-Hero: target watts for the current section (`recommendation.targetPowerWatts`, unit W).
-Supporting: `YOU 276 W  ·  -4 W` (`rollingPowerWatts3s`, `powerDeltaWatts`). Secondary (LARGE):
-the next two sections as outline rows with a state-coloured left bar (`pacingZones`, distance from
-`nextPacingZone`), plus cards LEFT (`totalDistanceMeters - progressMeters`) and SECT (current
-index / count from `currentZoneIndex`). Strip: HOLD (ON), PUSH (MORE), REST (EASE) from the
-current zone's `effort`.
+Hero: target watts for the current section (`recommendation.targetPowerWatts`, unit W), ink
+colour is the current effort's state. Strip: the current effort from the current zone's `effort`:
+HOLD (ON), PUSH (MORE), REST (EASE). Supporting: `YOU 276 W  ·  -4 W` (`rollingPowerWatts3s`,
+`powerDeltaWatts`).
 
-| State | Strip | Label | Hero | Support (LARGE / short) |
-|---|---|---|---|---|
-| Normal | ON, HOLD | TARGET | 280 W | YOU 276 W · -4 W / YOU 276 W |
-| Hard effort | MORE, PUSH | TARGET | 300 W | YOU 255 W · -45 W / YOU 255 W |
-| No data | NEUTRAL, NO PLAN | TARGET | -- | WAITING FOR PLAN / WAITING |
-| Warning | WARN, NO POWER (NO PWR) | TARGET | 280, neutral ink | POWER METER NOT FOUND / NO METER |
+Secondary (LARGE and NARROW only):
+- **Terrain chart** (`elevationProfile`, section bands from `pacingZones` filled with each
+  section's state colour at about 32% opacity, white terrain line). Two markers: a solid white dot
+  is you (`progressFraction`); an open white ring (36 px, 6 px stroke, no fill) is the pacing dot,
+  where the plan says you should be right now (`targetProgressMeters`). Ring ahead of the dot
+  means behind plan; ring behind it means ahead. The ring is hidden when `targetProgressMeters`
+  is null (needs `plannedFinishSeconds` and `elapsedAttemptSeconds`). Until the phone sends time
+  anchors it is the distance-proportional fallback schedule documented on that property, an
+  even-pace estimate rather than a per-section plan. Whether the ring should follow real section
+  times needs the phone/Karoo plan contract and is not assumed.
+- **Next row** (one full-width row, surface background, 14 px left bar in the next section's state
+  colour): `HOLD 280 W` left, `IN 120 FT` right (`nextPacingZone`, `distanceToNextZoneMeters`).
+  NARROW shows the shortened `HOLD 280` only.
 
-Dropped at small sizes: next-sections list and cards below LARGE; support line in SMALL_WIDE; all
-but hero + icon in SMALL. Colours: strip and hero by state as above, rows' bars by each section's
-effort, NEUTRAL when unknown. Warning trigger: `sensorStatus.power == false`.
+| State | Strip | Label | Hero | Support (LARGE / short) | Next row |
+|---|---|---|---|---|---|
+| Normal | ON, HOLD | TARGET | 280 W | YOU 276 W · -4 W / YOU 276 W | PUSH 300 W, IN 56 FT |
+| Hard effort | MORE, PUSH | TARGET | 300 W | YOU 255 W · -45 W / YOU 255 W | HOLD 280 W, IN 120 FT |
+| No data | NEUTRAL, NO PLAN | TARGET | -- | WAITING FOR PLAN / WAITING | -- (chart hidden) |
+| Warning | WARN, NO POWER (NO PWR) | TARGET | 280, neutral ink | POWER METER NOT FOUND / NO METER | HOLD 280 W, IN 120 FT, bar neutral |
 
-**Before:** five stacked rows with fading 9 to 11 px text, an actual-watts number competing with
-the target, and "COLLECTING WORK", work-fill and white target-work line that need explaining.
-Hero was ambiguous. **After:** one target number, one verdict. **Why:** the rider reads one
-number and one word, then the gap. The work-fill idea is cut from the glance view (see wins).
+Sample positions in the frames: normal has you at 42% with the ring at 39% (slightly ahead of
+plan), hard effort has you at 55% with the ring at 62% (behind plan), consistent with the
+Performance frames. Context top-right (LARGE): `0.4 / 0.9 MI` progress.
 
-### 3.2 Pacing Profile
-**Purpose:** show me what changes ahead on the climb.
+Sensor warnings: `sensorStatus.power == false` gives NO POWER; `sensorStatus.gps == false` gives
+NO GPS with neutral chart bands and no dots (not drawn separately). Without
+`hasCompleteElevationProfile`, show hero, strip and next row only.
 
-Hero: distance to the next effort change (`distanceToNextZoneMeters`, FT or M), ink colour is the
-NEXT effort's state. Strip shows the CURRENT effort. Supporting: `THEN PUSH 300 W` (`nextPacingZone`).
-Secondary (LARGE): terrain chart (`elevationProfile`, section bands from `pacingZones`, white dot
-at `progressFraction`), cards YOU (`rollingPowerWatts3s`) and TARGET (`recommendation`).
-**Pacing dot (added on Jason's request):** the terrain chart shows two markers. A solid white dot
-is you (`progressFraction`). An open white ring, 36 px with a 6 px stroke and no fill, is the
-pacing dot: where the plan says you should be right now (`targetProgressMeters`). Ring ahead of
-the dot means behind plan; ring behind it means ahead. It is drawn in LARGE and NARROW only, and
-it is hidden when `targetProgressMeters` is null (needs `plannedFinishSeconds` and
-`elapsedAttemptSeconds`). Until the phone sends time anchors, that position is the
-distance-proportional fallback schedule documented on `targetProgressMeters`, so it is an
-even-pace estimate, not a per-section plan. Sample frames: normal has the ring just behind the
-dot (slightly ahead of plan), hard effort has the ring ahead (behind plan), matching the
-Performance frames. Open question: when the plan has real section times, should the ring follow
-them? That needs the phone/Karoo plan contract, so it is not assumed here.
+Dropped by size: chart and next row below LARGE, except NARROW which keeps the chart and the short
+next row; MEDIUM_WIDE: label, hero, strip, short support only; SMALL_WIDE: hero and strip; MEDIUM:
+strip, label, hero, short support; SMALL: hero in a state block. In NARROW the chart is 208 px
+wide, so the you dot and the pacing ring overlap when the gap is small.
 
-Note: at LARGE the TARGET card label is `GOAL`; keep one word across screens, `TARGET`, if the
-card is widened.
+**Before (Coach):** five stacked rows with fading 9 to 11 px text, actual watts competing with the
+target, and "COLLECTING WORK" plus a work-fill and white target-work line that need explaining.
+**Before (Profile):** a perspective funnel, TARGET and ACTUAL as equal giant cards, tiny elevation
+axis. **After:** one target number, one verdict, the gap, a flat colour-banded terrain chart with
+you and the pacing dot, and the next change as one row. **Why:** the two fields repeated each
+other; the rider needs the target, the gap, and what is coming, in one glance. Removed: the
+five-row stack, the work-fill and target-work line, the funnel, the TARGET/ACTUAL and YOU/GOAL
+cards. The distance to the next change is no longer a hero; it is the next row.
 
-| State | Strip | Label | Hero | Support |
-|---|---|---|---|---|
-| Normal | ON, HOLD | TO PUSH | 56 FT (MORE ink) | THEN PUSH 300 W |
-| Hard effort | MORE, PUSH | TO HOLD | 120 FT (ON ink) | THEN HOLD 280 W |
-| No data | NEUTRAL, NO PLAN | NEXT CHANGE | -- | WAITING FOR PLAN |
-| Warning | WARN, NO GPS | NEXT CHANGE | -- | POSITION LOST |
+**Migration (for Codex to decide):** the Karoo today registers a `pacing-coach` data type and a
+separate Pacing Profile field (`LivePacingDataType`). Riders may already have either on a page.
+Recommended: keep both type ids and render the merged layout from each, so no existing page layout
+breaks, and decide later whether to hide one in the field picker. I did not read the registration
+code in detail.
 
-Dropped: chart and cards below LARGE (NARROW keeps chart and one card). Warning trigger:
-`sensorStatus.gps == false`. Also needs `hasCompleteElevationProfile`; without terrain, show the
-hero and strip only.
+Figma: node `322:204` (the superseded Coach and Profile sections are kept on the page, renamed).
 
-**Before:** perspective funnel, TARGET and ACTUAL as equal giant cards, tiny elevation axis
-(a 3D view that is hard to read in under a second). **After:** the next change as one number over
-a flat, colour-banded terrain chart. **Why:** distance to the change is the glanceable fact; the
-funnel did not carry extra decision value.
-
-### 3.2b Merge option: one "Pacing" field (not decided)
-Figma node `322:204`, for comparison with 3.1 and 3.2. Same grid and states. LARGE: verdict strip
-(current effort), TARGET hero, `YOU xxx W · gap` support line, terrain chart with the solid "you"
-dot and open pacing ring, and one full-width "next change" row (state bar, `HOLD 280 W`,
-`IN 120 FT`). NARROW keeps the chart and a shortened next row. MEDIUM_WIDE and below are identical
-to Pacing Coach. Cost versus keeping both fields: the distance to the next change is no longer a
-hero (it becomes a row), and the narrow chart is only 208 px wide, so the you dot and the pacing
-ring overlap when the gap is small. Warning frame shows NO POWER; a lost GPS would show NO GPS
-with neutral chart bands.
-
-### 3.3 Performance
+### 3.2 Performance
 **Purpose:** am I ahead of or behind my goal time?
 
 Hero: signed gap `plannedFinishSeconds - (replanEstimate.estimatedFinishSeconds or
@@ -211,7 +197,7 @@ entirely (not actionable); the 5-row split chart is cut (last quarter only, as a
 the hero, split chart text was 17 to 18 px, red meant behind and push at once. **After:** the gap
 once as hero, one marker. **Why:** the decision is the gap; the finish time is support.
 
-### 3.4 Cardiac Drift
+### 3.3 Cardiac Drift
 **Purpose:** is my heart-rate cost creeping up at steady power?
 
 Hero: `cardiacDriftPct` (signed, 1 decimal, %). Verdict by the renderer's existing bands:
@@ -237,7 +223,7 @@ used calm blue for a bad state; a dense efficiency-index chart had 20 to 24 px a
 **After:** drift % is the hero, its colour and word agree. **Why:** one job, one verdict. The
 pacing action belongs to the pacing screens.
 
-### 3.5 Power Balance (W')
+### 3.4 Power Balance (W')
 **Purpose:** how much hard-effort energy do I have left?
 
 Hero: `wPrime.actualRemainingPct` (%), always labelled `W' LEFT · EST` because W' is estimated
@@ -265,8 +251,7 @@ mid-effort; the diagram metaphor was decoration.
 
 1. **Raise all mid-effort text to at least 40 px and delete anything under 28 px** (axis labels,
    split labels, captions, card labels). Cheapest, every screen. 17 px is 1.1 mm tall today.
-2. **One hero per screen at 96 to 168 px** (Coach target W, Performance gap, Drift %, W' %,
-   Profile distance), instead of several competing numbers.
+2. **One hero per screen at 96 to 168 px** (Pacing target W, Performance gap, Drift %, W' %), instead of several competing numbers.
 3. **One meaning per colour** (section 2): red only for warnings, PUSH orange, HOLD green,
    black text on every state fill, and a word + icon on every verdict. Fixes a colour-blindness
    gap and removes the red-means-push-and-behind clash.
@@ -275,7 +260,7 @@ mid-effort; the diagram metaphor was decoration.
 5. **Real small layouts**: SMALL and SMALL_WIDE show a hero and a verdict only, never a shrunken
    dashboard.
 6. **Fix light mode** (fixed dark card fills with palette text colour); use surface tokens.
-7. **Cut the Coach 5-row stack to verdict + hero + next two rows**, and drop the work-fill/target-
+7. **Merge Coach and Profile into one Pacing field and cut the 5-row stack**, and drop the work-fill/target-
    work line from the glance view.
 8. **Honest estimates**: always show EST on W'.
 
