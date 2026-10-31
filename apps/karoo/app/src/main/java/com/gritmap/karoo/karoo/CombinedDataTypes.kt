@@ -63,26 +63,9 @@ abstract class StateGraphicDataType(
     }
 }
 
-class PacingCoachDataType(extensionId: String) : StateGraphicDataType(extensionId, TYPE_ID) {
-    override fun remoteViews(
-        context: Context,
-        state: LiveUiState,
-        size: KarooFieldSize,
-        layout: KarooFieldLayout,
-        viewSize: Pair<Int, Int>,
-    ): RemoteViews {
-        val bitmap = PacingCoachBitmapRenderer(karooVisualPalette(context)).render(
-            state,
-            viewSize.first.coerceAtLeast(1),
-            viewSize.second.coerceAtLeast(1),
-        )
-        return RemoteViews(context.packageName, R.layout.karoo_pacing_coach_dashboard_field).apply {
-            setImageViewBitmap(R.id.karoo_pacing_coach_dashboard, bitmap)
-        }
-    }
-
-    companion object { const val TYPE_ID = "pacing-coach" }
-}
+class PacingCoachDataType(extensionId: String) : GlanceGraphicDataType(
+    extensionId, TYPE_ID, com.gritmap.karoo.ui.GlanceField.PACING,
+) { companion object { const val TYPE_ID = "pacing-coach" } }
 
 private fun coachActionLabel(icon: com.gritmap.karoo.ui.state.GuidanceIcon?): String = when (icon) {
     com.gritmap.karoo.ui.state.GuidanceIcon.RECOVER -> "REST"
@@ -98,163 +81,13 @@ private fun coachBackgroundResource(icon: com.gritmap.karoo.ui.state.GuidanceIco
     com.gritmap.karoo.ui.state.GuidanceIcon.WARNING, null -> R.drawable.gm_guidance_neutral
 }
 
-class SegmentPerformanceDataType(extensionId: String) : StateGraphicDataType(extensionId, TYPE_ID) {
-    override fun remoteViews(
-        context: Context,
-        state: LiveUiState,
-        size: KarooFieldSize,
-        layout: KarooFieldLayout,
-        viewSize: Pair<Int, Int>,
-    ): RemoteViews {
-        val renderer = SegmentPerformanceBitmapRenderer(karooVisualPalette(context))
-        val bitmap = if (layout == KarooFieldLayout.LARGE || layout == KarooFieldLayout.NARROW) {
-            renderer.renderDashboard(state, viewSize.first.coerceAtLeast(1), viewSize.second.coerceAtLeast(1))
-        } else {
-            renderer.renderCompactDashboard(
-                state = state,
-                width = viewSize.first.coerceAtLeast(1),
-                height = viewSize.second.coerceAtLeast(1),
-                showSupportingMetrics = layout == KarooFieldLayout.MEDIUM || layout == KarooFieldLayout.MEDIUM_WIDE,
-            )
-        }
-        return RemoteViews(context.packageName, R.layout.karoo_segment_performance_dashboard_field).apply {
-            setImageViewBitmap(R.id.karoo_performance_dashboard, bitmap)
-        }
-    }
+class SegmentPerformanceDataType(extensionId: String) : GlanceGraphicDataType(
+    extensionId, TYPE_ID, com.gritmap.karoo.ui.GlanceField.PERFORMANCE,
+) { companion object { const val TYPE_ID = "segment-performance" } }
 
-    companion object { const val TYPE_ID = "segment-performance" }
-}
-
-class PowerBalanceDataType(extensionId: String) : StateGraphicDataType(extensionId, TYPE_ID) {
-    override fun remoteViews(
-        context: Context,
-        state: LiveUiState,
-        size: KarooFieldSize,
-        layout: KarooFieldLayout,
-        viewSize: Pair<Int, Int>,
-    ): RemoteViews {
-        val target = state.recommendation?.targetPowerWatts
-        val actual = state.rollingPowerWatts3s
-        val delta = state.powerDeltaWatts
-        val trend = powerTrend(state)
-        val compact = layout == KarooFieldLayout.SMALL || layout == KarooFieldLayout.SMALL_WIDE
-        val reserve = state.wPrime
-        return RemoteViews(context.packageName, R.layout.karoo_power_balance_field).apply {
-            setTextViewText(
-                R.id.karoo_power_balance_title,
-                if (reserve?.estimated == true) "ENGINE RESERVE · EST." else "ENGINE RESERVE",
-            )
-            setTextViewText(
-                R.id.karoo_power_balance_values,
-                if (reserve != null) {
-                    when (layout) {
-                        KarooFieldLayout.SMALL, KarooFieldLayout.SMALL_WIDE -> {
-                            "W′ ${reserve.actualRemainingPct.toInt()}% · ${signedWatts(delta)}"
-                        }
-                        KarooFieldLayout.MEDIUM, KarooFieldLayout.MEDIUM_WIDE,
-                        KarooFieldLayout.NARROW -> {
-                            "PLAN ${reserve.plannedRemainingPct?.toInt() ?: "--"}%   " +
-                                "ACTUAL ${reserve.actualRemainingPct.toInt()}%"
-                        }
-                        KarooFieldLayout.LARGE -> {
-                            reserveComparisonHeadline(reserve.actualRemainingPct, reserve.plannedRemainingPct)
-                        }
-                    }
-                } else if (actual != null && target != null) {
-                    "ACTUAL $actual W  $trend  TARGET $target W"
-                } else {
-                    "ACTUAL --  TARGET --"
-                },
-            )
-            setTextViewText(
-                R.id.karoo_power_balance_delta,
-                if (reserve != null) {
-                    val actualRate = reserve.actualBalanceChangeJoulesPerSecond
-                    val plannedRate = reserve.plannedBalanceChangeJoulesPerSecond
-                    val actualLabel = if (actualRate < 0.0) {
-                        "USING ${kotlin.math.abs(actualRate).toInt()} J/s"
-                    } else {
-                        "RECOVERING +${actualRate.toInt()} J/s"
-                    }
-                    val plannedLabel = plannedRate?.let {
-                        if (it < 0.0) {
-                            "PLAN: USING ${kotlin.math.abs(it).toInt()} J/s"
-                        } else {
-                            "PLAN: RECOVERING ${it.toInt()} J/s"
-                        }
-                    }
-                    if (layout == KarooFieldLayout.LARGE) {
-                        val actualShort = if (actualRate < 0.0) {
-                            "−${kotlin.math.abs(actualRate).toInt()}"
-                        } else {
-                            "+${actualRate.toInt()}"
-                        }
-                        val planShort = plannedRate?.let {
-                            "${if (it >= 0.0) "+" else "−"}${kotlin.math.abs(it).toInt()}"
-                        } ?: "--"
-                        "ACT $actualShort W  •  PLAN $planShort W"
-                    } else buildList {
-                        add("ACTUAL: $actualLabel")
-                        if (plannedLabel != null) add(plannedLabel)
-                        if (layout != KarooFieldLayout.LARGE) {
-                            reserve.projectedFinishPct?.toInt()?.let { add("FINISH $it%") }
-                        }
-                    }.joinToString(" · ")
-                } else {
-                    delta?.let { "${if (it >= 0) "+" else ""}$it W" }
-                        ?: "Waiting for plan and power"
-                },
-            )
-            setTextColor(
-                R.id.karoo_power_balance_delta,
-                if (reserve != null) context.getColor(R.color.gm_field_secondary_text)
-                else powerDeltaColor(delta, target),
-            )
-            setViewVisibility(
-                R.id.karoo_power_balance_title,
-                if (compact || layout == KarooFieldLayout.LARGE) View.GONE else View.VISIBLE,
-            )
-            setViewVisibility(
-                R.id.karoo_power_balance_values,
-                if (compact || layout == KarooFieldLayout.LARGE) View.GONE else View.VISIBLE,
-            )
-            setViewVisibility(
-                R.id.karoo_power_balance_delta,
-                if (compact && layout != KarooFieldLayout.SMALL_WIDE) View.GONE else View.VISIBLE,
-            )
-            if (layout == KarooFieldLayout.LARGE) {
-                setViewVisibility(R.id.karoo_power_balance_values, View.GONE)
-                setViewVisibility(R.id.karoo_power_balance_delta, View.GONE)
-            }
-            val width = when (layout) {
-                KarooFieldLayout.SMALL, KarooFieldLayout.MEDIUM, KarooFieldLayout.NARROW -> 320
-                KarooFieldLayout.SMALL_WIDE, KarooFieldLayout.MEDIUM_WIDE -> 520
-                KarooFieldLayout.LARGE -> viewSize.first.coerceAtLeast(1)
-            }
-            val height = when (layout) {
-                KarooFieldLayout.SMALL, KarooFieldLayout.SMALL_WIDE -> 72
-                KarooFieldLayout.MEDIUM, KarooFieldLayout.MEDIUM_WIDE, KarooFieldLayout.NARROW -> 150
-                KarooFieldLayout.LARGE -> viewSize.second.coerceAtLeast(1)
-            }
-            setImageViewBitmap(
-                R.id.karoo_power_balance_bar,
-                if (reserve == null) {
-                    WPrimeBalanceBitmapRenderer(karooVisualPalette(context)).renderCalculating(width, height)
-                } else {
-                    val renderer = WPrimeBalanceBitmapRenderer(karooVisualPalette(context))
-                    when (layout) {
-                        KarooFieldLayout.SMALL, KarooFieldLayout.SMALL_WIDE ->
-                            renderer.renderCompact(reserve, width, height)
-                        KarooFieldLayout.LARGE -> renderer.renderTrajectory(reserve, state, width, height)
-                        else -> renderer.renderTanks(reserve, width, height)
-                    }
-                },
-            )
-        }
-    }
-
-    companion object { const val TYPE_ID = "power-balance" }
-}
+class PowerBalanceDataType(extensionId: String) : GlanceGraphicDataType(
+    extensionId, TYPE_ID, com.gritmap.karoo.ui.GlanceField.BALANCE,
+) { companion object { const val TYPE_ID = "power-balance" } }
 
 private fun signedWatts(delta: Int?): String = delta?.let {
     "${if (it >= 0) "+" else "−"}${kotlin.math.abs(it)} W"

@@ -45,6 +45,7 @@ internal val KarooPreviewState = LiveUiState(
         ElevationSample(470.0, 94.0),
         ElevationSample(533.0, 101.0),
     ),
+    hasCompleteElevationProfile = true,
     pacingZones = demoPacingZones(533.0),
     recommendation = Recommendation(260, "Hold steady", GuidanceIcon.HOLD),
     currentPowerWatts = 247,

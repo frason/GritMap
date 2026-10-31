@@ -29,33 +29,9 @@ import kotlinx.coroutines.launch
 
 class PacingProfileDataType(
     extensionId: String,
-    private val state: StateFlow<LiveUiState> = LiveUiStore.state,
-) : DataTypeImpl(extensionId, TYPE_ID) {
-    override fun startView(context: Context, config: ViewConfig, emitter: ViewEmitter) {
-        emitter.onNext(UpdateGraphicConfig(showHeader = false))
-        val renderer = PacingProfileDataFieldRenderer(
-            context,
-            emitter,
-            config,
-            ProfileBitmapRenderer(karooVisualPalette(context)),
-        )
-        val scope = CoroutineScope(Job() + Dispatchers.Default)
-        scope.launch {
-            if (config.preview) {
-                karooPreviewFlow().collect { preview -> renderer.submit(preview) }
-            } else {
-                LiveServiceStarter.startIfPermitted(context, "pacing-profile-view")
-                // StateFlow is already conflated; a slow renderer resumes with the newest state.
-                state.collect { latest -> renderer.submit(latest) }
-            }
-        }
-        emitter.setCancellable { scope.cancel() }
-    }
-
-    companion object {
-        // Retain the original ID so existing Karoo page configurations become the profile field.
-        const val TYPE_ID = "live-pacing"
-    }
+    state: StateFlow<LiveUiState> = LiveUiStore.state,
+) : GlanceGraphicDataType(extensionId, TYPE_ID, com.gritmap.karoo.ui.GlanceField.PACING, state) {
+    companion object { const val TYPE_ID = "live-pacing" }
 }
 
 /** Converts framework-neutral state to RemoteViews and enforces Hammerhead's 1 Hz limit. */
