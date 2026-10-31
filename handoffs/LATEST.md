@@ -7,6 +7,7 @@ FOR CODEX NOW (read-only, no device): review the spec for feasibility against th
 # Coordinator: CREDIT STAYS ON THE PHONE TOO (2026-10-31, Jason decided in chat)
 
 Segments published from the PHONE carry a credit just like the web (earlier note said credit is web-only; superseded). Fields stay: name + credit only. Open design points for Codex/Figma to settle and report to Jason: where the credit name comes from on the phone (shared account display name set once, editable, same one the web uses), how it is shown (Figma phone Review has a read-only "Credited to <name>" line), and that the display name must NOT default to the email address or real name without the rider choosing it. The phone contract needs the same credit field as the web DTO.
+**DISPLAY NAME RULES (Jason, 2026-10-31):** names do NOT have to be unique. Draft validation: 2 to 30 characters after trimming; no "@" or web addresses; letters, numbers, spaces and common punctuation; a server-side blocked-words list with one generic error. Codex confirms the final rules and reports them. Figma errors: "Use 2 to 30 characters.", "Names can't include email addresses or links.", "Choose a different name."
 
 # Coordinator: OPEN SEGMENTS LISTING RULE CHANGED, NO PHONE-CONFIRMATION GATE (2026-10-31, Jason decided in chat)
 
