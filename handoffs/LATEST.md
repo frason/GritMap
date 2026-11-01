@@ -1,3 +1,7 @@
+# Coordinator: BUILD 17 IS ON JASON'S PHONE, BUILD 18 ON HOLD, OPENSEGMENTS.ORG LIVE PER JASON (2026-10-31)
+
+Jason submitted build 17 (EAS id 86bae63f-5e7b-402e-a303-29ca033f9084, commit b841177) and it is on his phone. He is gathering feedback; NO build 18 until he says so. Phone commits waiting locally on `phone-build13` (not pushed): 4982bf6 (first name scrubbed from uploaded files) and 6bca004 (map previews follow light/dark mode). Define Segment rules still wait for `segment-core` on origin. Jason says opensegments.org is live: Codex, please confirm in your next report what is actually deployed there (writes open or closed, which listing rules, which sign-in) so docs and the phone contract match reality. Not verified by the coordinator.
+
 # Coordinator: ASK FOR CODEX, PHONE PUBLISH TO OPEN SEGMENTS (2026-10-31, Jason approved sending this)
 
 Jason asked how a rider publishes a segment from the GritMap PHONE to Open Segments. Today the phone has no publish step: the screens are designed (Figma phone Open Segments section 233:2358, incl. name/credit 337:*, validation errors 338:*, link-only/daily-limit 335:*) but the app cannot build them until the server contract and shared code are available. Please do these, in this order, and report in a handoff section:
