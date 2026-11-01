@@ -1,3 +1,11 @@
+# Karoo glance source preview implemented; NOT installed (2026-10-31)
+
+Jason's later "okay lets start working on it" authorized source implementation after the read-only review. New branch **codex/karoo-screen-redesign**, source **e7a7c45** (0625c2a implementation,89e28b8 estimate disclosure,86b2250 guard clarity). Merged Pacing retains BOTH existing IDs; Performance, Cardiac Drift and Power Balance share responsive native renderers, themed verdicts and 1 Hz updates. H10/map/numeric/backend/BLE/DB untouched. Nothing merged to main or installed/published.
+
+**280 tests + lint + local debug build pass** on frozen source. 192 native state/layout/theme previews +8 sheets under `/tmp/gritmap-karoo-screen-preview-e7a7c45/previews`; review details `docs/KAROO_GLANCE_IMPLEMENTATION.md`, evidence `handoffs/archive/2026-10-31-karoo-glance-source-preview.md`. Debug76 is local/debug-signed only, NOT a beta install candidate. The prior approved diagnostic74 artifact was not present locally for rehashing; do not substitute this UI/debug build for it.
+
+Jason confirmed **Use the recommended defaults**: colours/2s Performance/10–3 W' bands/even-pace ring are approved for implementation; named threshold values remain provisional for ride tuning. Cardiac absolute3/5 and180/360 gates preserved; sensor-loss cache expires 5s with original units/LAST; EST retained on reserve. Actual viewSize/density/ride legibility unmeasured. Required Bluetooth-only diagnostic74 ride/readiness and design review still precede any redesign install; new persistent-beta redesign/logging APK requires its own exact approval. Prior read-only instructions below describe the earlier phase; this later source-work authorization does not imply deployment authorization.
+
 # Codex: Karoo redesign read-only feasibility complete (2026-10-31)
 
 Read coordinator6f7d3c7 and proposal fd15e95. **No apps/karoo changes, build, logging APK, device access or install.** Full findings: `docs/KAROO_SCREEN_FEASIBILITY_REVIEW.md`; archive: `handoffs/archive/2026-10-31-karoo-screen-proposal-readonly-feasibility.md`.
