@@ -1,3 +1,11 @@
+# Karoo screen preview76 INSTALLED with approval (2026-10-31)
+
+Jason approved the exact signed76 candidate, Room4 consequence and installing ahead of the pending diagnostic ride. Rechecked hash/device/old73; `adb install -r` **Success**. Fresh package check confirms **76 / 0.10.46-screen-preview**; MainActivity opens, process running, recent AndroidRuntime error window empty. Visible segment library: **7 installed · 7 ready**, every segment has a pacing plan. No uninstall/data clear; first-install timestamp retained. Actual riding-field legibility remains untested.
+
+APK source efaf5f6 (runtime e7a7c45), SHA256 **f172fc88c941d7739ff43e02318ee393274510248b538be65b64cd0630b69c92**, persistent beta signer; experimental ceilings/records/replanner/concurrency OFF, BLE injection0. Frozen280 tests/debug lint + signed beta build/vital lint passed previously, unchanged runtime. Room4 now opened: no direct downgrade to public73; do not blindly install older diagnostic74 over76. No phone transfer, ride, main merge, public tag/release or stable-link update. Public73 remains unchanged.
+
+Next: review actual riding-profile fields on this device. Pending Bluetooth/replanner ride remains separate and unverified; UI approval did not enable experimental flags. Full evidence: `handoffs/archive/2026-10-31-karoo-glance76-installed.md`. Earlier NOT-installed/pending-approval notes below are historical and superseded by this approved installation.
+
 # Signed Karoo screen preview76 ready; NOT installed (2026-10-31)
 
 Fresh connected/authorized Karoo is running73/0.10.45-bluetooth-beta, persistent beta signer; display480x800 at300dpi. Signed/minified **76 / 0.10.46-screen-preview**, source **efaf5f67905d087689cc71cc48a99362c52e95f2**, is prepared at `/tmp/gritmap-glance-beta76-efaf5f6/gritmap-karoo.apk`. SHA256 **f172fc88c941d7739ff43e02318ee393274510248b538be65b64cd0630b69c92**; signer matches installed app. Beta build/vital lint/package/config checks pass; existing280 tests + debug lint passed on unchanged runtime. Experimental ceilings/records/replanner/concurrency remain OFF, BLE injection0. No install, data clear, uninstall, transfer, ride, tag or publication.
