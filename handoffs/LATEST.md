@@ -1,3 +1,9 @@
+# Signed Karoo screen preview76 ready; NOT installed (2026-10-31)
+
+Fresh connected/authorized Karoo is running73/0.10.45-bluetooth-beta, persistent beta signer; display480x800 at300dpi. Signed/minified **76 / 0.10.46-screen-preview**, source **efaf5f67905d087689cc71cc48a99362c52e95f2**, is prepared at `/tmp/gritmap-glance-beta76-efaf5f6/gritmap-karoo.apk`. SHA256 **f172fc88c941d7739ff43e02318ee393274510248b538be65b64cd0630b69c92**; signer matches installed app. Beta build/vital lint/package/config checks pass; existing280 tests + debug lint passed on unchanged runtime. Experimental ceilings/records/replanner/concurrency remain OFF, BLE injection0. No install, data clear, uninstall, transfer, ride, tag or publication.
+
+This branch upgrades Room3→4 even with experimental flags off; direct downgrade to public73 afterward is unsupported. Exact new-candidate approval plus decision to install ahead of the previously ordered diagnostic74 ride are pending. Prior diagnostic74 approval does not authorize replacing it with76. Full evidence and safe next action: `handoffs/archive/2026-10-31-karoo-glance-signed76-awaiting-install.md`. Source preview and confirmed design defaults below remain current; earlier "no device query" notes describe prior turns.
+
 # Karoo glance source preview implemented; NOT installed (2026-10-31)
 
 Jason's later "okay lets start working on it" authorized source implementation after the read-only review. New branch **codex/karoo-screen-redesign**, source **e7a7c45** (0625c2a implementation,89e28b8 estimate disclosure,86b2250 guard clarity). Merged Pacing retains BOTH existing IDs; Performance, Cardiac Drift and Power Balance share responsive native renderers, themed verdicts and 1 Hz updates. H10/map/numeric/backend/BLE/DB untouched. Nothing merged to main or installed/published.
