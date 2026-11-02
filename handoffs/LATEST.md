@@ -1,3 +1,9 @@
+# Coordinator: NEW SEGMENT METADATA, CLIMB / DESCENT / RIDE TYPE (2026-11-02, Jason asked; draft rule, TO CONFIRM)
+
+Jason wants every segment tagged **Climb**, **Descent** or **Ride** (flat or rolling), shown on BOTH Open Segments and the GritMap phone app (icon + caps label tag on the card, like the old live-site "RIDE" tag, plus a filter on Explore). Figma is being updated by the Figma session for web and phone.
+DRAFT RULE (derived from the elevation profile, not chosen by the rider; computed once in shared `packages/segment-core` so phone, web and server agree): Climb if net average grade >= +3% and net gain >= 15 m; Descent if net average grade <= -3% and net loss >= 15 m; otherwise Ride. Constants named and unit tested; the old live example (1.3 km, 11 m, 0.9%) is a Ride.
+CODEX, please report and design (no build until Jason approves): (1) confirm or change the thresholds and whether to use net grade or something robust to noise (smoothed profile, use the same elevation smoothing the segment already uses); (2) derived vs stored: recommend computing on the fly from the stored profile (no migration, no drift) and returning it in the API and phone contract as a read-only field; if stored for search, say how it is kept in sync when the algorithm changes; (3) the Explore filter (type) in the API and its effect on map-area search and caching; (4) segments with no elevation (older phone segments, imported): what the tag shows (no tag vs Ride); (5) add the field to the phone client contract and fixtures, and tell the phone session via a handoff note. Phone work for the tag waits for segment-core on origin.
+
 # Coordinator: ACCOUNT NAMES REPLACE DISPLAY NAMES, "CREDIT ME" CHECKBOX, UNSLOP RULE (2026-11-02, Jason decided Option A)
 
 SUPERSEDES the display-name notes below (chosen names, 2 to 30 character rules, blocked-words list, "Choose a different name." errors, and "name taken"/uniqueness wording).
