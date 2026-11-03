@@ -1,3 +1,34 @@
+# Coordinator: DARK MODE PALETTE CHANGED TO COOLER GRAY (2026-11-02, Jason picked Option 2). Values-only change; supersedes the warm dark values in the build handoff below
+
+**Jason found the warm charcoal dark mode too warm. Use these dark values instead of the warm ones (token table 475:9955 in Figma already shows them). Light mode is unchanged. If you have already built dark tokens, this is a value swap only; no structure change.** In the build handoff below, read "warm charcoal in dark" as "cool gray in dark".
+
+Dark tokens, old -> new:
+- color/bg/page #2A251F -> #1F2328
+- color/bg/panel #352F28 -> #292E34
+- color/bg/subtle #403931 -> #343A41
+- color/bg/disabled #302B25 -> #262A2F
+- color/text/primary #F1ECE0 -> #E9EDF1
+- color/text/secondary #C4BCAB -> #B7C0CA
+- color/text/disabled #8A8372 -> #747D88
+- color/text/on-accent #1B1812 -> #13161A
+- color/border/default #4F483E -> #434A53
+- color/border/input #8F8878 -> #7D8590 (lifted from #7A828D to reach 3:1 against bg/subtle)
+- color/accent/subtle #3F4442 -> #3F4144
+- color/accent/fill #4D4539 -> #3F464F (dark primary button fill)
+- color/accent/fill-hover #5C5346 -> #4D5560
+- color/accent/on-fill #F6F1E6 -> #E9EDF1
+- color/route/casing #2A251F -> #1F2328
+- color/map/bg #302B24 -> #252A30
+- color/map/road #453E34 -> #353C44
+- color/map/label #C4BCAB -> #ADB6C2
+- color/chart/grid #4F483E -> #434A53
+
+Unchanged in dark: accent/default #E3EEF0, accent/hover #F2F8F9, accent/pressed #FFFFFF, focus/ring #E3EEF0, route/line #FF6FA3, elevation/fill #FF6FA3 at 18%, logo glyph #0C0A07, success fg #7FD6A0 / bg #26361F, warning fg #F2C35B / bg #3C3114, danger fg #FF9166 / bg #432416, map/water #2A3C46, map/park #343D2A, overlay/scrim #000000.
+
+Contrast: the Figma session recomputed all 59 dark rows from the live variables; all pass (text on page 13.43, route on map bg 5.55). Verify in your own contrast test.
+
+**Brand separation note (for Jason):** the phone app dark palette is also cool gray, so web dark and phone dark are now closer (page vs app background delta E 9.0, panel vs app surface 8.4; dark primary fill vs app blue 25.2, was 39.8). Light mode is still clearly different. Jason has not yet accepted this narrowing explicitly; it follows from his pick.
+
 # Coordinator: BUILD HANDOFF FOR CODEX, OPEN SEGMENTS WEB REDESIGN "TRAILHEAD" (2026-11-02, Jason APPROVED the Figma design)
 
 **Status: design approved by Jason. Build in stages, report after each. Do NOT deploy to opensegments.org or change staging/production data or settings without Jason's yes for that exact action. Do not push without Jason's yes in your chat; push only your own branch; never force-push; add explicit paths; no credentials or personal GPS in commits. Do not touch apps/karoo.**
