@@ -23,7 +23,13 @@ Dark tokens, old -> new:
 - color/map/label #C4BCAB -> #ADB6C2
 - color/chart/grid #4F483E -> #434A53
 
-Unchanged in dark: accent/default #E3EEF0, accent/hover #F2F8F9, accent/pressed #FFFFFF, focus/ring #E3EEF0, route/line #FF6FA3, elevation/fill #FF6FA3 at 18%, logo glyph #0C0A07, success fg #7FD6A0 / bg #26361F, warning fg #F2C35B / bg #3C3114, danger fg #FF9166 / bg #432416, map/water #2A3C46, map/park #343D2A, overlay/scrim #000000.
+**Dark map cleanup (Jason approved via the Figma session; values-only, applies to the live map style layers in dark; light mode untouched):**
+- Park / wood / landcover fill: none below zoom 13 (same as land #252A30); at zoom 13 and closer #2A302E (was olive #343D2A). Token color/map/park (Dark) is now #2A302E.
+- Park and boundary lines: no dashes; solid hairline #434A53 at 40% opacity (or off).
+- Orange road / bridge highlights: use the neutral road colour #353C44.
+- Unchanged: land #252A30, water #2A3C46, labels #ADB6C2, route #FF6FA3 (5.5:1 on land). Where the list below says map/park #343D2A, use #2A302E.
+
+Unchanged in dark: accent/default #E3EEF0, accent/hover #F2F8F9, accent/pressed #FFFFFF, focus/ring #E3EEF0, route/line #FF6FA3, elevation/fill #FF6FA3 at 18%, logo glyph #0C0A07, success fg #7FD6A0 / bg #26361F, warning fg #F2C35B / bg #3C3114, danger fg #FF9166 / bg #432416, map/water #2A3C46, overlay/scrim #000000.
 
 Contrast: the Figma session recomputed all 59 dark rows from the live variables; all pass (text on page 13.43, route on map bg 5.55). Verify in your own contrast test.
 
