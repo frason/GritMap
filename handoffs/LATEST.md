@@ -1,6 +1,14 @@
+# Cardiac Drift indefinite collection: source review complete (2026-11-02)
+
+Main6826089 Karoo request reviewed; full report `docs/KAROO_CARDIAC_DRIFT_CALIBRATION_REVIEW.md`, dated evidence `handoffs/archive/2026-11-02-karoo-drift-calibration-source-review.md`. Runtime unchanged, no tests/build/device/FIT access. Documentation commit local only pending push authorization.
+
+Confirmed code ambiguity: tracker can establish a baseline then suppress drift indefinitely when current power is outside +/-15% of its frozen reference, but76 says COLLECTING BASELINE. Other no-result gates include per-segment reset,180 eligible seconds,60 samples/120s,12% power-CV limit,100W/80bpm eligibility,>10s interruption reset and GPS-driven tick cadence. These persist in main tracker; exact reported ride cause not yet established. Proposed fix and replay matrix are in report, not implemented. Useful HR response should explain the actual blocker; do not invent drift or weaken thresholds merely to show a number.
+
+Coordinator's version70/unapproved-redesign notes are stale: this chat installed approved76 on October31, source efaf5f6/runtime e7a7c45, then verified startup and7 installed/7 ready. No new read confirms the reported ride version. Need original reported ride FIT, exact field/title and active-segment context. Async field-identity question pending. Nearby Segments and reverse-BLE sync reviews remain queued; no claim they are done. Main and phone untouched; existing Room4/no-direct-downgrade constraints remain.
+
 # Karoo screen preview76 INSTALLED with approval (2026-10-31)
 
-Jason approved the exact signed76 candidate, Room4 consequence and installing ahead of the pending diagnostic ride. Rechecked hash/device/old73; `adb install -r` **Success**. Fresh package check confirms **76 / 0.10.46-screen-preview**; MainActivity opens, process running, recent AndroidRuntime error window empty. Visible segment library: **7 installed · 7 ready**, every segment has a pacing plan. No uninstall/data clear; first-install timestamp retained. Actual riding-field legibility remains untested.
+the owner approved the exact signed76 candidate, Room4 consequence and installing ahead of the pending diagnostic ride. Rechecked hash/device/old73; `adb install -r` **Success**. Fresh package check confirms **76 / 0.10.46-screen-preview**; MainActivity opens, process running, recent AndroidRuntime error window empty. Visible segment library: **7 installed · 7 ready**, every segment has a pacing plan. No uninstall/data clear; first-install timestamp retained. Actual riding-field legibility remains untested.
 
 APK source efaf5f6 (runtime e7a7c45), SHA256 **f172fc88c941d7739ff43e02318ee393274510248b538be65b64cd0630b69c92**, persistent beta signer; experimental ceilings/records/replanner/concurrency OFF, BLE injection0. Frozen280 tests/debug lint + signed beta build/vital lint passed previously, unchanged runtime. Room4 now opened: no direct downgrade to public73; do not blindly install older diagnostic74 over76. No phone transfer, ride, main merge, public tag/release or stable-link update. Public73 remains unchanged.
 
@@ -8,17 +16,17 @@ Next: review actual riding-profile fields on this device. Pending Bluetooth/repl
 
 # Signed Karoo screen preview76 ready; NOT installed (2026-10-31)
 
-Fresh connected/authorized Karoo is running73/0.10.45-bluetooth-beta, persistent beta signer; display480x800 at300dpi. Signed/minified **76 / 0.10.46-screen-preview**, source **efaf5f67905d087689cc71cc48a99362c52e95f2**, is prepared at `/tmp/gritmap-glance-beta76-efaf5f6/gritmap-karoo.apk`. SHA256 **f172fc88c941d7739ff43e02318ee393274510248b538be65b64cd0630b69c92**; signer matches installed app. Beta build/vital lint/package/config checks pass; existing280 tests + debug lint passed on unchanged runtime. Experimental ceilings/records/replanner/concurrency remain OFF, BLE injection0. No install, data clear, uninstall, transfer, ride, tag or publication.
+Fresh connected/authorized Karoo is running73/0.10.45-bluetooth-beta, persistent beta signer; display480x800 at300dpi. Signed/minified **76 / 0.10.46-screen-preview**, source **efaf5f67905d087689cc71cc48a99362c52e95f2**, is prepared at `LOCAL_ARTIFACT_PATH`. SHA256 **f172fc88c941d7739ff43e02318ee393274510248b538be65b64cd0630b69c92**; signer matches installed app. Beta build/vital lint/package/config checks pass; existing280 tests + debug lint passed on unchanged runtime. Experimental ceilings/records/replanner/concurrency remain OFF, BLE injection0. No install, data clear, uninstall, transfer, ride, tag or publication.
 
 This branch upgrades Room3→4 even with experimental flags off; direct downgrade to public73 afterward is unsupported. Exact new-candidate approval plus decision to install ahead of the previously ordered diagnostic74 ride are pending. Prior diagnostic74 approval does not authorize replacing it with76. Full evidence and safe next action: `handoffs/archive/2026-10-31-karoo-glance-signed76-awaiting-install.md`. Source preview and confirmed design defaults below remain current; earlier "no device query" notes describe prior turns.
 
 # Karoo glance source preview implemented; NOT installed (2026-10-31)
 
-Jason's later "okay lets start working on it" authorized source implementation after the read-only review. New branch **codex/karoo-screen-redesign**, source **e7a7c45** (0625c2a implementation,89e28b8 estimate disclosure,86b2250 guard clarity). Merged Pacing retains BOTH existing IDs; Performance, Cardiac Drift and Power Balance share responsive native renderers, themed verdicts and 1 Hz updates. H10/map/numeric/backend/BLE/DB untouched. Nothing merged to main or installed/published.
+the owner's later "okay lets start working on it" authorized source implementation after the read-only review. New branch **codex/karoo-screen-redesign**, source **e7a7c45** (0625c2a implementation,89e28b8 estimate disclosure,86b2250 guard clarity). Merged Pacing retains BOTH existing IDs; Performance, Cardiac Drift and Power Balance share responsive native renderers, themed verdicts and 1 Hz updates. H10/map/numeric/backend/BLE/DB untouched. Nothing merged to main or installed/published.
 
-**280 tests + lint + local debug build pass** on frozen source. 192 native state/layout/theme previews +8 sheets under `/tmp/gritmap-karoo-screen-preview-e7a7c45/previews`; review details `docs/KAROO_GLANCE_IMPLEMENTATION.md`, evidence `handoffs/archive/2026-10-31-karoo-glance-source-preview.md`. Debug76 is local/debug-signed only, NOT a beta install candidate. The prior approved diagnostic74 artifact was not present locally for rehashing; do not substitute this UI/debug build for it.
+**280 tests + lint + local debug build pass** on frozen source. 192 native state/layout/theme previews +8 sheets under `LOCAL_ARTIFACT_PATH`; review details `docs/KAROO_GLANCE_IMPLEMENTATION.md`, evidence `handoffs/archive/2026-10-31-karoo-glance-source-preview.md`. Debug76 is local/debug-signed only, NOT a beta install candidate. The prior approved diagnostic74 artifact was not present locally for rehashing; do not substitute this UI/debug build for it.
 
-Jason confirmed **Use the recommended defaults**: colours/2s Performance/10–3 W' bands/even-pace ring are approved for implementation; named threshold values remain provisional for ride tuning. Cardiac absolute3/5 and180/360 gates preserved; sensor-loss cache expires 5s with original units/LAST; EST retained on reserve. Actual viewSize/density/ride legibility unmeasured. Required Bluetooth-only diagnostic74 ride/readiness and design review still precede any redesign install; new persistent-beta redesign/logging APK requires its own exact approval. Prior read-only instructions below describe the earlier phase; this later source-work authorization does not imply deployment authorization.
+the owner confirmed **Use the recommended defaults**: colours/2s Performance/10–3 W' bands/even-pace ring are approved for implementation; named threshold values remain provisional for ride tuning. Cardiac absolute3/5 and180/360 gates preserved; sensor-loss cache expires 5s with original units/LAST; EST retained on reserve. Actual viewSize/density/ride legibility unmeasured. Required Bluetooth-only diagnostic74 ride/readiness and design review still precede any redesign install; new persistent-beta redesign/logging APK requires its own exact approval. Prior read-only instructions below describe the earlier phase; this later source-work authorization does not imply deployment authorization.
 
 # Codex: Karoo redesign read-only feasibility complete (2026-10-31)
 
@@ -27,20 +35,20 @@ Read coordinator6f7d3c7 and proposal fd15e95. **No apps/karoo changes, build, lo
 - Exact field pixels/ppi cannot be derived from repo: runtime viewSize is authoritative;12px/grid-row and480/240 widths are test/design assumptions. Only six layout breakpoints are known. LARGE>=250 does not guarantee620px; fixed strip/type budgets do not fit the shortest fields. Profile also has DP/SP chrome and reduced image allocation.
 - Keep BOTH IDs `pacing-coach` and `live-pacing` plus extension ID/registrations; route both to a shared merged renderer with consistent1Hz throttling and full-content sizing. Keep saved page placements; two placed fields will duplicate rather than being silently deleted.
 - Future clipping checks must use actual condensed Typeface metrics, signed/long values, wrapper content bounds, overlapping/edge dots and light-mode contrast. No physical readability claim.
-- No new registered data type/sensor stream needed for the proposed metrics. Strict last-valid sensor display needs defined freshness/cache handling; per-section pacing-ring timing requires future anchors. Existing even-pace ring is an explicit estimate pending Jason's choice.
+- No new registered data type/sensor stream needed for the proposed metrics. Strict last-valid sensor display needs defined freshness/cache handling; per-section pacing-ring timing requires future anchors. Existing even-pace ring is an explicit estimate pending the owner's choice.
 - Spec has semantic differences: drift uses absolute3/5 bands today with180/360s disclosure; negative=green and wording change need decisions. constraintConflict is not every unreachable goal; UI2s and replanner3s deadbands differ. W'10/3 bands remain provisional.
 
 Redesign NOT approved. Wait for open decisions AND Saturday-or-later Bluetooth diagnostic74 ride milestone before redesign build. A separate logging candidate requires exact approval. Diagnostic74 approval is retained but no install during this read-only task; sender/native/device readiness not newly confirmed. Public73 unchanged. Other web/Open Segments coordinator tasks belong to the separate web work; not executed here.
 
 # Coordinator: KAROO SCREEN REDESIGN, PROPOSAL ONLY, NOT APPROVED, DO NOT BUILD YET (2026-10-31)
 
-The Karoo Screens design session produced a redesign proposal (design and specs only; nothing under apps/karoo changed, nothing installed). Spec: `docs/KAROO_SCREEN_SPECS.md` on branch `claude/gritmap-karoo-screens-b47518` (pushed, no PR; read it with `git show origin/claude/gritmap-karoo-screens-b47518:docs/KAROO_SCREEN_SPECS.md`). Figma file cyaMDDfLBKFc4NNK1SUUnb, page "Karoo": design system 306:204, Pacing 322:204, Performance 304:204, Cardiac Drift 305:1101, Power Balance 305:1517. Decided by Jason: Pacing Coach and Pacing Profile merge into one "Pacing" field (solid dot = you, open ring = pacing dot from targetProgressMeters).
-STILL OPEN (Jason has NOT answered; do not implement these parts): (1) colour change HOLD green / PUSH orange / REST-EASE blue / red only for warnings (recommended yes, but every state must also carry a word or icon, never colour alone); (2) invented verdict thresholds (Performance ON GOAL within 2 s; Power Balance OK >=10%, LOW 3 to <10, EASE NOW <3 or now <10%): recommended provisional, named constants; (3) pixel sizes are estimates, Karoo 3 density is from memory; (4) pacing dot uses an even-pace estimate until the plan contract carries time anchors (recommended keep).
-FOR CODEX NOW (read-only, no device): review the spec for feasibility against the renderers/KarooFieldLayout.kt and report: actual field sizes if derivable without a device, the migration plan for keeping both pacing type ids (LivePacingDataType) while rendering the merged layout, clipping risks with the condensed font, and whether anything needs a new data field. Do NOT change apps/karoo, and do NOT install anything. Any build waits for Jason's answers and the Saturday-or-later Bluetooth diagnostic74 ride test; a logging build for real viewSize needs Jason's approval of the exact APK.
+The Karoo Screens design session produced a redesign proposal (design and specs only; nothing under apps/karoo changed, nothing installed). Spec: `docs/KAROO_SCREEN_SPECS.md` on branch `claude/gritmap-karoo-screens-b47518` (pushed, no PR; read it with `git show origin/claude/gritmap-karoo-screens-b47518:docs/KAROO_SCREEN_SPECS.md`). Figma file cyaMDDfLBKFc4NNK1SUUnb, page "Karoo": design system 306:204, Pacing 322:204, Performance 304:204, Cardiac Drift 305:1101, Power Balance 305:1517. Decided by the owner: Pacing Coach and Pacing Profile merge into one "Pacing" field (solid dot = you, open ring = pacing dot from targetProgressMeters).
+STILL OPEN (the owner has NOT answered; do not implement these parts): (1) colour change HOLD green / PUSH orange / REST-EASE blue / red only for warnings (recommended yes, but every state must also carry a word or icon, never colour alone); (2) invented verdict thresholds (Performance ON GOAL within 2 s; Power Balance OK >=10%, LOW 3 to <10, EASE NOW <3 or now <10%): recommended provisional, named constants; (3) pixel sizes are estimates, Karoo 3 density is from memory; (4) pacing dot uses an even-pace estimate until the plan contract carries time anchors (recommended keep).
+FOR CODEX NOW (read-only, no device): review the spec for feasibility against the renderers/KarooFieldLayout.kt and report: actual field sizes if derivable without a device, the migration plan for keeping both pacing type ids (LivePacingDataType) while rendering the merged layout, clipping risks with the condensed font, and whether anything needs a new data field. Do NOT change apps/karoo, and do NOT install anything. Any build waits for the owner's answers and the Saturday-or-later Bluetooth diagnostic74 ride test; a logging build for real viewSize needs the owner's approval of the exact APK.
 
 # Codex: phone BLE contract questions answered (2026-10-27)
 
-Coordinator4e1de6c read. Remote sender **is now pushed** at origin/ble-pacing-fields e0bacb1 (includes1dead18); no native-build/readiness confirmation from Jason yet. **Do not install74 yet.** Exact APK approval persists, conditional on sender build and connected/unlocked/authorized Karoo. Bluetooth-only test, public73 unchanged.
+Coordinator4e1de6c read. Remote sender **is now pushed** at origin/ble-pacing-fields e0bacb1 (includes1dead18); no native-build/readiness confirmation from the owner yet. **Do not install74 yet.** Exact APK approval persists, conditional on sender build and connected/unlocked/authorized Karoo. Bluetooth-only test, public73 unchanged.
 
 1. **For pacing test: ceilings + rider + plan, NO record when too large.** Keep512-byte v2 manifest, never drop needed rider or shorten hashes/keys. Optional record omission is nonfatal. Choose a separately versioned chunked-manifest protocol for the later plan-free BLE+PR milestone; no wire change now, no wait for inventory.
 2. **Owner ID:** phone generates one CSPRNG opaque per-rider ID during initial record setup; recommended32 lowercase hex chars from16 random bytes, stored in non-synchronizing iOS Keychain and reused across transfers/segments/FTP edits. No regeneration on errors/upgrades/reinstall; missing identity for an existing owner means suppress record and explicit recovery. **No Karoo reset UI/endpoint exists.** Future confirmed reset clears owner+records only, preserves all other data. Keep record construction/sending deferred for this test.
@@ -51,24 +59,24 @@ Full precise answers, mapping precedence, verification scope and next action: `h
 
 # Codex response: Bluetooth-only test; two-plan behavior reviewed (2026-10-27)
 
-Coordinator974a28f read and acknowledged. **Use BLUETOOTH for the supervised test; no Wi-Fi substitute.** Phone MVP session owns sender integration against this branch's contract/fixtures. Diagnostic74 approval stands, but **do not install until Jason confirms the sender build exists and Karoo is connected, unlocked and authorized**. Build8 internal-only; next public phone build is redesign+sender. Public Karoo73 unchanged.
+Coordinator974a28f read and acknowledged. **Use BLUETOOTH for the supervised test; no Wi-Fi substitute.** Phone MVP session owns sender integration against this branch's contract/fixtures. Diagnostic74 approval stands, but **do not install until the owner confirms the sender build exists and Karoo is connected, unlocked and authorized**. Build8 internal-only; next public phone build is redesign+sender. Public Karoo73 unchanged.
 
 **Two-plan answer:** each segment stores its own plan/finish goal. Public73 and diagnostic74 both keep concurrency OFF: one headline/attempt, selected by direction/forward-confirmed progress → nearest start → segment ID, locked at50m; stored plan does not confer priority. A second overlapping start can be missed. Development concurrency (OFF) supports4 active/32 candidates: planned segment first, then least remaining distance, then fingerprint; two planned segments can be tracked but only one full headline, with a small secondary summary in Segment Performance. Per-attempt replanners keep goals/targets separate, but energy balances are independent rather than a shared ride-level W' budget. No overlapping-plan ride validation or flag change.
 
 Code references, cap/admission details and exact next step: `handoffs/archive/2026-10-27-bluetooth-only-test-and-two-plan-answer.md`. Documentation only; no new tests/build/install/phone transfer/ride/publication. Last empty ADB query was yesterday, not a fresh device check. Sequence unchanged: receiver/sender test → plan-free BLE+PR → inventory note; Needle untouched/backlogged. Earlier Wi-Fi-as-test-alternative instructions below are superseded.
 
-# Coordinator UPDATE for Codex (2026-10-27, Jason decided): Bluetooth for the pacing test, phone sender in progress
+# Coordinator UPDATE for Codex (2026-10-27, the owner decided): Bluetooth for the pacing test, phone sender in progress
 
 Read after your own latest handoff (diagnostic74 approved, awaiting device and sender). New decisions:
-1. **The supervised pacing test uses BLUETOOTH, not Wi-Fi.** The GritMap MVP phone session is building the phone BLE v2 sender for the optional pacing fields against your `docs/RECEIVER_CAPABILITIES_CONTRACT.md` and `fixtures/contracts/` (it reads them from `origin/codex/karoo-receiver-capabilities`). It will send questions through the coordinator if the contract is ambiguous: answer them in your LATEST section. Keep the old-Karoo/old-phone baseline unchanged. Do not install diagnostic74 until Jason confirms the sender build exists and the Karoo is connected, unlocked and authorized (his approval of the exact APK stands).
-2. **Build 8 (phone) stays in Jason's internal TestFlight only** and passed his checklist; it is NOT going to Apple. The next public phone build is the redesign (light/dark, segment-centred home, per-segment goals), so the sender will ship in that build. Public Karoo stays 0.10.45/73 with flags off.
+1. **The supervised pacing test uses BLUETOOTH, not Wi-Fi.** The GritMap MVP phone session is building the phone BLE v2 sender for the optional pacing fields against your `docs/RECEIVER_CAPABILITIES_CONTRACT.md` and `fixtures/contracts/` (it reads them from `origin/codex/karoo-receiver-capabilities`). It will send questions through the coordinator if the contract is ambiguous: answer them in your LATEST section. Keep the old-Karoo/old-phone baseline unchanged. Do not install diagnostic74 until the owner confirms the sender build exists and the Karoo is connected, unlocked and authorized (his approval of the exact APK stands).
+2. **Build 8 (phone) stays in the owner's internal TestFlight only** and passed his checklist; it is NOT going to Apple. The next public phone build is the redesign (light/dark, segment-centred home, per-segment goals), so the sender will ship in that build. Public Karoo stays 0.10.45/73 with flags off.
 3. **Per-segment goals are coming on the phone:** every segment can have its own goal and plan, and plans already carry `targetFinishSeconds`. Answer in your next handoff: what does the Karoo do today when TWO different segments have stored plans (which one headlines, can both be shown, any conflict with live replanning or the concurrent-segments cap)? Short note, no implementation.
-4. Order stays: receiver/sender test first, then plan-free Bluetooth + PR timing, then the "On Karoo" inventory design note (Jason approved the mark; the phone list now shows a "Karoo" check from its own send log behind a swappable interface, so your inventory can replace it).
+4. Order stays: receiver/sender test first, then plan-free Bluetooth + PR timing, then the "On Karoo" inventory design note (the owner approved the mark; the phone list now shows a "Karoo" check from its own send log behind a swappable interface, so your inventory can replace it).
 Work in your own worktree/branch, explicit paths, no force-push; push your commits.
 
 # Diagnostic74 installation APPROVED; awaiting connected Karoo and sender (2026-10-26)
 
-Jason approved the exact diagnostic74 candidate **once the sender is ready**. Approval persists; do not ask again for this APK. Rechecked SHA256 `d8bca0eb8c841c5490d11cb6837630cc1918e9087e2e7371a28c168ad69d9d32` matches. **No installation attempted:** ADB device list empty; origin/main9369ff4 has no matching phone-sender completion update. Public73 unchanged; no ride/publication.
+the owner approved the exact diagnostic74 candidate **once the sender is ready**. Approval persists; do not ask again for this APK. Rechecked SHA256 `d8bca0eb8c841c5490d11cb6837630cc1918e9087e2e7371a28c168ad69d9d32` matches. **No installation attempted:** ADB device list empty; origin/main9369ff4 has no matching phone-sender completion update. Public73 unchanged; no ride/publication.
 
 Next: connect/unlock/authorize Karoo, verify matching phone BLE sender (or updated Wi-Fi source), then approved in-place install and retained-ceiling metadata check before ONE supervised test. Room4/fallback75 limits unchanged. Details: `handoffs/archive/2026-10-26-diagnostic74-install-approved-awaiting-device-sender.md`. Prior implementation/candidate evidence below.
 
@@ -82,39 +90,39 @@ Diagnostic74 **0.10.46-replanner-test1**, source `eac155f3401d0c689729704260996a
 
 Next: exact diagnostic approval, matching phone sender or updated Wi-Fi source, verify retained ceiling metadata, then ONE supervised test. Plan-free/PR next, On Karoo note later, Needle stays backlogged. Full exact commands/artifacts/limitations: `handoffs/archive/2026-10-26-receiver-capabilities-and-replanner-diagnostic74.md`. Earlier coordinator instructions retained below.
 
-# Coordinator: NEXT TASK for Codex (2026-10-26, Jason: this is the priority): make the new pacing reach the Karoo
+# Coordinator: NEXT TASK for Codex (2026-10-26, the owner: this is the priority): make the new pacing reach the Karoo
 
 The public 0.10.45/73 release is done; the replanner (1650b79) is built but off and has never run on a real ride. Work in your own worktree, own branch, explicit paths, no force-push, push your commits.
 1. Receiver capability gating: the Karoo must advertise (in the BLE v2 capability/handshake and the Wi-Fi path) that it accepts the optional plan ceilings and `segmentRecord`; the phone sends them only when advertised.
    Old Karoo versions must keep working unchanged (installed 70 rejected the new extension).
 2. Parser + storage for `docs/PLAN_CEILINGS_CONTRACT.md` fields, and the shared synthetic fixtures the phone session can test against (committed under fixtures/, no personal data). Tell the phone side the exact field names.
 3. Replay validation of the replanner on an anonymous/synthetic copy of the Junction Function and Diablo shape (do NOT commit real GPS/ride data): no target above ceiling, 20 W step limit, deficit redistribution, ahead = no early spend, unreachable goal shows best finish.
-4. Then a flag-on diagnostic build for ONE supervised on-bike test, presented to Jason for an exact install approval. Do not enable the flags in any public release without Jason's approval.
+4. Then a flag-on diagnostic build for ONE supervised on-bike test, presented to the owner for an exact install approval. Do not enable the flags in any public release without the owner's approval.
 Sequence: this first, then plan-free Bluetooth + PR timing, then the "On Karoo" inventory design note. Report back in handoffs/LATEST.md.
 
-# Coordinator: PHONE TASK queued, FIT file in the iOS share sheet (2026-10-26, Jason approved, AFTER build 8)
+# Coordinator: PHONE TASK queued, FIT file in the iOS share sheet (2026-10-26, the owner approved, AFTER build 8)
 
-Jason wants GritMap to appear in the iOS share sheet / "Open in..." when he shares a .fit file. Today only the Import screen file picker (expo-document-picker) works; app.json declares no document types.
+the owner wants GritMap to appear in the iOS share sheet / "Open in..." when he shares a .fit file. Today only the Import screen file picker (expo-document-picker) works; app.json declares no document types.
 Do it as option 1: declare a .fit document type (CFBundleDocumentTypes + an imported UTI, via app.json ios.infoPlist), handle the incoming file URL (Linking initial/event URL) and route it into the existing FIT import
 path, with a test. No Share Extension target. Needs a native build, so it cannot be an OTA update. NOT in build 8; branch from main after build 8 ships. Check that it fits docs/GOALS.md priorities and the redesign Import screen.
 
-# Coordinator: DESIGN NOTE request for Codex (2026-10-24, Jason approved): Karoo inventory for an "On Karoo" mark
+# Coordinator: DESIGN NOTE request for Codex (2026-10-24, the owner approved): Karoo inventory for an "On Karoo" mark
 
-Jason wants the phone to show **"On Karoo"** next to a segment (and, if cheap, the plan version the Karoo holds and whether it is older than the phone's). Today the phone only knows what it SENT
+the owner wants the phone to show **"On Karoo"** next to a segment (and, if cheap, the plan version the Karoo holds and whether it is older than the phone's). Today the phone only knows what it SENT
 (`plan_sends` and Bluetooth receipts), not what the Karoo HAS. Write a short DESIGN NOTE only, no implementation: a read-only inventory the phone can request over the existing Bluetooth link
 (or another safe route): per segment fingerprint, whether present, plan fingerprint/version/FTP, installed time. Cover size (hundreds of segments), privacy (nothing new off-device; no encryption in
 BLE v2, so keep it to fingerprints and versions, no names/GPS if possible), the Bluetooth roles (the phone is the peripheral today; the Karoo the central: who requests?), deletion on the Karoo,
 and fixtures for both sides. This is lower priority than the Bluetooth hardening and the PR/plan-free work; say where you would sequence it. Do not change the BLE contract yet.
 
-# Coordinator: NEEDLE moved to the backlog (2026-10-24, Jason decided)
+# Coordinator: NEEDLE moved to the backlog (2026-10-24, the owner decided)
 
-Jason heard Needle may not work well on the Karoo and could drain the battery. **Stop all Needle work** (no artifact selection, no benchmark, no advisory integration). Keep the existing code
+the owner heard Needle may not work well on the Karoo and could drain the battery. **Stop all Needle work** (no artifact selection, no benchmark, no advisory integration). Keep the existing code
 and `docs/NEEDLE_READINESS.md` as they are; the deterministic live replanner does not depend on it. docs/GOALS.md updated. In-app AI is now being considered for the PHONE app instead
 (priority 9, later phase, needs a design note first): do not start anything on the Karoo for it.
 
 # Public beta73 Companion installation CONFIRMED; release validation complete (2026-10-24)
 
-Jason confirmed **Installed; segments retained** after the public stable-link Share Link > Hammerhead update/version check. Final Companion route validated by owner; ADB unavailable afterward, so no fresh independent package/timestamp/hash claim. Public **0.10.45-bluetooth-beta/code73**, tagkaroo-beta-0.10.45, source0e95e84, public SHA25673aa7e2f497243b4022f3012edb20eda6fe53cbbea5cf9a822350d11ac36ca69 and reviewed signature/checksum/stable URL remain verified.
+the owner confirmed **Installed; segments retained** after the public stable-link Share Link > Hammerhead update/version check. Final Companion route validated by owner; ADB unavailable afterward, so no fresh independent package/timestamp/hash claim. Public **0.10.45-bluetooth-beta/code73**, tagkaroo-beta-0.10.45, source0e95e84, public SHA25673aa7e2f497243b4022f3012edb20eda6fe53cbbea5cf9a822350d11ac36ca69 and reviewed signature/checksum/stable URL remain verified.
 
 Phone/Claude can use public version73 and unchanged Inbox > Receive from Phone / Legacy Wi-Fi Receive labels for build8. No phone build/upload performed here. Known plan requirement/full-radio/H10/export limits unchanged. Details and qualification: `handoffs/archive/2026-10-24-companion-public73-install-confirmed.md`.
 
@@ -122,11 +130,11 @@ Phone/Claude can use public version73 and unchanged Inbox > Receive from Phone /
 
 Approved release **karoo-beta-0.10.45 /0.10.45-bluetooth-beta/code73** is public: https://github.com/frason/GritMap/releases/tag/karoo-beta-0.10.45. Exact source0e95e8443c5bdfd1f4ed0e8ddfd8224cf697f292, CI40073513782 success. Stable latest URL returns verified APK; public SHA256 **73aa7e2f497243b4022f3012edb20eda6fe53cbbea5cf9a822350d11ac36ca69**, signature/version/checksum pass. CI hash differs from local only in native compiler/build-id metadata; executable code/data and all other APK entries match.
 
-**Remaining before wide invites:** Jason's Companion Share Link installation/retained-segment check, already requested and awaiting answer. HTTP verification is not installation validation. Phone build8 can now reference public0.10.45-bluetooth-beta/code73; exact labels unchanged. Plan requirement documented as approved gap; plan-free Bluetooth/PR later. Full-radio recovery unresolved; H10 coexistence waived and export unfinished. Full evidence/current external state: `handoffs/archive/2026-10-24-bluetooth-beta73-published-verified-companion-pending.md`.
+**Remaining before wide invites:** the owner's Companion Share Link installation/retained-segment check, already requested and awaiting answer. HTTP verification is not installation validation. Phone build8 can now reference public0.10.45-bluetooth-beta/code73; exact labels unchanged. Plan requirement documented as approved gap; plan-free Bluetooth/PR later. Full-radio recovery unresolved; H10 coexistence waived and export unfinished. Full evidence/current external state: `handoffs/archive/2026-10-24-bluetooth-beta73-published-verified-companion-pending.md`.
 
 # Release73 APPROVED; tag pushed; Actions running (2026-10-24)
 
-Jason approved exact tag/publication. **karoo-beta-0.10.45** pushed at **0e95e8443c5bdfd1f4ed0e8ddfd8224cf697f292**. Release workflow **40073513782** running at that source: https://github.com/frason/GritMap/actions/runs/40073513782. No public asset verification yet; do not claim completion or start duplicate release.
+the owner approved exact tag/publication. **karoo-beta-0.10.45** pushed at **0e95e8443c5bdfd1f4ed0e8ddfd8224cf697f292**. Release workflow **40073513782** running at that source: https://github.com/frason/GritMap/actions/runs/40073513782. No public asset verification yet; do not claim completion or start duplicate release.
 
 Next: await CI, verify public APK/version/signature/flags/checksum and stable latest URL, then Companion installation before wide invites. Installed normal73 unchanged. Details: `handoffs/archive/2026-10-24-release73-approved-tag-pushed.md`.
 
@@ -136,17 +144,17 @@ Updated coordinator decision applied: **ship Bluetooth with plan required as a k
 
 **Proposed tag:** karoo-beta-0.10.45 at exact source **0e95e8443c5bdfd1f4ed0e8ddfd8224cf697f292**. Version0.10.45-bluetooth-beta/code73. Normal APK SHA256 **c371496a8d32d80949dc3986dec4ee8e0975fd2eb5f666c278c63d7bbd62fd3e**, byte-identical to installed/physically tested normal73.263 tests,2 monitor tests,lint,signed build/signature/flags pass; BLE on, injection/concurrent/replanning/ceilings off. Install guide and versioned release notes state known gaps; workflow publishes those notes. **No tag/publication approval or action.**
 
-Normal missing/skip pass; controlled-link diagnostic pass; full-radio recovery unresolved, H10 coexistence waived, RR export unfinished. Tell phone session via Jason: testers need0.10.45-bluetooth-beta/code73; labels Inbox > Receive from Phone / Legacy Wi-Fi Receive unchanged. Ask separate exact tag/publication approval; then verify published asset and stable Companion install before invites. Full evidence, certificate/labels/artifact paths and next steps: `handoffs/archive/2026-10-23-release73-approval-evidence-0e95e84.md`.
+Normal missing/skip pass; controlled-link diagnostic pass; full-radio recovery unresolved, H10 coexistence waived, RR export unfinished. Tell phone session via the owner: testers need0.10.45-bluetooth-beta/code73; labels Inbox > Receive from Phone / Legacy Wi-Fi Receive unchanged. Ask separate exact tag/publication approval; then verify published asset and stable Companion install before invites. Full evidence, certificate/labels/artifact paths and next steps: `handoffs/archive/2026-10-23-release73-approval-evidence-0e95e84.md`.
 
 # Normal beta73 new/skip paths PASSED; discuss plan-free PR sending (2026-10-23 23:35 PDT)
 
 Normal73 new segment12754 bytes + plan2075/rider114 hash-verified/imported with receipt, existing=false in9962ms. Prior normal skip existing=true passed in5420ms. Diagnostic controlled-link resume also passed; full-radio failures remain unresolved. Source46eb5be / normal SHA256c371496a8d32d80949dc3986dec4ee8e0975fd2eb5f666c278c63d7bbd62fd3e installed unchanged;263 Kotlin+2 monitor tests/lint/signed build pass. **No tag/publication approval/action.**
 
-**Jason asks to discuss:** sending a segment should not require creating a plan; no plan should use PR timing. Existing GOALS priority7 already specifies PR fallback (no PR: elapsed/progress), currently post-beta. Current BLE manifest/sender still requires a plan. Discuss whether to bring segment-only/PR sending forward separately from concurrency; no implementation/contract/priority change yet. Do not present this current limitation as accepted product behavior. Full evidence and discussion: `handoffs/archive/2026-10-23-233538-codex-normal73-missing-pass-and-pr-discussion.md`.
+**the owner asks to discuss:** sending a segment should not require creating a plan; no plan should use PR timing. Existing GOALS priority7 already specifies PR fallback (no PR: elapsed/progress), currently post-beta. Current BLE manifest/sender still requires a plan. Discuss whether to bring segment-only/PR sending forward separately from concurrency; no implementation/contract/priority change yet. Do not present this current limitation as accepted product behavior. Full evidence and discussion: `handoffs/archive/2026-10-23-233538-codex-normal73-missing-pass-and-pr-discussion.md`.
 
 # Normal beta73 installed-segment skip PASSED (2026-10-23 23:26 PDT)
 
-Normal73 logged **existing=true**, plan5778/rider114 bytes hash-verified, import/receipt success in5420ms. Jason reports~10s. Segment was skipped, confirmed by logs; no diagnostic drop. Normal installed source46eb5be/hashc371496a8d32d80949dc3986dec4ee8e0975fd2eb5f666c278c63d7bbd62fd3e unchanged.
+Normal73 logged **existing=true**, plan5778/rider114 bytes hash-verified, import/receipt success in5420ms. the owner reports~10s. Segment was skipped, confirmed by logs; no diagnostic drop. Normal installed source46eb5be/hashc371496a8d32d80949dc3986dec4ee8e0975fd2eb5f666c278c63d7bbd62fd3e unchanged.
 
 Next: one different small missing segment on normal73, then separate exact release approval. Diagnostic controlled-link pass remains recorded; full-radio failures unresolved. No tag/publication. Details: `handoffs/archive/2026-10-23-232618-codex-normal73-segment-skip-pass.md`.
 
@@ -158,7 +166,7 @@ Next normal transfer/installed-segment skip validation; controlled-link diagnost
 
 # Controlled BLE reconnect/resume physical test PASSED (2026-10-23 23:17 PDT)
 
-Diagnostic73 actually disconnected its GATT link after8192 bytes, retried at the same offset, verified the complete same manifest after reconnect, then hash-verified segment298148/plan5778/rider114 bytes and logged one new import plus successful receipt in174327ms. **Jason confirmed phone success.** Radio remainsON; no full-radio toggle. This is a controlled-link pass; earlier full-radio restart failures remain unresolved.
+Diagnostic73 actually disconnected its GATT link after8192 bytes, retried at the same offset, verified the complete same manifest after reconnect, then hash-verified segment298148/plan5778/rider114 bytes and logged one new import plus successful receipt in174327ms. **the owner confirmed phone success.** Radio remainsON; no full-radio toggle. This is a controlled-link pass; earlier full-radio restart failures remain unresolved.
 
 Installed build is still **0.10.45-bluetooth-linktest1/code73 (diagnostic)**. Next obtain exact approval to replace it in place with normal **0.10.45-bluetooth-beta/code73**, injection0, SHA256c371496a8d32d80949dc3986dec4ee8e0975fd2eb5f666c278c63d7bbd62fd3e; then validate normal send/skip. Source46eb5be,263 Kotlin+2 monitor tests/lint/signed builds pass. No publication approval/tag/release. Full evidence/limits: `handoffs/archive/2026-10-23-231738-codex-controlled-ble-resume-physical-pass.md`.
 
@@ -166,23 +174,23 @@ Installed build is still **0.10.45-bluetooth-linktest1/code73 (diagnostic)**. Ne
 
 **0.10.45-bluetooth-linktest1/code73 installed in place**, exact SHA256 rechecked; version/launch verified and original install timestamp retained. No source change after QA. This diagnostic build automatically drops only the transfer GATT link once after8192 segment bytes; radio remains on.
 
-Next: await Jason ready, start the read-only monitor, send a missing segment >8192 bytes, and check callback/offset/full-manifest/hash/import/receipt evidence. **No physical pass yet; no tag/publication.** Do not publish diagnostic variant; normal injection0 candidate needs separate validation/approval. Evidence: `handoffs/archive/2026-10-23-182942-codex-link73-diagnostic-installed.md`.
+Next: await the owner ready, start the read-only monitor, send a missing segment >8192 bytes, and check callback/offset/full-manifest/hash/import/receipt evidence. **No physical pass yet; no tag/publication.** Do not publish diagnostic variant; normal injection0 candidate needs separate validation/approval. Evidence: `handoffs/archive/2026-10-23-182942-codex-link73-diagnostic-installed.md`.
 
 # Controlled BLE link test ready; code73 install approval pending (2026-10-23 18:13 PDT)
 
 **Setup implemented and verified**, source46eb5be. Normal config: **263 tests, debug/beta lint and signed optimized build pass**; two Python monitor tests pass. Separate signed diagnostic APK **0.10.45-bluetooth-linktest1/code73** drops only the transfer GATT link once after8192 bytes and requires the actual disconnect callback. Radio/H10 stay untouched; ownership checks remain strict. Monitor buffering fixed. Discovery2min now separate from bounded10min transfer.
 
-Diagnostic APK `/tmp/gritmap-karoo-0.10.45-bluetooth-linktest1-73/gritmap-karoo.apk`, SHA256 `c62ad47e80144c51fba5f08e4c35e7fbe214e12f61fd3bb56db44078f6a54e17`. **Not installed**; installed72 remains unchanged. Ask exact installation approval, then monitor/send a missing segment >8192 bytes; no radio toggle is needed. No physical pass/tag/publication. Normal public variant uses injection0 and must be separately validated; never publish diagnostic APK. Full artifacts/commands/limits: `handoffs/archive/2026-10-23-181312-codex-link73-test-setup-verified.md`. Earlier review-only checkpoint superseded.
+Diagnostic APK `LOCAL_ARTIFACT_PATH`, SHA256 `c62ad47e80144c51fba5f08e4c35e7fbe214e12f61fd3bb56db44078f6a54e17`. **Not installed**; installed72 remains unchanged. Ask exact installation approval, then monitor/send a missing segment >8192 bytes; no radio toggle is needed. No physical pass/tag/publication. Normal public variant uses injection0 and must be separately validated; never publish diagnostic APK. Full artifacts/commands/limits: `handoffs/archive/2026-10-23-181312-codex-link73-test-setup-verified.md`. Earlier review-only checkpoint superseded.
 
 # Controlled disconnect setup checkpoint (2026-10-23 18:04 PDT)
 
-Jason requested a handoff update while setup began. **Source review only so far: GATT-only disconnect control and replacement monitor are not yet implemented/built/installed.** Installed72 remains unchanged; physical gate still failed (41%, manifest read refused). No new device action/tag/publication.
+the owner requested a handoff update while setup began. **Source review only so far: GATT-only disconnect control and replacement monitor are not yet implemented/built/installed.** Installed72 remains unchanged; physical gate still failed (41%, manifest read refused). No new device action/tag/publication.
 
 Continue with isolated link-only test control, monitor buffering fix and receive-timeout correction; preserve session ownership/app data. New candidate needs QA and exact install approval. Current evidence, authorization and next action: `handoffs/archive/2026-10-23-180433-codex-controlled-disconnect-setup-checkpoint.md`. Earlier code72 test details remain below.
 
 # Code72 physical radio-recovery test failed (2026-10-23 17:59 PDT)
 
-Installed72 entered **ble_resume offset122368** twice, reconnected, then failed manifest read status2 (not permitted). Jason reports phone stopped41%. No completed resource/import/receipt; **not a pass**. Radio restored/verifiedON. Monitor buffering delayed the intended interruption to~65s after connection; fix monitoring before another test.
+Installed72 entered **ble_resume offset122368** twice, reconnected, then failed manifest read status2 (not permitted). the owner reports phone stopped41%. No completed resource/import/receipt; **not a pass**. Radio restored/verifiedON. Monitor buffering delayed the intended interruption to~65s after connection; fix monitoring before another test.
 
 Next: controlled GATT-only drop, preserving same-central/session ownership; investigate manifest refusal without weakening security. Correct whole-transfer two-minute timeout before public release. No source/install/tag/publication changes. Exact evidence: `handoffs/archive/2026-10-23-1759-codex-code72-radio-recovery-test-failed.md`.
 
@@ -196,73 +204,73 @@ Next: repeat physical interruption test; code72 has no physical resume pass yet.
 
 Code71 physical interruption **failed** (BLE write status1; phone Sending13%). Corrected source **0312e10** retries bounded transport failures, notices radio shutdown, preserves completed chunks and verifies the entire manifest on reconnect. **257 tests, debug/beta lint, signed/minified build pass.**
 
-Candidate **0.10.45-bluetooth-resume1 /72**, SHA256 `2e15a9543047d65b05c46bec54473e1c5acce81a30815d28e407f7f5d5cbc8f2`. APK in `/tmp/gritmap-karoo-0.10.45-bluetooth-resume1-72/`. **Not installed;71 remains installed. No tag/publication.** Next: exact install approval, then physical repeat. Pre-existing two-minute timeout currently covers the whole receive, contrary to discovery-only docs; assess before public release. Details: `handoffs/archive/2026-10-23-1650-codex-ble-resume72-verified-candidate.md`.
+Candidate **0.10.45-bluetooth-resume1 /72**, SHA256 `2e15a9543047d65b05c46bec54473e1c5acce81a30815d28e407f7f5d5cbc8f2`. APK in `LOCAL_ARTIFACT_PATH`. **Not installed;71 remains installed. No tag/publication.** Next: exact install approval, then physical repeat. Pre-existing two-minute timeout currently covers the whole receive, contrary to discovery-only docs; assess before public release. Details: `handoffs/archive/2026-10-23-1650-codex-ble-resume72-verified-candidate.md`.
 
 # FIT inspected; RR saved locally, export missing (2026-10-23 15:53 PDT)
 
 **RR capture saves on Karoo:**624 samples finalized at ride end. **Export/transfer to phone is unfinished.** User FIT contains217 HR readings (54–62 bpm, session average57),9:31 elapsed/3:35 timer, and four GritMap pacing developer fields; no RR/HRV or H10-derived metric fields. Raw RR artifact/quality/checksum remain uninspected. User ride file remains outside Git.
 
-Next priority remains Bluetooth beta: deliberate disconnect/resume physical test before wide invites, then separate exact release approval. In-ride coexistence remains owner-waived, not passed. H10 recording list/export follows unless Jason reprioritizes. Candidate/source/install unchanged. Exact evidence and limitations: `handoffs/archive/2026-10-23-1553-codex-fit-and-rr-export-findings.md`.
+Next priority remains Bluetooth beta: deliberate disconnect/resume physical test before wide invites, then separate exact release approval. In-ride coexistence remains owner-waived, not passed. H10 recording list/export follows unless the owner reprioritizes. Candidate/source/install unchanged. Exact evidence and limitations: `handoffs/archive/2026-10-23-1553-codex-fit-and-rr-export-findings.md`.
 
 # H10 test ride capture saved (2026-10-23 15:00 PDT)
 
-Jason ended/saved the ride. Karoo independently logged **h10_capture_saved reason=ride-ended samples=624** at14:57:37.813, immediately after Idle. Separate H10 capture finalization confirmed; raw samples/checksum and complete-recording quality have not been inspected. Earlier60-sample/100% validity reading covers only that live snapshot. Recording list/export remains unfinished.
+the owner ended/saved the ride. Karoo independently logged **h10_capture_saved reason=ride-ended samples=624** at14:57:37.813, immediately after Idle. Separate H10 capture finalization confirmed; raw samples/checksum and complete-recording quality have not been inspected. Earlier60-sample/100% validity reading covers only that live snapshot. Recording list/export remains unfinished.
 
 Installed71 unchanged. In-ride transfer test remains owner-waived; deliberate disconnect/resume remains pending. No tag/publication approved or performed. Evidence and limits: `handoffs/archive/2026-10-23-1500-codex-h10-ride-capture-saved.md`.
 
-# H10 baseline observed; in-ride transfer test waived by Jason (2026-10-23 14:52 PDT)
+# H10 baseline observed; in-ride transfer test waived by the owner (2026-10-23 14:52 PDT)
 
 Installed71 unchanged; phone internal build5 reported. H10 Enhanced connected/capture started; UI showed **60 RR samples at100% validity** before test ride. Native Recording/Paused events observed, but saved RR artifact/count not yet inspected. Await rider ending/saving test ride and leaving H10 Diagnostics open.
 
-**Jason waived the during-ride coexistence test** because extension app screens cannot be opened during a ride. Send before recording; this is **not a passed coexistence test**. Guides updated accordingly. Deliberate disconnect/resume still pending; tagging/publication still require approval. Exact evidence/limits: `handoffs/archive/2026-10-23-1452-codex-h10-baseline-and-inride-test-waiver.md`. Older statements requiring both gates are superseded by this explicit owner decision.
+**the owner waived the during-ride coexistence test** because extension app screens cannot be opened during a ride. Send before recording; this is **not a passed coexistence test**. Guides updated accordingly. Deliberate disconnect/resume still pending; tagging/publication still require approval. Exact evidence/limits: `handoffs/archive/2026-10-23-1452-codex-h10-baseline-and-inride-test-waiver.md`. Older statements requiring both gates are superseded by this explicit owner decision.
 
 # Bluetooth beta71 installed with approval (2026-10-23 14:15 PDT)
 
-Jason approved exact candidate install. **0.10.45-bluetooth-beta / code71 is now installed** via adb install-r; version verified and app launch passes. SHA256 `d6b6e87e13f7aa73644badeb1bed1a9ec4e5802d2eb2e104342a12304ae0977a` rechecked before install. Original install timestamp retained; no uninstall/clear-data. No source change after250-test/lint/signed-build QA. Phone checkout untouched.
+the owner approved exact candidate install. **0.10.45-bluetooth-beta / code71 is now installed** via adb install-r; version verified and app launch passes. SHA256 `d6b6e87e13f7aa73644badeb1bed1a9ec4e5802d2eb2e104342a12304ae0977a` rechecked before install. Original install timestamp retained; no uninstall/clear-data. No source change after250-test/lint/signed-build QA. Phone checkout untouched.
 
-**Next:** H10 RR coexistence and deliberate disconnect/resume gates with Jason; awaiting H10/phone readiness. Neither test has run on71. **No tagging or publication approved/performed.** Details: `handoffs/archive/2026-10-23-1415-codex-bluetooth-beta71-installed.md`. Earlier install-pending status below is superseded.
+**Next:** H10 RR coexistence and deliberate disconnect/resume gates with the owner; awaiting H10/phone readiness. Neither test has run on71. **No tagging or publication approved/performed.** Details: `handoffs/archive/2026-10-23-1415-codex-bluetooth-beta71-installed.md`. Earlier install-pending status below is superseded.
 
 
-# Coordinator: RELEASE DECISIONS for Codex (2026-10-24, Jason approved)
+# Coordinator: RELEASE DECISIONS for Codex (2026-10-24, the owner approved)
 
 1. **Scope: option 1.** Ship the Bluetooth beta with the current plan requirement as a documented known gap. Segment-only send stays in the phone's Wi-Fi fallback. Plan-free
    Bluetooth sending and PR timing ship TOGETHER later (docs/GOALS.md priority 7, updated). Do not implement them now. State the gap plainly in the release notes and install guide.
-2. **You may now PRESENT the release evidence to Jason** for a separate tag/publish approval: exact source (46eb5be or newer committed), version/versionCode (0.10.45-bluetooth-beta / 73),
+2. **You may now PRESENT the release evidence to the owner** for a separate tag/publish approval: exact source (46eb5be or newer committed), version/versionCode (0.10.45-bluetooth-beta / 73),
    APK sha256, signature, flags (injection 0, concurrent/replanning/ceilings off), actual QA and the physical evidence (new-segment import, skip, controlled-link resume), and the unresolved
-   items (full-radio restart failure, H10 coexistence waived, export unfinished). Do NOT tag or publish until Jason approves that exact step. Never publish the diagnostic APK.
+   items (full-radio restart failure, H10 coexistence waived, export unfinished). Do NOT tag or publish until the owner approves that exact step. Never publish the diagnostic APK.
 3. Merge or push your branch so origin has your commits (own worktree, explicit paths, no force-push; rebase on origin/main which has the phone's build 8 and my docs). After any approved
    release, verify the stable Companion install URL and update docs/BETA_KAROO_INSTALL.md and docs/KAROO_BETA_RELEASE.md. The phone session needs the final Karoo labels and the version number
-   for build 8's 'testers need Karoo version X' text: tell Jason both.
+   for build 8's 'testers need Karoo version X' text: tell the owner both.
 
 
 # Bluetooth beta71: verified candidate, install approval pending (2026-10-23 14:11 PDT)
 
 **0.10.45-bluetooth-beta / code71**, source `be98b8d`, ready as a local signed candidate. **250 tests, debug/beta lint and signed/minified build pass**. Signing certificate matches public0.10.44 and installed70. Bluetooth on; concurrent/replanner/ceilings off. Host stall cleared; original build completed. Guides/workflow updated and exact phone/Karoo labels preserved.
 
-- APK: `/tmp/gritmap-karoo-0.10.45-bluetooth-beta-71/gritmap-karoo.apk`
+- APK: `LOCAL_ARTIFACT_PATH`
 - SHA256: `d6b6e87e13f7aa73644badeb1bed1a9ec4e5802d2eb2e104342a12304ae0977a`
-- Worktree/branch: `/Users/frason/.codex/worktrees/karoo-bluetooth-beta/GritMap`, `codex/karoo-bluetooth-beta`. Phone checkout unchanged; push only this isolated branch.
-- **Not installed/tagged/published.** Karoo still70/0.10.44-fields1. Ask Jason to approve this exact in-place install with the hash/QA above.
+- Worktree/branch: `/Users/USER/.codex/worktrees/karoo-bluetooth-beta/GritMap`, `codex/karoo-bluetooth-beta`. Phone checkout unchanged; push only this isolated branch.
+- **Not installed/tagged/published.** Karoo still70/0.10.44-fields1. Ask the owner to approve this exact in-place install with the hash/QA above.
 - H10 RR coexistence and deliberate disconnect/resume remain unperformed; **both required before wide Bluetooth invites**. Publication and stable-link Companion test remain later gates.
 
 Full exact verification and next action: `handoffs/archive/2026-10-23-1411-codex-bluetooth-rc71-ready-for-install-approval.md`. Older stalled status below is historical and superseded.
 
 # Bluetooth candidate preparation: QA blocked by host stall (2026-10-23 13:58 PDT)
 
-Isolated worktree `/Users/frason/.codex/worktrees/karoo-bluetooth-beta/GritMap`, branch `codex/karoo-bluetooth-beta`, committed source `be98b8d`. Candidate0.10.45-bluetooth-beta/code71 enablesBLE; concurrent/replanner/ceilings flags defaultoff. Guides and workflow updated; Inbox labels match phone. **QA/build incomplete: host Git/ADB/gh/compiler processes stalled. No APK/hash ready; no install/tag/publication/push.** Both physical gates remain mandatory before wide invites. Phone checkout unchanged. Details and recovery next action: `handoffs/archive/2026-10-23-1358-codex-bluetooth-rc-host-stall.md`.
+Isolated worktree `/Users/USER/.codex/worktrees/karoo-bluetooth-beta/GritMap`, branch `codex/karoo-bluetooth-beta`, committed source `be98b8d`. Candidate0.10.45-bluetooth-beta/code71 enablesBLE; concurrent/replanner/ceilings flags defaultoff. Guides and workflow updated; Inbox labels match phone. **QA/build incomplete: host Git/ADB/gh/compiler processes stalled. No APK/hash ready; no install/tag/publication/push.** Both physical gates remain mandatory before wide invites. Phone checkout unchanged. Details and recovery next action: `handoffs/archive/2026-10-23-1358-codex-bluetooth-rc-host-stall.md`.
 
-# Coordinator: PRIORITY for Codex (2026-10-23, Jason approved): public Karoo release with the Bluetooth reader, before the replanner
+# Coordinator: PRIORITY for Codex (2026-10-23, the owner approved): public Karoo release with the Bluetooth reader, before the replanner
 
-Jason is moving Bluetooth to beta riders in the next phone build (docs/GOALS.md priority 1, commit ee69df6); the IP route becomes a fallback only. The phone build
+the owner is moving Bluetooth to beta riders in the next phone build (docs/GOALS.md priority 1, commit ee69df6); the IP route becomes a fallback only. The phone build
 cannot go out until a PUBLIC Karoo release carries the BLE reader. Please, in this order:
 1. Prepare a release candidate from committed code: BLE v2 reader and fixes (67bfc60), all experimental flags OFF (concurrent segments, replanning, ceilings), versionCode
    >= 71, versionName that makes clear it is the Bluetooth beta, beta-signed APK, release workflow as for karoo-beta-0.10.44. Run full QA (default build) and record it.
-2. Run the open physical tests with Jason and record them in a handoff: H10 coexistence during a receive session, and a deliberate disconnect/resume transfer
+2. Run the open physical tests with the owner and record them in a handoff: H10 coexistence during a receive session, and a deliberate disconnect/resume transfer
    (see docs/BLE_DIRECT_TRANSFER_REVIEW.md R3/R5). Say which must pass before wide invites.
 3. Update docs/BETA_KAROO_INSTALL.md and docs/KAROO_BETA_RELEASE.md for Bluetooth (what to open on the Karoo, permissions, in-place upgrade keeps data, IP fallback).
-4. Do NOT tag, publish or install on the physical Karoo until Jason approves that exact step; ask him with the version, APK sha256 and the QA evidence.
+4. Do NOT tag, publish or install on the physical Karoo until the owner approves that exact step; ask him with the version, APK sha256 and the QA evidence.
 5. Do NOT push on the phone session's checkout/branch: use your own worktree for anything you push. Replanner rollout and Needle wait behind this.
-6. **Karoo button labels are now copied into the phone app's onboarding and Send screens** (build 8, `onboardingCopy.ts`): GritMap > **Inbox** > **Receive from Phone** (Bluetooth) and **Legacy Wi-Fi Receive** (Wi-Fi fallback). Keep these three labels exactly, or tell the phone session (via Jason) the new ones BEFORE the public release. Also confirm the Karoo screen text matches: 'WAITING FOR PHONE', 'Cancel Receiving', 'Bluetooth closes automatically after 2 minutes'.
+6. **Karoo button labels are now copied into the phone app's onboarding and Send screens** (build 8, `onboardingCopy.ts`): GritMap > **Inbox** > **Receive from Phone** (Bluetooth) and **Legacy Wi-Fi Receive** (Wi-Fi fallback). Keep these three labels exactly, or tell the phone session (via the owner) the new ones BEFORE the public release. Also confirm the Karoo screen text matches: 'WAITING FOR PHONE', 'Cancel Receiving', 'Bluetooth closes automatically after 2 minutes'.
 
 # Current task status: replanner development milestone verified (2026-10-22 16:44 PDT)
 
@@ -284,17 +292,17 @@ No new device install, public release or model download. Feature source committe
 
 `c9da364` commits concurrent attempts (default off) and completed installed field updates. Default and opt-in full tests/lint/debug builds passed (226 tests each). H10 export remains pending. No new device install or release. Push follows; default-off replanner implementation is starting. Details: `handoffs/archive/2026-10-22-1624-codex-concurrent-fields-committed.md`.
 
-# Coordinator: PHONE SESSION tasks (2026-10-22, Jason approved; replaces the 2026-10-09 phone task below)
+# Coordinator: PHONE SESSION tasks (2026-10-22, the owner approved; replaces the 2026-10-09 phone task below)
 
 Apple approved build 7 for external TestFlight. Beta riders arrive now. In order:
-1. **Push** the 13 local commits (Jason approved 2026-10-21): fetch, rebase/merge onto origin/main, never force-push, check the diff for personal data (no ride files,
+1. **Push** the 13 local commits (the owner approved 2026-10-21): fetch, rebase/merge onto origin/main, never force-push, check the diff for personal data (no ride files,
    no FTP/weight/goal values, nothing from `fixtures/`), run typecheck and tests, report the pushed head.
 2. **Fresh-install walkthrough of the beta loop** as a stranger would (empty database, no FTP): onboarding, get a segment, set a goal, plan, send to the Karoo over the
    IP route with the in-app instructions, import a FIT, see plan vs actual. Report confusing or broken steps, ranked by how likely a stranger is to get stuck. Report
    first; no code changes until the report is reviewed.
-3. **Open Segments usable by strangers** (GOALS priority 3): short plan first, from `docs/OPEN_SEGMENTS_VERCEL.md` (a proposal; any hosting needs Jason's approval).
+3. **Open Segments usable by strangers** (GOALS priority 3): short plan first, from `docs/OPEN_SEGMENTS_VERCEL.md` (a proposal; any hosting needs the owner's approval).
 4. **Build 8 contents, plan only**: realistic plans, staged goal, past weights, and whether Bluetooth can be shown. Bluetooth needs a public Karoo release first (the
-   BLE fix is not in `karoo-beta-0.10.44`). No build or upload until Jason says go.
+   BLE fix is not in `karoo-beta-0.10.44`). No build or upload until the owner says go.
 Blocked on Codex (do not build): sending ceilings and `segmentRecord` to the Karoo (needs the Karoo parser to accept the optional fields first, plus shared fixtures).
 
 # Handoff: Coach/Profile update installed (2026-10-22 16:18 PDT)
@@ -307,9 +315,9 @@ Active Coach is now **1.5× original size**, with left-to-right actual-work fill
 
 # Handoff: Coach work fill, larger Profile and cardiac/H10 display (2026-10-20 23:31 PDT)
 
-Jason confirmed accumulated work vs planned work. Coach now has full-block actual-joule fill, a horizontal target-work line, and a doubled active row/content. Profile removes the middle PACE card and enlarges TARGET/ACTUAL and other numbers. Cardiac drift qualifies steady/comparable windows, resets interruptions and smooths by elapsed time; H10 status appears sooner with RR qualification retained. **224 tests, lint and debug build pass; final Profile renderer tests/build pass. Not installed: ADB saw no device.** Full-scale work budget uses an explicitly estimated distance-proportional plan time. Changes and prior concurrent work are uncommitted. Details: `handoffs/archive/2026-10-20-2331-codex-work-coach-profile-cardiac-fields.md`; semantics: `docs/KAROO_FIELD_WORK_FILL.md`.
+the owner confirmed accumulated work vs planned work. Coach now has full-block actual-joule fill, a horizontal target-work line, and a doubled active row/content. Profile removes the middle PACE card and enlarges TARGET/ACTUAL and other numbers. Cardiac drift qualifies steady/comparable windows, resets interruptions and smooths by elapsed time; H10 status appears sooner with RR qualification retained. **224 tests, lint and debug build pass; final Profile renderer tests/build pass. Not installed: ADB saw no device.** Full-scale work budget uses an explicitly estimated distance-proportional plan time. Changes and prior concurrent work are uncommitted. Details: `handoffs/archive/2026-10-20-2331-codex-work-coach-profile-cardiac-fields.md`; semantics: `docs/KAROO_FIELD_WORK_FILL.md`.
 
-# Coordinator: ORDER for Codex on the replanning task (2026-10-20, Jason approved): deterministic replanner FIRST, Needle later
+# Coordinator: ORDER for Codex on the replanning task (2026-10-20, the owner approved): deterministic replanner FIRST, Needle later
 
 **Build the deterministic live replanner first (Step 4), on its own, shippable without Needle.** Needle has never run on the Karoo: `MODEL_PROVENANCE.md` still
 says PIN BEFORE DISTRIBUTION (no model bundle, no digest, no licence check) and the Cactus runtime library is not shipped, so `NeedleAgentManager` refuses to
@@ -320,20 +328,20 @@ initialise and the fallback is what every build uses today. Therefore:
    only replan within the plan's own targets and the adjacent-step limit. Default-off flag like the concurrent work. Unit tests + a replay of a fake ride.
 2. Needle second, as an optional advisory layer behind the same fallback: do not start until the replanner works. Meanwhile write a short note listing exactly what
    Needle needs before it can run for a rider (which Needle 2 bundle, digest, licences, packaging/install path, runtime library, size, latency on the Karoo 3)
-   and your estimate, so Jason can decide whether to invest in it.
+   and your estimate, so the owner can decide whether to invest in it.
 3. Nothing about Needle may block the replanner, the beta, or the BLE/multi-segment work.
 
-# Coordinator: COMMIT REQUEST for Codex (2026-10-20, Jason approved)
+# Coordinator: COMMIT REQUEST for Codex (2026-10-20, the owner approved)
 
 Please commit the multi-segment foundation and concurrent runtime now, **default-off** (`CONCURRENT_SEGMENTS_ENABLED=false` for debug and beta, opt-in via
 `-PgritmapConcurrentSegments=true`). Use explicit `git add` paths, include the design/proposal docs and archives, and keep the separate H10 export work out
 of this commit. Re-run the default and opt-in QA before committing and record the results. No tag, release, version bump or Karoo install. Push is allowed
 once the handoff commit is made. Then start the realistic-targets/replanning task below (read the NEW TASK section above) with a short plan first.
 
-# Coordinator: NEW TASK (2026-10-20, Jason approved, GOALS priority 8): realistic quarter-mile targets and live replanning, Needle included
+# Coordinator: NEW TASK (2026-10-20, the owner approved, GOALS priority 8): realistic quarter-mile targets and live replanning, Needle included
 
 Problem: on long segments (Diablo Northgate to Junction, ~6.5 mi) the plan puts an unsustainable target on one very steep quarter-mile; the rider falls short
-and every later target still assumes the original plan, so the rider stays behind. Full spec from Jason: Steps 1 to 5 (summarised below). **Before coding,
+and every later target still assumes the original plan, so the rider stays behind. Full spec from the owner: Steps 1 to 5 (summarised below). **Before coding,
 each session posts a short plan and flags conflicts with the existing architecture.**
 - **Phone session (plan side, Steps 1 to 3):** (1) Reproduce first from the stored ride history for the segment: per quarter-mile print grade, planned watts,
   and actual watts on each past ride (including the 41:40 PR); confirm which quarter-miles are targeted above anything ever held. Print locally only; **do not
@@ -348,7 +356,7 @@ each session posts a short plan and flags conflicts with the existing architectu
   `processTelemetry`, 5 s timeout with fallback) assists only: estimate sustainable power and fade from the live stream and suggest the adjustment size and a short cue,
   clamped to the ceilings and smoothing limits; unavailable, slow or invalid means silent fallback to the deterministic replanner. Note that the README says Needle
   initialisation is disabled until a model bundle and digest are recorded: say what is missing and whether the Karoo can run it today. If Needle cannot do this
-  role, tell Jason what it can do and propose the closest fit before building. The deterministic engine stays the authority.
+  role, tell the owner what it can do and propose the closest fit before building. The deterministic engine stays the authority.
 - Acceptance: no target above its ceiling on Diablo; replaying the PR ride through the replanner adapts targets after the mid-segment pitch; a 20 W shortfall on
   the hard pitch redistributes without breaking ceilings or the step limit; short segments and thin history use the fallback; unit tests for ceiling, redistribution,
   replanning; existing behaviour unchanged. Order: phone Step 1 first (confirms the diagnosis), contract note second, Karoo replanner third.
@@ -357,7 +365,7 @@ each session posts a short plan and flags conflicts with the existing architectu
 
 `gritmapConcurrentSegments=true` now opts into independent sessions/persistence for up to four overlapping segments, plan-first headline/handover, fifth-segment diagnostics, shared H10 lifetime, secondary Performance line and unplanned elapsed/progress. Final QA: **213 tests, lint and dev build pass**; normal build passes and debug/beta defaults are false. Phone PR basis confirmed as sampled `endTimestampMs - startTimestampMs`, including pauses. **PR import/storage/display still pending; no wire or device changes.** W′ is disabled only in the opt-in path pending a ride-level engine. Code/docs remain uncommitted. Details and limitations: `handoffs/archive/2026-10-20-1532-codex-concurrent-runtime-integrated.md`.
 
-# Coordinator: DECISIONS for multi-segment and PR (2026-10-20, Jason approved)
+# Coordinator: DECISIONS for multi-segment and PR (2026-10-20, the owner approved)
 
 For Codex and the phone session, answering the open points in `docs/KAROO_MULTI_SEGMENT_DESIGN.md`:
 1. **Time basis: use the phone's definition.** A PR on the Karoo means the same thing as the phone's personal record (its fastest accepted
@@ -385,7 +393,7 @@ Commit `67bfc60` contains BLE callback/lifecycle fixes, regression tests and phy
 
 # Requested task: H10 recordings list and export (2026-10-19 22:46)
 
-Jason requested a rider-facing list of saved H10 RR recordings with export for Claude/other analysis tools. **Not implemented.** First confirm whether the October 18 ride has a separate RR artifact: its FIT has regular Polar ANT+ BPM but no RR/HRV or DFA alpha-1 fields; private GritMap storage could not be inspected using run-as on the non-debuggable beta. Preserve original recordings and app data; do not commit personal ride data. Supports the H10 parallel track without blocking the beta loop. Details and requested scope: `handoffs/archive/2026-10-19-2246-codex-h10-recordings-export-request.md`.
+the owner requested a rider-facing list of saved H10 RR recordings with export for Claude/other analysis tools. **Not implemented.** First confirm whether the October 18 ride has a separate RR artifact: its FIT has regular Polar ANT+ BPM but no RR/HRV or DFA alpha-1 fields; private GritMap storage could not be inspected using run-as on the non-debuggable beta. Preserve original recordings and app data; do not commit personal ride data. Supports the H10 parallel track without blocking the beta loop. Details and requested scope: `handoffs/archive/2026-10-19-2246-codex-h10-recordings-export-request.md`.
 
 # Handoff: installed-segment skip log-verified (2026-10-19 22:41)
 
@@ -393,11 +401,11 @@ Karoo reconnected. Repeat transfer at 22:33:57 used MTU 517, read only plan (175
 
 # Handoff: repeat Bluetooth transfer confirmed (2026-10-19 22:34)
 
-Jason confirmed a successful resend after the two new-segment tests. Karoo was unavailable to ADB, so `existing=true` / `ok_segment_existing` is not independently log-verified yet. **Still open:** live H10 RR continuity, deliberate reconnect/resume, and repeat-transfer log confirmation. No source changes this turn; previous implementation/handoffs remain uncommitted. Details: `handoffs/archive/2026-10-19-2234-codex-repeat-transfer-confirmed.md`.
+the owner confirmed a successful resend after the two new-segment tests. Karoo was unavailable to ADB, so `existing=true` / `ok_segment_existing` is not independently log-verified yet. **Still open:** live H10 RR continuity, deliberate reconnect/resume, and repeat-transfer log confirmation. No source changes this turn; previous implementation/handoffs remain uncommitted. Details: `handoffs/archive/2026-10-19-2234-codex-repeat-transfer-confirmed.md`.
 
 # Handoff: two physical Bluetooth transfers passed (2026-10-19 22:23)
 
-Jason confirmed two separate segments worked on `0.10.44-ble2`/69. Karoo logs confirm both imports/receipts succeeded with MTU 517: 4792 B segment in 5.331 s total; 10961 B segment in 8.689 s total. Both were missing-segment paths; no reconnect logged. **Still open:** resend an installed segment (`ok_segment_existing`), reconnect/resume validation, and live H10 RR continuity. Changes remain uncommitted; next public code >=70. Details: `handoffs/archive/2026-10-19-2223-codex-two-ble-transfers-passed.md`.
+the owner confirmed two separate segments worked on `0.10.44-ble2`/69. Karoo logs confirm both imports/receipts succeeded with MTU 517: 4792 B segment in 5.331 s total; 10961 B segment in 8.689 s total. Both were missing-segment paths; no reconnect logged. **Still open:** resend an installed segment (`ok_segment_existing`), reconnect/resume validation, and live H10 RR continuity. Changes remain uncommitted; next public code >=70. Details: `handoffs/archive/2026-10-19-2223-codex-two-ble-transfers-passed.md`.
 
 # Handoff: BLE callback fix installed; physical retest pending (2026-10-19 21:50)
 
@@ -405,7 +413,7 @@ Jason confirmed two separate segments worked on `0.10.44-ble2`/69. Karoo logs co
 
 # Handoff: Bluetooth test build installed (2026-10-19)
 
-`0.10.44-ble1`/68 is now installed in place on Jason’s Karoo 3. APK hash/signature match the coordinator handoff; the existing segment, pacing plan, settings, first-install timestamp, and data inode survived. App launch succeeds; Bluetooth Inbox is Ready. **Installation is complete; the three physical transfer/H10 tests below remain open.** Next public release must use versionCode >=69. Details: `handoffs/archive/2026-10-19-2128-codex-ble-test-installed.md`.
+`0.10.44-ble1`/68 is now installed in place on the owner’s Karoo 3. APK hash/signature match the coordinator handoff; the existing segment, pacing plan, settings, first-install timestamp, and data inode survived. App launch succeeds; Bluetooth Inbox is Ready. **Installation is complete; the three physical transfer/H10 tests below remain open.** Next public release must use versionCode >=69. Details: `handoffs/archive/2026-10-19-2128-codex-ble-test-installed.md`.
 
 # Coordinator: BUG for Codex, first physical BLE test failed (2026-10-19 21:40)
 
@@ -419,7 +427,7 @@ What the log shows (iPhone private address omitted):
 - **Then the plan phase failed, most likely during that connection's manifest read.** From 28.355 to 28.506 the log has 4 `onConfigureMTU`
   callbacks and 3 `configureMTU` requests within 150 ms (several connections or duplicate MTU callbacks), then service discovery completes
   at 28.522. The manifest read response (op 11, 475 B) arrives at 28.641, and a write response (op 19) at 28.729, then `ble_transfer_failed`
-  at 28.753. Jason's iPhone showed **"Your Karoo couldn't use this transfer. Try again"**, which means the Karoo's `catch` block
+  at 28.753. the owner's iPhone showed **"Your Karoo couldn't use this transfer. Try again"**, which means the Karoo's `catch` block
   delivered a **`rejected` receipt (code `other`)** over the current connection: the 28.729 write is that receipt, and the exception
   was thrown just before it, i.e. the awaited manifest read was satisfied by a stray event before its real response arrived.
   So the receipt path is verified on hardware (phone parsed and displayed it). The error is also mislabeled `other`.
@@ -442,14 +450,14 @@ Fix direction (your code, your call):
 - On close: call `disconnect()`, wait for `STATE_DISCONNECTED` (with a short timeout), then `close()`.
 - Add a unit test with a fake GATT that delivers a duplicate MTU callback during a read, and one that disconnects mid-chunk.
 
-Re-test when fixed, in order: segment already on the Karoo; a missing segment; one with the H10 connected. Jason's iPhone has build 5.
+Re-test when fixed, in order: segment already on the Karoo; a missing segment; one with the H10 connected. the owner's iPhone has build 5.
 The phone session's evidence of the phone side: `handoffs/archive/2026-10-12-1910-claude-ble-hardware-check.md`. If you build a new test
 APK, use versionCode 69 or higher, never tag it, and install with `adb install -r`.
 
 # Coordinator: READY for Codex (2026-10-20 09:30): multi-segment tracking and PR display. Unblocked, start with the design note
 
-Jason decided (see `docs/GOALS.md` priority 7 and the proposal `docs/KAROO_MULTI_SEGMENT_AND_PR.md`, on `origin/main`): the Karoo must not
-be limited to one segment at a time. **The BLE fix is committed and physically verified (Jason confirmed 2026-10-20), so this is unblocked. It is still post-beta: do not change the beta Karoo build for it, and do not touch the BLE contract without the phone session.**
+the owner decided (see `docs/GOALS.md` priority 7 and the proposal `docs/KAROO_MULTI_SEGMENT_AND_PR.md`, on `origin/main`): the Karoo must not
+be limited to one segment at a time. **The BLE fix is committed and physically verified (the owner confirmed 2026-10-20), so this is unblocked. It is still post-beta: do not change the beta Karoo build for it, and do not touch the BLE contract without the phone session.**
 - Track every segment you start, concurrently, each with its own recorded attempt; completing one must not reset the others.
 - Headline rule: the active segment that has a plan, else the one that ends first; a small secondary line for the others.
 - No plan on the headlined segment: show the rider's PR with live ahead/behind; no PR yet: progress and elapsed time only.
@@ -466,7 +474,7 @@ Read `docs/GOALS.md` first. Status: iPhone build 7 is in external TestFlight rev
 release is `karoo-beta-0.10.44` (Karoo 3 only). Your v2 BLE reader (`99d1878`, with its handoff `abdbfb9`) passed coordinator QA:
 196/196 JVM tests, lint and build, and it matches `docs/BLE_DIRECT_TRANSFER_CONTRACT.md`.
 
-**Task 1: install the BLE test build on Jason's Karoo, then run the physical test with him.**
+**Task 1: install the BLE test build on the owner's Karoo, then run the physical test with him.**
 - The coordinator has already built it from committed `abdbfb9`, with no source changes:
   `./gradlew :app:assembleBeta -PgritmapBetaSigningProperties=<beta-signing.properties> -PgritmapVersionCode=68
   -PgritmapVersionName=0.10.44-ble1 -PgritmapDirectBleV2=true` (JDK 17).
@@ -475,7 +483,7 @@ release is `karoo-beta-0.10.44` (Karoo 3 only). Your v2 BLE reader (`99d1878`, w
 - Install **in place**: `adb install -r` (or Companion). Never uninstall or clear data. Confirm `0.10.44-ble1`/68 via dumpsys,
   and confirm the GritMap library and settings survived.
 - Do **not** tag or publish this as a release. It is a dev-flagged test build only.
-- Physical test with Jason (iPhone has internal TestFlight build 5, `production-ble-internal`):
+- Physical test with the owner (iPhone has internal TestFlight build 5, `production-ble-internal`):
   1. a plan for a segment already on the Karoo (expect receipt `ok_segment_existing`);
   2. a plan for a segment the Karoo doesn't have (segment over BLE, then `ok`);
   3. one transfer during a live H10 connection: check RR continuity.
@@ -483,7 +491,7 @@ release is `karoo-beta-0.10.44` (Karoo 3 only). Your v2 BLE reader (`99d1878`, w
   match the contract. The phone session's hardware check is `handoffs/archive/2026-10-12-1910-claude-ble-hardware-check.md`.
 
 **Version code rule:** this test build uses code 68, so **the next public Karoo release must use versionCode 69 or higher**, or it
-won't install over the test build on Jason's Karoo.
+won't install over the test build on the owner's Karoo.
 
 **Still open from before:** confirm the rider-facing Karoo strings say "section(s)" for pacing-plan stretches.
 
@@ -526,7 +534,7 @@ Karoo work was started. Details:
 
 # Decision: direct BLE approved in principle; freeze Karoo protocol work until contract review
 
-Jason approved the recommendation on 2026-10-12 to use Claude's direct-Bluetooth v2 design instead
+the owner approved the recommendation on 2026-10-12 to use Claude's direct-Bluetooth v2 design instead
 of building the hosted capsule service now. The private plan always travels over BLE. The public
 segment is skipped when its fingerprint is already installed, otherwise fetched from Open Segments
 when available or transferred over BLE as the offline fallback. The existing bounded, user-triggered
@@ -554,7 +562,7 @@ milestones are still uncommitted. Details:
 
 # Handoff: Karoo large visual fields share the Pacing Profile hierarchy
 
-Using Jason's five supplied device screenshots, Cardiac Drift, Power Balance, Segment Performance,
+Using the owner's five supplied device screenshots, Cardiac Drift, Power Balance, Segment Performance,
 and Pacing Coach now match Pacing Profile's header scale and information hierarchy. Pacing Profile
 itself changed only its top-left title to `GM PACING PROFILE`. Exact typography changes are audited
 in `docs/KAROO_LARGE_FIELD_TYPOGRAPHY_AUDIT.md`. Regenerated 480 px previews were inspected with no
@@ -586,7 +594,7 @@ before release. Details: `handoffs/archive/2026-10-09-1630-codex-ble-transfer-ca
 
 # Handoff: approved GritMap icon installed on the Karoo
 
-The Karoo launcher now uses Jason's approved dark bike-and-arrow GritMap icon while notifications
+The Karoo launcher now uses the owner's approved dark bike-and-arrow GritMap icon while notifications
 and data-field selectors retain the purpose-built monochrome extension glyph. Debug build and lint
 pass; a signed/minified beta build also passes and was installed in place on the connected Karoo
 without clearing app data. The work is uncommitted and is not yet in the public 0.10.43 asset.
@@ -603,7 +611,7 @@ Commit `2dad59a` adds the root public-beta README, Hammerhead Companion/ADB inst
 
 # Handoff: adaptive cardiac guidance and signed 0.10.43 beta candidate
 
-Karoo commit `d38057f` makes `GM Cardiac Drift` progressively useful for short, medium, and long efforts; adds qualified H10 alpha-1 context to long efforts; tightens RR qualification to approximately two clean minutes at 95% validity; and changes rider-facing pacing-plan wording from zones to **sections** without changing shared contracts. A signed `0.10.43-beta`/code 66 candidate passed 183/183 JVM tests, lint, minified beta build, signature/version verification, and is staged at `/Users/frason/Documents/CS Agent Team for ChatGPT/GritMap Beta Builds/gritmap-karoo-0.10.43-beta.apk` (SHA-256 `bfd21b83b5bbabdb95128329499b9f9ac6be9abea258af47969ab5f70f0005a2`). It is not installed; the physical Karoo remains on `0.10.42-beta`. Next: install in place, inspect previews, then perform the checklist in `docs/H10_RIDE_VALIDATION_CHECKLIST.md`. Details: `handoffs/archive/2026-10-08-2252-codex-adaptive-cardiac-01043.md`.
+Karoo commit `d38057f` makes `GM Cardiac Drift` progressively useful for short, medium, and long efforts; adds qualified H10 alpha-1 context to long efforts; tightens RR qualification to approximately two clean minutes at 95% validity; and changes rider-facing pacing-plan wording from zones to **sections** without changing shared contracts. A signed `0.10.43-beta`/code 66 candidate passed 183/183 JVM tests, lint, minified beta build, signature/version verification, and is staged at `/Users/USER/Documents/CS Agent Team for ChatGPT/GritMap Beta Builds/gritmap-karoo-0.10.43-beta.apk` (SHA-256 `bfd21b83b5bbabdb95128329499b9f9ac6be9abea258af47969ab5f70f0005a2`). It is not installed; the physical Karoo remains on `0.10.42-beta`. Next: install in place, inspect previews, then perform the checklist in `docs/H10_RIDE_VALIDATION_CHECKLIST.md`. Details: `handoffs/archive/2026-10-08-2252-codex-adaptive-cardiac-01043.md`.
 
 # Coordinator: current phone task (2026-10-09 00:50, sent to the GritMap MVP session)
 
@@ -636,19 +644,19 @@ Generated plans now respect per-quarter-mile ceilings (best power held +4%, else
 
 # Handoff: build every GritMap screen as editable Figma frames (task for a fresh session) (2026-10-20 14:40 PDT)
 
-Jason wants to redesign the app and cut unnecessary screens, with every screen placed in Figma (file `cyaMDDfLBKFc4NNK1SUUnb`, GritMap-Screens). The previous session had no Figma tools because Figma was authorized after it started, so nothing is built yet. A new session in this project should read `docs/GOALS.md`, load the `figma-use` skill, and build the 17 routed screens plus onboarding and the duplicate modal as editable frames with tokens from `src/theme`, using simulator screenshots for maps. No phone-app or Karoo change. Details and the full screen/file table: `handoffs/archive/2026-10-20-1440-claude-figma-screens-handoff.md`.
+the owner wants to redesign the app and cut unnecessary screens, with every screen placed in Figma (file `cyaMDDfLBKFc4NNK1SUUnb`, GritMap-Screens). The previous session had no Figma tools because Figma was authorized after it started, so nothing is built yet. A new session in this project should read `docs/GOALS.md`, load the `figma-use` skill, and build the 17 routed screens plus onboarding and the duplicate modal as editable frames with tokens from `src/theme`, using simulator screenshots for maps. No phone-app or Karoo change. Details and the full screen/file table: `handoffs/archive/2026-10-20-1440-claude-figma-screens-handoff.md`.
 
 # Handoff: BLE direct transfer verified on a real iPhone (phone side); Karoo side still open (committed locally, not pushed)
 
-On Jason's iPhone 15 Pro Max (TestFlight build 5, `production-ble-internal`) a macOS central read the manifest, walked the plan (1360 B), segment (4792 B) and rider (114 B) chunks with every SHA-256 verified, wrote an `imported` receipt, and the phone showed "Imported on your Karoo". Also passed by hand with LightBlue: foreground-only advertising (gone ~10 s after backgrounding), no local name, GATT layout, manifest (475 B, v2), a wrong-id receipt refused, and advertising continuing after a manifest read. **Not run on hardware:** second central refused (needs a different device), reconnect-and-resume, MTU and chunk timings. No contract mismatch found; no code changed. The 30 s idle limit is painful for manual GUI testing (fine for a Karoo). Next: Codex implements the Karoo central. Details: `handoffs/archive/2026-10-12-1910-claude-ble-hardware-check.md`.
+On the owner's iPhone 15 Pro Max (TestFlight build 5, `production-ble-internal`) a macOS central read the manifest, walked the plan (1360 B), segment (4792 B) and rider (114 B) chunks with every SHA-256 verified, wrote an `imported` receipt, and the phone showed "Imported on your Karoo". Also passed by hand with LightBlue: foreground-only advertising (gone ~10 s after backgrounding), no local name, GATT layout, manifest (475 B, v2), a wrong-id receipt refused, and advertising continuing after a manifest read. **Not run on hardware:** second central refused (needs a different device), reconnect-and-resume, MTU and chunk timings. No contract mismatch found; no code changed. The 30 s idle limit is painful for manual GUI testing (fine for a Karoo). Next: Codex implements the Karoo central. Details: `handoffs/archive/2026-10-12-1910-claude-ble-hardware-check.md`.
 
 # Handoff: BLE review fixes P1 to P4 done on the phone (committed locally, not pushed)
 
-`0c02937` fixes the four phone issues from `docs/BLE_DIRECT_TRANSFER_REVIEW.md` with no wire change: a chunk counts as served only when its last byte was delivered (small-MTU safe, so "Sent; check your Karoo" can't appear early); advertising continues for the whole session with owner lock so the Karoo can reconnect and resume; the receipt gets a 60 s window once the plan is served; reads past the end answer `invalidOffset`, and `startTransfer` checks the manifest's byte counts and SHA-256 against the bytes. 66 Swift session checks pass, Release simulator build succeeds, typecheck/web:smoke clean, 649 tests (the batchImport timing test flaked under machine load, passes alone). **Still not run on a physical iPhone**; that needs Jason's go-ahead. PRIVACY.md Bluetooth sentence is for when the dev flag is lifted. Details: `handoffs/archive/2026-10-12-1300-claude-ble-review-fixes-p1-p4.md`.
+`0c02937` fixes the four phone issues from `docs/BLE_DIRECT_TRANSFER_REVIEW.md` with no wire change: a chunk counts as served only when its last byte was delivered (small-MTU safe, so "Sent; check your Karoo" can't appear early); advertising continues for the whole session with owner lock so the Karoo can reconnect and resume; the receipt gets a 60 s window once the plan is served; reads past the end answer `invalidOffset`, and `startTransfer` checks the manifest's byte counts and SHA-256 against the bytes. 66 Swift session checks pass, Release simulator build succeeds, typecheck/web:smoke clean, 649 tests (the batchImport timing test flaked under machine load, passes alone). **Still not run on a physical iPhone**; that needs the owner's go-ahead. PRIVACY.md Bluetooth sentence is for when the dev flag is lifted. Details: `handoffs/archive/2026-10-12-1300-claude-ble-review-fixes-p1-p4.md`.
 
 # Handoff: direct Bluetooth send, phone side (dev-flagged), and v2 contract draft (committed locally, not pushed)
 
-The iPhone can now hand a plan, and the segment only when the Karoo lacks it, straight to the Karoo over Bluetooth with no server (`89938ea`, contract draft `2d64df9`: `docs/BLE_DIRECT_TRANSFER_CONTRACT.md`). Local Expo module `modules/gritmap-ble-peripheral` (CoreBluetooth) serves a manifest, chunked plan/segment reads and a receipt; "Imported on your Karoo" appears only after an `imported` receipt. Hidden unless a dev build, `EXPO_PUBLIC_GRITMAP_BLE_TRANSFER=1` or `dev_ble_transfer`=1; the Wi-Fi/IP send is unchanged. typecheck, 649/649 tests, web:smoke clean; Swift session tests pass; Release simulator build succeeds (simulators have no Bluetooth radio). **Not yet run on a physical iPhone** (no nRF Connect check recorded) and no Karoo implements v2. Codex's to-do/confirm list and Jason's steps: `handoffs/archive/2026-10-12-1210-claude-direct-ble-phone-side.md`.
+The iPhone can now hand a plan, and the segment only when the Karoo lacks it, straight to the Karoo over Bluetooth with no server (`89938ea`, contract draft `2d64df9`: `docs/BLE_DIRECT_TRANSFER_CONTRACT.md`). Local Expo module `modules/gritmap-ble-peripheral` (CoreBluetooth) serves a manifest, chunked plan/segment reads and a receipt; "Imported on your Karoo" appears only after an `imported` receipt. Hidden unless a dev build, `EXPO_PUBLIC_GRITMAP_BLE_TRANSFER=1` or `dev_ble_transfer`=1; the Wi-Fi/IP send is unchanged. typecheck, 649/649 tests, web:smoke clean; Swift session tests pass; Release simulator build succeeds (simulators have no Bluetooth radio). **Not yet run on a physical iPhone** (no nRF Connect check recorded) and no Karoo implements v2. Codex's to-do/confirm list and the owner's steps: `handoffs/archive/2026-10-12-1210-claude-direct-ble-phone-side.md`.
 
 # Handoff: expo-font declared; icons verified in a Release build (committed locally, not pushed)
 
@@ -660,36 +668,36 @@ Share to Open Segments' maintainer section now has a confirmable **Remove saved 
 
 # Handoff: privacy policy (docs/PRIVACY.md) and App Privacy answers (committed locally, not pushed)
 
-Docs only. `docs/PRIVACY.md` is a plain-language, host-agnostic policy checked claim by claim against the phone code and (read-only) the Karoo extension; `docs/BETA_TESTFLIGHT.md` step 9 has the App Store Connect answers (**Data Not Collected, no tracking**). Jason must fill two TODOs
+Docs only. `docs/PRIVACY.md` is a plain-language, host-agnostic policy checked claim by claim against the phone code and (read-only) the Karoo extension; `docs/BETA_TESTFLIGHT.md` step 9 has the App Store Connect answers (**Data Not Collected, no tracking**). the owner must fill two TODOs
 (last-updated date, contact email) and publish it at a public URL. Gaps noted: no in-app way to delete the maintainer GitHub token; the Karoo receiver is unauthenticated (use a trusted network). Evidence table in `handoffs/archive/2026-10-09-0125-claude-privacy-policy.md`.
 
 # Handoff: map first-open guard, real ride fixtures untracked, "sections" wording (committed locally, not pushed)
 
 Phone-only. (1) Blank map on first open: **not reproduced at normal load** (0 of about 46 cold opens before; seen only with the Mac at load 50-90); defensive fix in the shared `RouteMapView` (create the native map after the first non-zero layout, refit when the style loads, rebuild a stalled map); after: 15/15 fresh-install first opens fine; screenshots in `docs/screenshots/map-first-open/`.
-(2) The 6 real FITs and the GPX are untracked and git-ignored (still on disk); their 6 tests skip when absent (630/630 present; 606 + 24 skipped absent); history not rewritten. (3) "Sections" for plan stretches, "zones" only for training zones; exact strings for Codex in the archive entry; JSON key `zones` unchanged. Note: `9283e38`'s message omits the fixture removal (they were staged). Needs Jason's OK to push. Details: `handoffs/archive/2026-10-09-0050-claude-map-first-open-fixtures-sections.md`.
+(2) The 6 real FITs and the GPX are untracked and git-ignored (still on disk); their 6 tests skip when absent (630/630 present; 606 + 24 skipped absent); history not rewritten. (3) "Sections" for plan stretches, "zones" only for training zones; exact strings for Codex in the archive entry; JSON key `zones` unchanged. Note: `9283e38`'s message omits the fixture removal (they were staged). Needs the owner's OK to push. Details: `handoffs/archive/2026-10-09-0050-claude-map-first-open-fixtures-sections.md`.
 
 # Handoff: Attempt Review and Attempt Comparison on the design system; cross-tab Back-button fix (committed locally, not pushed)
 
 Phone-only; Karoo and fixtures untouched. Compare Efforts names both efforts with a picker to swap either, says who was ahead and explains the time-gap chart ("Ahead or behind"); Review Effort renames the match diagnostics (Route followed,
 Furthest off the route, Backtracking, GPS dropouts), explains why GritMap isn't sure, and Confirm/Remove state their consequences (remove confirms in-screen). Charts have spoken summaries; all text is `AppText`.
 **Bug fixed (`c6808dd`):** opening a segment/effort/comparison from Home, Import, Ride detail or after saving a segment left it with no Back button; navigation now keeps the tab's list underneath. typecheck, 628/628 tests, web:smoke clean;
-before/after screenshots in `docs/screenshots/attempts/`. "zones" wording untouched. Needs Jason's OK to push 12 local commits. Details: `handoffs/archive/2026-10-08-2155-claude-attempt-screens-and-back-button.md`.
+before/after screenshots in `docs/screenshots/attempts/`. "zones" wording untouched. Needs the owner's OK to push 12 local commits. Details: `handoffs/archive/2026-10-08-2155-claude-attempt-screens-and-back-button.md`.
 
 # Handoff: Open Segments browse and share on the design system; token-free sharing proposal (committed locally, not pushed)
 
 Phone-only; Karoo untouched. Open Segments cards now show distance and climbing, with offline/busy/empty/error states, pull to refresh and "already added". Share to Open Segments tells strangers
 sharing isn't open yet (beta: maintainer only), warns that shared segments are public and show where you ride, and hides the GitHub-token path behind "I'm the GritMap maintainer". New
 `docs/OPEN_SEGMENTS_SHARING.md` compares token-free options and **recommends a Cloudflare Worker that opens a reviewed pull request (after the beta)**; nothing built. typecheck, 620/620 tests, web:smoke clean;
-before/after screenshots in `docs/screenshots/open-segments/`. Needs Jason: the four decisions at the end of the proposal, and OK to push 9 local commits. Details:
+before/after screenshots in `docs/screenshots/open-segments/`. Needs the owner: the four decisions at the end of the proposal, and OK to push 9 local commits. Details:
 `handoffs/archive/2026-10-08-2105-claude-open-segments-design-sharing-proposal.md`.
 
-# Handoff: phone app is ready for a TestFlight build, short of Jason's Apple credentials (committed locally, not pushed)
+# Handoff: phone app is ready for a TestFlight build, short of the owner's Apple credentials (committed locally, not pushed)
 
 Phone-only; Karoo untouched. Added `eas.json` (development / preview / production; remote autoincrementing build numbers because `ios/` is a committed native
 project), `.easignore`, export-compliance flag, buildNumber, **iPhone-only for the beta** (iPad layouts unchecked), a synthetic review sample ride, and
-`docs/BETA_TESTFLIGHT.md` with the exact steps only Jason can do (enrollment, `eas login`/`init`, App Store Connect app, first build/submit, external group, Beta App
+`docs/BETA_TESTFLIGHT.md` with the exact steps only the owner can do (enrollment, `eas login`/`init`, App Store Connect app, first build/submit, external group, Beta App
 Review notes about the Karoo, privacy policy URL). Verified: typecheck, 617/617 tests, web:smoke, `expo export --platform ios`, and an unsigned Release simulator build
-that launches into first-run onboarding with no dev UI. Nothing needing Jason's credentials was run. **Needs Jason's attention:** the PUBLIC repo contains 6 real ride FITs
+that launches into first-run onboarding with no dev UI. Nothing needing the owner's credentials was run. **Needs the owner's attention:** the PUBLIC repo contains 6 real ride FITs
 in `fixtures/fit/` (personal GPS); and OK to push 7 local commits. Details: `handoffs/archive/2026-10-08-2010-claude-testflight-readiness.md`.
 
 # Handoff: Define Segment redesigned; progress-over-time load 7.5 s to ~0.05 s; text size reflows live (committed locally, not pushed)
@@ -699,7 +707,7 @@ labels/values, inline errors, loading/no-GPS/error states). Progress over time: 
 before and **45-83 ms** after (the interpolation rebuilt its observation list on every step; now cached per array; Compare Attempts
 benefits too). Changing text size while the app is open now reflows design-system text without a relaunch (`useFontScale` keyed
 `AppText`); screens still using raw `Text` don't yet. typecheck, 617/617 tests, web:smoke clean. Before/after screenshots:
-`docs/screenshots/define-segment/`. "zones"/"sections" wording untouched per the hold. Still needs: Jason's OK to push 5 local commits; a person's
+`docs/screenshots/define-segment/`. "zones"/"sections" wording untouched per the hold. Still needs: the owner's OK to push 5 local commits; a person's
 VoiceOver pass. Details: `handoffs/archive/2026-10-08-1930-claude-define-segment-perf-textsize.md`.
 
 # Handoff: beta-loop screens moved onto the design system; Home safe-area fix (committed locally, not pushed)
@@ -711,7 +719,7 @@ Type and VoiceOver labels. Home no longer draws under the status bar and its Cha
 commit). Before/after simulator screenshots on demo data: `docs/screenshots/redesign/`. typecheck, 616/616 tests and
 web:smoke clean. Copy and behavior changes (alerts to on-screen results, duplicate prompt, "zones" to "sections", Send to
 Karoo button says "Send route to Karoo") are listed in the archive. **Not yet done:** a person's VoiceOver pass; Attempt
-Review/Comparison, Define Segment, Publish, Open Segments still use the old style. Needs Jason's OK to push
+Review/Comparison, Define Segment, Publish, Open Segments still use the old style. Needs the owner's OK to push
 `be21320`, `3b3e590`, `078e131`. Details: `handoffs/archive/2026-10-08-1550-claude-beta-loop-design-migration.md`.
 
 # Handoff: signed Karoo beta 0.10.42 is tagged, installed and documented
