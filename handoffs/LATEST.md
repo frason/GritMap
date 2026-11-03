@@ -1,3 +1,25 @@
+# Coordinator: KAROO ASK, SEGMENTS AND PACE MARKER ON THE KAROO MAP (2026-11-03, requested by Jason). Design/feasibility first, no device install
+
+**Jason's ask:** track segments on the Karoo map: show each segment as a coloured line on the map, plus the pace marker on the map. Fits `docs/GOALS.md` (Karoo owns live execution and "the map pacer"); not a conflict.
+
+**What already exists (verify, do not assume):** `apps/karoo/app/src/main/java/com/gritmap/karoo/karoo/PacerMapLayer.kt` (+ `PacerMapLayerTest.kt`) already sends Karoo map effects: a `ShowPolyline` of the matched segment (id SEGMENT_POLYLINE_ID, SEGMENT_COLOR, width 5) and a pacer `Symbol.Icon` (`gm_map_pacer`) at the target-progress point, only while the match status is ACTIVE; it hides both otherwise. `docs/NEXT_RIDE_TEST_CHECKLIST.md` lists "Map pacer" as an unchecked item, so it may never have been validated on a real ride. The Karoo extension API (`MapEffect`: ShowPolyline/HidePolyline/ShowSymbols/HideSymbols, ids, colour, width) is vendored in `apps/karoo/vendor/karoo-ext`.
+
+**What Jason wants beyond that (DRAFT, TO CONFIRM with Jason):**
+1. The segment line visible BEFORE the rider reaches it (upcoming planned segments on or near the route), not only once the attempt is active; clearly different treatment for upcoming, active and already-ridden segments.
+2. Several segments at once where they exist (a stacked/multi-segment ride), each with its own id; hide the ones that are far away to keep the map readable and the device fast.
+3. A pace marker that is easy to tell apart from the rider's own position, moving along the segment at the planned pace, so the rider sees ahead or behind on the map (same target as the Pacing dot in the Karoo data fields; one source of truth).
+4. Colours must stay readable on Karoo map styles (light and dark) and not hide the route line; white/black outline or casing if needed.
+
+**Please do (read-only/design first, short report to Jason):**
+- Audit the current map layer against the above: what shows today, when, and what it reads from (does it need segments the rider is NOT matched to yet? is there an upcoming-segment list in state?). Say whether the vendored Karoo API allows several polylines and symbols at once, line style (colour/width only, or dashes/casing?), maximum counts, update frequency and any known performance or battery cost.
+- Propose the behaviour: which segments to draw and when (draft: next planned segment within 2 km along the route plus the active one; ridden ones faded or hidden), the colour per state (propose, within Karoo contrast), marker design and size, and how it behaves when GPS is lost or the rider leaves the route.
+- Say what the pace marker should show when the plan is replanned (live replanner) so the map and the data field never disagree.
+- Tests: extend `PacerMapLayerTest` for the new states with synthetic data. No real GPS in fixtures.
+- Real-world check: Jason's supervised Diablo ride is the first chance (Saturday at earliest, Bluetooth only, diagnostic74 already approved for that one ride). Adding map behaviour needs a NEW approved install; do not install anything on the Karoo or push without Jason's yes in your chat. Device stays read-only otherwise. Do not touch the uncommitted work of other sessions.
+- If the map layer changes could affect live segment matching or the pacer, say so before building. The map is display only; it must not alter engine state.
+
+**Open decisions for Jason (answer in the coordinator chat):** which segments to show (all on route, next only, within what distance); colour change only vs a distinct upcoming/active/done scheme; should the pace marker also show the rider's gap in seconds next to it; whether this waits for the Karoo screens redesign (`docs/KAROO_SCREEN_SPECS.md` on `claude/gritmap-karoo-screens-b47518`, where the pacing dot colour is also still open) so the map marker and the data field dot share one design.
+
 # Coordinator: PHONE BACKLOG ADDITION, FIT IMPORT FROM THE FILES APP / iCLOUD DRIVE (2026-11-02, Jason approved adding to backlog and GOALS)
 
 **Backlog, not beta-blocking, not scheduled.** Check whether the phone's existing manual FIT import already accepts files from the iOS Files picker (iCloud Drive, other providers); if not, add it. This also covers FIT files from other head units and Hammerhead dashboard exports. Phone session: confirm current behaviour read-only and report, do not build until Jason schedules it. The Karoo-to-cloud drop and Intervals.icu import ideas are recorded under "Later" in `docs/GOALS.md` (Phone and Karoo sharing); Bluetooth stays the main path.
