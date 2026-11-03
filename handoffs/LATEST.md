@@ -1,3 +1,11 @@
+# Original Karoo FIT supplied; drift replay confirmed privately (2026-11-03)
+
+Private recording analysis was performed locally. Its contents, timestamps, identity, metadata and derived findings are omitted from public history. It cannot establish the live field, active-attempt boundaries or callback freshness. The public engineering evidence is the synthetic regression/control behavior described elsewhere; private artifacts remain outside Git.
+
+Original-file request is now satisfied; do not ask again. Exact visible field remains Not sure, and native extension callback freshness/active-segment boundaries are not in FIT. No GritMap readiness state established from other named developer fields. Private report/metrics/traces stay outside Git at [private local analysis location omitted]. Public methods/limits: `docs/KAROO_CARDIAC_DRIFT_CALIBRATION_REVIEW.md`; archive `handoffs/archive/2026-11-03-karoo-original-fit-drift-replay.md`.
+
+Proposed next correction: explicit readiness reasons/useful HR response, preserve quality gates; not implemented. Original confirms eligibility/reset behavior is a credible explanation, not which field/state was live. Documentation local only pending push authorization. Earlier unresolved-provenance/request-original notes are historical. Main/phone untouched; last known76/Room4 remains historical.
+
 # Cardiac Drift: supplied FIT analyzed locally, tracker replay completed (2026-11-02)
 
 Private recording analysis was performed locally. Its contents, timestamps, identity, metadata and derived findings are omitted from public history. It cannot establish the live field, active-attempt boundaries or callback freshness. The public engineering evidence is the synthetic regression/control behavior described elsewhere; private artifacts remain outside Git.
