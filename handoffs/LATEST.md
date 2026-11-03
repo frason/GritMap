@@ -1,3 +1,11 @@
+# Nearby Segments proposal READY; no field built (2026-11-03)
+
+Read main01ff851 and completed requested design note: `docs/KAROO_NEARBY_SEGMENTS_PROPOSAL.md`; evidence `handoffs/archive/2026-11-03-karoo-nearby-segments-proposal.md`. Recommended v1: new GM Nearby Segments, installed starts within2km, direct-to-start proximity order, up to4 rows, LAST KAROO and stored GOAL. Missing data —. Local historical times need ~ qualification (current sink end timestamp is async wall time). BEST/PR must never be relabelled LAST; full phone latest history needs future versioned summary/fixtures, not an unrecognized strict-v1 field.
+
+Proposal includes six layout targets, independent state/cache/GPS freshness, bounded work and route-aware follow-up. Vendor navigation route API exists, but current GritMap does not use it for upcoming order. No matcher/pacer/concurrency changes; future map work can share discovery. No tests/build/Figma/device actions for proposal, no code implemented. Scope approval required by main before build; no push without the owner's yes. This documentation stays local. Countdown 6e183d0 remains verified/local/uninstalled; last-known device76/Room4 unchanged, no downgrade to old74/73.
+
+Next: the owner reviews radius/ordering, local-last first versus phone-history scope, and row content. No app code until v1 scope approved. Original ride already supplied; no new FIT request or private data used here. Map-layer and reverse-BLE sync feasibility remain queued. Earlier cardiac completion notes remain current.
+
 # Cardiac Drift countdown IMPLEMENTED; verified locally, NOT installed (2026-11-03)
 
 the owner said **good do that** to the countdown/reason proposal. Runtime **6e183d0** now shows eligible-time remaining, paused/low/missing signal reasons, one BASELINE RESTARTED notice per reset, TIME COMPLETE + blocker at zero if not qualified, BASELINE READY on actual establishment, and HR response for DIFFERENT EFFORT. Smallest field includes status text. Both normal/concurrent service paths carry state; H10 RR unchanged. Numeric tracker gates/calculation unchanged.
