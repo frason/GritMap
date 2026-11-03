@@ -1,3 +1,11 @@
+# Cardiac Drift: supplied FIT analyzed locally, tracker replay completed (2026-11-02)
+
+Private recording analysis was performed locally. Its contents, timestamps, identity, metadata and derived findings are omitted from public history. It cannot establish the live field, active-attempt boundaries or callback freshness. The public engineering evidence is the synthetic regression/control behavior described elsewhere; private artifacts remain outside Git.
+
+Private report/traces: [private local analysis location omitted] and directory siblings; no real ride metrics/GPS/raw data committed. File lacks original device-info/timer-event evidence; export-source clarification pending. Neither exact live field, live callback freshness nor segment boundaries can be inferred. Proposed fix remains explicit readiness/reason + useful HR response, not weakening thresholds. Public method/limits note updated in `docs/KAROO_CARDIAC_DRIFT_CALIBRATION_REVIEW.md`; archive `handoffs/archive/2026-11-02-karoo-drift-private-fit-replay.md`.
+
+No device read, install, phone/main change, public upload or push. Documentation stays local pending push authorization. Earlier claim of no FIT/replay access describes the initial source-review phase, superseded by this user-authorized local analysis. Last verified installation76/Room4 remains historical; nearby-field and reverse-BLE reviews remain queued.
+
 # Cardiac Drift indefinite collection: source review complete (2026-11-02)
 
 Main6826089 Karoo request reviewed; full report `docs/KAROO_CARDIAC_DRIFT_CALIBRATION_REVIEW.md`, dated evidence `handoffs/archive/2026-11-02-karoo-drift-calibration-source-review.md`. Runtime unchanged, no tests/build/device/FIT access. Documentation commit local only pending push authorization.
