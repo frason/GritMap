@@ -181,3 +181,34 @@ Private recording analysis was performed locally. Its contents, timestamps, iden
 
 Two synthetic controls against unchanged tracker code passed: steady200W/140bpm at1Hz reaches baseline180s and zero drift at600s; a200W to300W step can retain null drift at840s because effort differs from the frozen reference. These synthetic values are not rider measurements.
 
+## Approved implementation: countdown and readiness display (2026-11-03)
+
+the owner said **good do that** to the countdown/reset-message proposal. Source implementation at
+`6e183d0` adds `CardiacBaselineState`/`CardiacReadiness` to the tracker snapshot and both service
+paths. The old thresholds, reference, smoothing, paired-time accumulation and resets are unchanged.
+A ceiling-rounded remaining time uses eligible paired time, not wall clock. Low/missing readings
+pause it; an actual existing reset restarts it. Reset notifications count an invalid episode once,
+not once per tick; restart/ready notices last five processed-telemetry seconds.
+
+The field explains missing/low power/HR, insufficient samples, power variation and an effort outside
+the reference range. It retains HR response when a previously established baseline is incomparable,
+without restarting its completed countdown or showing an old drift plot as current. When eligible
+time reaches zero but steadiness/data gates still fail, TIME COMPLETE plus the blocker is shown;
+BASELINE READY is reserved for actual baseline establishment. First five seconds of ready state
+show BASELINE READY, followed by the existing forming/mature semantics. Tiny fields include status
+above timer/HR; full views retain current HR in a footer. Accessibility includes readiness and timer.
+This changes GM Cardiac Drift, not H10 RR calibration or the scope of the per-segment tracker.
+
+Frozen source validation:288 JVM tests, zero failures; debug lint and debug build pass. Seven new
+tracker tests cover countdown rounding/pause, strict reset boundary, one reset per invalid episode,
+notice expiry, time-complete but variable power, steady-ready and incomparable reference; native
+presentation test renders72 synthetic countdown/blocker/restart/ready cases across six sizes and
+light/dark. Existing tracker tests retain numerical behavior checks. No real ride fixtures included.
+Previews/log/evidence at `LOCAL_ARTIFACT_PATH`. Earlier private FIT replay results
+are evidence for the investigation, not a live test of this new implementation.
+
+No device query, install, beta-signed candidate, push or public release. Debug build uses local
+77/0.10.47-cardiac-countdown-preview overrides only; it is not an in-place beta install candidate.
+Actual GPS/sensor cadence still drives state updates, not a newly introduced sampler. No GPS
+callbacks can freeze the existing state; this work does not claim to fix that separate architecture
+issue. Current last-known installed76/Room4 is unchanged, and old downgrade constraints remain.

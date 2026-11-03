@@ -1,3 +1,11 @@
+# Cardiac Drift countdown IMPLEMENTED; verified locally, NOT installed (2026-11-03)
+
+the owner said **good do that** to the countdown/reason proposal. Runtime **6e183d0** now shows eligible-time remaining, paused/low/missing signal reasons, one BASELINE RESTARTED notice per reset, TIME COMPLETE + blocker at zero if not qualified, BASELINE READY on actual establishment, and HR response for DIFFERENT EFFORT. Smallest field includes status text. Both normal/concurrent service paths carry state; H10 RR unchanged. Numeric tracker gates/calculation unchanged.
+
+**288 tests + debug lint + debug build pass** on frozen source;72 synthetic native previews under `LOCAL_ARTIFACT_PATH`. Seven new tracker tests and one rendering/presentation test cover boundaries and indefinite-blocker regressions. Full evidence `handoffs/archive/2026-11-03-karoo-cardiac-countdown-implemented.md`; implementation notes `docs/KAROO_CARDIAC_DRIFT_CALIBRATION_REVIEW.md`.
+
+Local source/docs commits only; no push per main handoff gate, no device query/install, beta-signed APK, public tag/release or main/phone edit. Debug77 is a local test build, NOT an in-place beta candidate. Device last-known76/Room4 unchanged. Review previews next; device candidate requires persistent signing and exact install approval. Earlier read-only/unimplemented notes are superseded only by this explicit countdown source-work authorization. Original FIT already supplied; real ride data remain outside Git. GPS-driven callback/per-segment scope unchanged.
+
 # Original Karoo FIT supplied; drift replay confirmed privately (2026-11-03)
 
 Private recording analysis was performed locally. Its contents, timestamps, identity, metadata and derived findings are omitted from public history. It cannot establish the live field, active-attempt boundaries or callback freshness. The public engineering evidence is the synthetic regression/control behavior described elsewhere; private artifacts remain outside Git.
