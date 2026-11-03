@@ -1,3 +1,11 @@
+# Clarified: review RECENTLY COMPLETED segment results during ride (2026-11-03)
+
+the owner confirmed **yes review its result**. Primary proposal is now GM Recent Segments, newest COMPLETED Karoo attempts first and retained regardless of distance/GPS/live-state clearing. Rows: elapsed result, goal captured for that attempt, AHEAD/BEHIND, optional average power/HR. Up to3 full-field rows proposed, smaller fields1–2. Repeated attempts remain separate. A nearest-start-only list would hide completed results; that prior v1 is superseded as primary, Nearby stays separate optional companion.
+
+Updated `docs/KAROO_NEARBY_SEGMENTS_PROPOSAL.md`; evidence `handoffs/archive/2026-11-03-karoo-recent-results-clarification.md`. Local attempt outcome/averages exist, but correct completion timing/goal snapshot and observable result repository still need implementation; additive metadata migration proposed, not applied. Legacy times qualified~, unknown goals —. No documented field-selection callback found; inline results first, no promise of tap-to-open during ride. No ride UUID in vendor RideState, so recovered view says RECENT, not unproven THIS RIDE.
+
+No runtime change, build/test/device access, push or install. Revised source scope proposal ready for review; user's result-review clarification does not approve deployment. Actual locally detected/completed attempts populate; phone imported results/PR don't silently become recent Karoo results. Countdown 6e183d0 remains verified/local/uninstalled; last-known76/Room4 unchanged. Main/phone untouched. Earlier nearby-only recommendation below is historical.
+
 # Nearby Segments proposal READY; no field built (2026-11-03)
 
 Read main01ff851 and completed requested design note: `docs/KAROO_NEARBY_SEGMENTS_PROPOSAL.md`; evidence `handoffs/archive/2026-11-03-karoo-nearby-segments-proposal.md`. Recommended v1: new GM Nearby Segments, installed starts within2km, direct-to-start proximity order, up to4 rows, LAST KAROO and stored GOAL. Missing data —. Local historical times need ~ qualification (current sink end timestamp is async wall time). BEST/PR must never be relabelled LAST; full phone latest history needs future versioned summary/fixtures, not an unrecognized strict-v1 field.

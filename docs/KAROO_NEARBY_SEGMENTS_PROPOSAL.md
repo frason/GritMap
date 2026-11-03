@@ -1,150 +1,144 @@
-# Nearby Segments field: proposal for approval
+# Recent segment results during a ride; nearby discovery is separate
 
-2026-11-03. Source reviewed at `1869f6e`; coordinator request on fetched main `01ff851`.
-Proposal only: no app changes, build, device access or wire change. Main explicitly says
-“Do NOT build until the owner approves.” This note is the handoff to the Karoo design session.
+2026-11-03. Revised after the owner clarified: **review the result of a segment just completed during
+the ride**, not find its start to ride again. This supersedes the earlier nearest-start-only v1.
+Source reviewed at `47e92e2`; original coordinator request on main `01ff851`. Proposal, no app build
+or device access. Earlier proposal is preserved in Git and its immutable dated handoff.
 
-## Recommended first version
+## Confirmed use case and proposed first field
 
-Add **GM Nearby Segments**, independent of the active pacing fields. Show segments already
-installed on this Karoo within **2 km of their START**, nearest first. This is a direct geographic
-distance, not a promise that the start lies ahead on the road. Header: **NEARBY · TO START**;
-first-use/field description: **Installed segments · direct distance to start**. Miles/feet or km/m
-follow Karoo preferences. No account/network/public-catalog lookup or automatic download.
-
-Each row shows name, distance to start, **LAST KAROO** and **GOAL**:
+Primary field: **GM Recent Segments**. Newest COMPLETED GritMap attempt first, regardless of
+current distance to its start. Once a completion is saved, the result appears automatically and
+remains available after the next segment starts. Visiting this riding data page shows the results
+without leaving the ride. Do not erase them with LiveUiStore.clear() or replace them with proximity
+ranking. Repeated completions of the same segment remain separate results, keyed by attempt ID.
 
 ```text
-NEARBY · TO START
-Climb A                         420 ft
-LAST KAROO ~14:20          GOAL 14:00
+RECENT SEGMENTS
+Climb A                      2 MIN AGO
+TIME 14:20                  GOAL 14:00
+BEHIND 0:20        AVG 230 W · HR 148
 
-Climb B                         0.8 mi
-LAST KAROO —              GOAL  9:30
+Climb B                      9 MIN AGO
+TIME  9:10                  GOAL  9:30
+AHEAD 0:20         AVG 215 W · HR 142
 ```
 
-LAST is the most recent completed effort, **never the personal best**. Display — when unavailable;
-never0:00 or “never ridden” merely because phone history is missing. Missing goal shows —;
-provisional power targets or predicted finishes are not goals. No cycling through rows, scrolling
-or changing existing data-page placements automatically. Rider adds the new field explicitly.
+These names/numbers are synthetic examples, not ride data. Most recent at top; tie-break by attempt
+ID. Keep chronological order; no radius, plan priority or fastest-time sort. This is a list of attempts,
+not a deduplicated list of segment definitions. No automatic page switching or rotating results.
 
-## Ordering and route-aware follow-up
+Rows show name, completed-ago context, elapsed time, the goal USED FOR THAT ATTEMPT and explicit
+AHEAD/BEHIND/ON GOAL. Use elapsed time including pauses, not moving time. Define gap as actual
+minus goal; display words rather than unexplained sign. ON GOAL means equal at displayed-second
+precision, not the provisional2s live-forecast deadband. Missing goal → NO GOAL with no gap;
+missing average sensor data → —, never0 or a borrowed live value. Average power/HR are secondary
+and omitted in compact cells. Full accessible description retains qualifiers and completion time.
+PR/BEST is separate and is not a substitute for this result. Goal is not today's changed plan,
+current predicted finish, or latest live-replanner estimate.
 
-For v1, direct-to-start ordering is well-defined without a selected route. Calculate exact geographic
-distances from fresh GPS, filter2 km, order by20 m distance buckets to prevent jitter; retain prior
-order within the same bucket, then stable fingerprint tie-break. Actual displayed distance remains
-measured distance. No plan/goal priority hidden in the ranking. No heading-based exclusion while
-stationary; nearby does not mean the segment's direction has been confirmed. Started attempts
-leave this upcoming-start list and remain in existing pacing fields; no headline/matcher change.
-After completion, keep them eligible again rather than hiding a nearby start needed for repeats.
+## What “would populate” means
 
-**Along-route distance is more useful for “what is next while riding,” but is a different claim.**
-Vendored `OnNavigationState.NavigatingRoute` exposes routePolyline, reversed and rejoin information
-(`KarooEvent.kt:335`). GritMap currently does not observe/use it for an upcoming-segment index;
-LiveUiState.routeProfile is the matched SEGMENT, not the selected navigation route. A later mode
-can say **UPCOMING · ON ROUTE** only after projecting rider and segment entry/direction onto a
-reliable selected route. Handle loops/repeated passes, reversed routes, off-route/rejoin and
-ambiguous projection explicitly. Fall back to visibly labelled NEARBY direct distance, never silently
-mix miles along route with direct miles. Share that future upcoming-start service with the separate
-map-line proposal on main; neither the list nor map may alter matching or pacer calculations.
+Yes for an attempt the **Karoo GritMap matcher actually detected and finalized as COMPLETED**.
+It does not mean every geographical segment crossed is recorded. Current public/default behavior
+tracks one headline attempt; concurrency is OFF and overlapping starts may not produce attempts.
+This field must not silently change those engine policies. Abandoned/partial/in-progress attempts
+are not completed results. It cannot reconstruct a missed result simply because GPS passed nearby.
 
-## Available data and the important limits
+A ride imported into the phone does not automatically return its results to Karoo. Phone imported
+recent history would need a new approved, versioned transfer summary; existing strict segmentRecord
+v1 is BEST only. No phone/wire change is needed to populate newly completed local Karoo results.
+Native HR/FIT presence also does not establish an H10 RR result; do not add implied RR analysis.
 
-Source paths below under `apps/karoo/app/src/main/java/com/gritmap/karoo/`:
+## Persistence and timing prerequisites
 
-| Content | Exists now | Implementation needed |
-|---|---|---|
-| Identity/name/start | SegmentEntity fingerprint/name + reference pointIndex0; SegmentDao.segmentStartsInBounds | Batched cached start summaries for all installed segments; no per-tick loading of full polylines |
-| Stored goal | PacingPlanEntity.targetFinishTimeSeconds; baseline DAO | Join the current baseline with matching segment fingerprint; null/nonpositive → —; retain explicit goal, not replan estimate |
-| Latest LOCAL completion | segment_attempts has outcome/start/end/segmentId | Add a batched latest-completed query/Flow; choose by endedAtMs then deterministic id; exclude active/abandoned/invalid durations |
-| Phone's latest completion | Not transferred | New versioned/capability-gated history summary; separate approved work |
-| PR | segment_records.bestDurationSeconds, diagnostic/default-off | It is BEST, not LAST; do not relabel it or enable its flag for this field |
+Current code already has segment_attempts with startedAtMs/endedAtMs, outcome, segmentId,
+pacingPlanId and average power/HR/cadence/speed (`data/Entities.kt:78`). RoomAttemptEventSink
+finalizes COMPLETED and persists those averages (`service/RoomAttemptEventSink.kt:36`). Missing:
+latest-completed batched observable query, stable result display state and completion-goal snapshot.
 
-Local elapsed time is approximately `(endedAtMs-startedAtMs)/1000`, including pauses. The current
-RoomAttemptEventSink writes end time using System.currentTimeMillis() inside the asynchronous
-macro-event sink, so older rows are not precise crossing timestamps. Show **~** for these local
-LAST values; do not assert equality with phone/FIT timing. For precise future local times, separately
-capture the matched final telemetry timestamp at completion and persist that timing basis; old
-rows still need provenance rather than being silently reinterpreted. Completed local matches can
-also differ from phone acceptance/boundaries. HistoricalAttemptSampleEntity supplies physiology
-samples, not a reliable phone latest-attempt summary.
+The sink currently sets endedAtMs from System.currentTimeMillis() inside the asynchronous event
+callback, not from the final matched telemetry timestamp. Pacing plan ID alone is not a reliable
+historical goal snapshot: replacing/deleting plans can make lookup missing or change its meaning.
 
-**V1 therefore needs no phone change if labelled LAST KAROO.** It cannot populate an all-device
-LAST from phone imports. The normal installed source keeps PR/record import flags OFF, and the
-strict v1 segmentRecord carries only the best effort, not the latest. Do not add unrecognized fields
-to it, enable flags, or make phone history a hidden requirement for using nearby discovery.
+For new completions, capture an immutable result snapshot AT completion before clearing live UI:
+attempt ID, fingerprint/name context, matched start/end telemetry timestamps or exact sampled
+elapsed duration, goalFinishSecondsAtCompletion, completion timestamp and average sensor values.
+Persist completion/result metadata atomically, then refresh a separate RecentResultsStateFlow.
+Recommend additive nullable columns on the attempt row for sampled end/elapsed time and goal
+snapshot, with explicit timing/source version (a new Room migration, likely4→5, to be reviewed
+with implementation). Do not rewrite old attempts or manufacture goal snapshots from current plans.
 
-For a later unified LAST, propose a separately versioned, owner/fingerprint-bound optional history
-summary: schemaVersion, riderId, segmentFingerprint, latestCompletedAttempt(durationSeconds,
-completedAtMs, opaque attempt key, sampled-elapsed timing basis). These are DRAFT fields, not a
-new wire contract. Phone selects its latest accepted/manually approved completed effort. Compare
-valid same-owner/fingerprint local and imported attempts by completion time, retain source labels;
-handle duplicates, older transfers, revoked attempts/explicit empty snapshots and clock conflicts.
-Never substitute bestDurationSeconds when no latest exists. Strict fixtures, ownership/revision
-rules and a shared contract are required before either side sends it. BLE v2's512-byte manifest
-must not grow; coordinate this resource with the separately planned chunked-manifest/PR milestone.
-No raw ride GPS/HR/power or account identity is needed for this optional summary.
+Older rows can show approximate elapsed duration with **~**, and goal/gap unknown unless exact
+historical goal provenance is available. Existing row deletion/name-update policy must be deliberate:
+snapshot the displayed segment name/fingerprint to avoid a renamed segment rewriting an old result.
+Current cascade deletes attempts with a deleted segment; preserve that existing behavior in v1 and
+remove deleted rows from the field immediately, rather than invent independent history retention.
 
-## Field sizes and readability budget
+Use current session's completed-attempt IDs while session context is known, but do not promise
+THIS RIDE after losing that context. Vendored RideState exposes Idle/Recording/Paused, not a ride
+UUID (`KarooEvent.kt:44`). Persistent local records still allow **RECENT SEGMENTS** after service
+restart; show completed time/age and label them RECENT, rather than silently assigning old results
+to today's ride. A precise persisted ride identity/filter is separate future work unless required.
 
-Actual ViewConfig.viewSize is authoritative. Last observed device screen is480×800 at300dpi;
-this does not measure each field. KarooFieldLayout uses width/grid and height breakpoints only.
-Suggested capacities below are design targets, not device validation:
+## Field sizes and interaction
 
-| Example view | Rows | Content |
-|---|---:|---|
-|480×620 full width |4| Spacious rows: name/distance, labelled LAST KAROO and GOAL |
-|240×620 tall half width |3| Name then distance; times in two labelled columns |
-|480×200 |1| Name + distance and both labelled times |
-|240×320 |1| Larger nearest row; do not shrink text to force two |
-|480×120 |1 compact| One-line name/distance, two labelled times |
-|240×120 |1 compact if legible| Short ellipsized name, distance, small labels and two times; otherwise ENLARGE FIELD |
+Recommend up to **3 recent attempts** in a large480×620 field, up to2 in a tall240×620 field, and
+1 in medium/compact fields. Each large row needs name/age, labelled TIME/GOAL, gap and optional
+averages. These are targets, not measured device legibility. ViewConfig.viewSize is authoritative;
+LARGE may be as short as250px and cannot blindly use a three-row layout. Small cells keep name,
+TIME/GOAL and AHEAD/BEHIND; omit age/averages first, or show ENLARGE FIELD if labels won't fit.
+Keep minimum legible font bounds and do not squeeze more rows indefinitely. Light/dark, long names,
+H:MM:SS and missing goals must be rendered with synthetic fixtures before device validation.
 
-Allocate pixel budgets from measured condensed-font bounds, not enum LARGE alone: short250px
-LARGE views must not receive the four-row composition. Full rows target roughly116px/full width,
-150px/narrow after header/footer/padding. Small cases need their own three-line layout. Cap four
-rows; show **+N more** where space permits. Keep times prominent, test H:MM:SS and long names,
-and use ENLARGE FIELD below viable geometry rather than clipping or inventing omitted values.
-Native preview and real-device riding review are required before claiming legibility. Icons/words,
-not colour alone; named columns stay visible. Accessibility announces full name, distance basis,
-local/phone provenance, latest time and goal even when names are visually ellipsized.
+Default experience is inline result review: no unverified tap/scroll affordances. Vendor ViewEmitter
+accepts RemoteViews but its API/ViewEvent has no documented field-selection callback. Standard
+Android PendingIntent possibilities do not prove the riding host dispatches row taps. The current
+field uses one bitmap ImageView, not individual row buttons. Do not promise tap-to-open an extension
+screen during recording (the owner already reported that extension-screen access is unavailable then).
+A selectable detailed result screen is a distinct interaction/host validation task, if later requested.
 
-## Independent lifecycle, battery and failure states
+## Separate Nearby option, not the result-retention rule
 
-Use a separate NearbySegmentsStateFlow/repository and new graphical typeId `nearby-segments`;
-keep every existing field id. It must not depend on LiveUiStore's active attempt: that store clears
-on finish and has no global nearby list. Share existing service/location feed while recording,
-without extra GPS scans or BLE work. New cache reads start/goal/latest metadata at service entry
-and on Room invalidation/import/delete/completion; no one-query-per-row or DB writes at1Hz.
+A later **GM Nearby Segments** companion can list installed starts within2km, direct-to-start order,
+with current stored GOAL and last local time. That does NOT replace recent results and does not
+remove a completed result when its start is farther away. If both views are wanted, use explicit
+separate fields/pages, not automatic mode switches that hide the result the rider came to inspect.
 
-Recompute in memory no faster than every2s when location changes materially (e.g.10m), and
-refresh distances at least every5s with fresh data. Use a lightweight freshness check while visible
-so losing callbacks results in WAITING FOR GPS rather than a falsely live list. Existing freshness
-policy is3s; hide distances/ordering once stale. Paused ride with fresh GPS can keep the stable list;
-before recording show START RECORDING; edit preview uses synthetic data. No new location
-permissions or background networking. Expected hundreds of cached starts is O(N) distance work
-plus bounded top candidates, not N full route matches; measured battery impact remains unknown.
-Retain at most32 ranked candidates, display up to4; when over cap say32+ rather than claim an exact
-full count. Event invalidation must remove deleted segments and update last time after completion.
+Current starts/goals exist in SegmentDao and PacingDao; latest LOCAL completed query still needs
+adding. Phone latest history is absent; default-off imported PR must never be relabelled LAST.
+Route-aware UPCOMING mode is possible using vendor OnNavigationState.NavigatingRoute's
+routePolyline/reversed/rejoin information, but GritMap does not currently build that index. Direct
+distance must not be labelled distance ahead on the road. The new map-line request can share a
+future upcoming cache, without modifying matcher/pacer state or enabling concurrency/PR flags.
 
-States: no installed segments → SEND SEGMENTS FROM PHONE; installed but none in radius →
-NO STARTS WITHIN2 KM (localized units); no valid GPS → WAITING FOR GPS; no last/goal → — in
-that cell; query failure → SEGMENTS UNAVAILABLE (retain no falsely live distance); tiny field →
-ENLARGE FIELD. Reconnect/import must not clear saved history. Catalogue and timing correctness
-are independent of pairing status once data is installed.
+## Cost, lifecycle and failure states
 
-## Relation to multi-segment/PR work and proposed acceptance
+Read/observe persisted completion summaries on macro events/Room invalidation, not by scanning
+full polylines or querying once per rendered row. Keep display updates<=1Hz; age label can update
+on a coarse timer. No extra GPS, network lookup or BLE scan for recent results. Recent results
+remain available when GPS is lost or the rider pauses; they are historical, not live positioning.
+Service restart reloads local summaries; do not clear history on field detach or new live attempt.
+Retention/query bound (suggest latest20 locally cached, display up to3) does not delete older DB
+history. No new matcher runs per row. Battery/performance need measurements, not assumptions.
 
-This is read-only discovery/display, not concurrent tracking or PR racing. Leave default-off
-concurrency/records/replanner flags unchanged. Do not change CandidateSelector,50m lock,
-direction gate, segment matcher or active headline. A nearby start is not a completed attempt,
-and this field does not make the Karoo record all overlapping starts. Future all-device history
-and route-aware/map work can reuse data services with explicit contracts.
+No completed attempts → NO COMPLETED SEGMENTS YET. No goal → NO GOAL. Failed query →
+RESULTS UNAVAILABLE with retry at next relevant event; no unrelated live numbers substituted.
+Deleted segments remove their rows consistently with current cascade. Local results and missing
+phone history are distinguished; do not say never ridden. Add a new type ID such as recent-segment-results
+and preserve every existing field ID/page placement. No automatic edits to rider pages.
 
-Before implementation: the owner approves this v1 scope/defaults. This note supplies the requirements
-for the separate Figma design session; no message or Figma write was sent here. Tests then cover start-vs-midpoint distance, radius boundary, jitter/ties, reversed/ambiguous
-route fallback (if route mode later), no-goal/last, LAST≠BEST, incomplete/abandoned attempts,
-legacy timing qualifier, deletion/completion invalidation, GPS staleness despite no callbacks,
-large catalog bounded work, every layout/theme and long H:MM:SS names/times, plus retained old
-field ids and unchanged matcher behavior. Synthetic geography only. No tests/build performed for
-this proposal. No Figma edits/device access/install/push; source implementation is not approved.
+## Proposed acceptance and next step
+
+Tests should cover completion persistence → observable row, survives live-state clear and next
+attempt, no dependency on current GPS/radius, repeated segment attempts kept distinct, newest-first
+and tie behavior, abandoned excluded, elapsed including pauses, captured goal unchanged after plan
+replacement/deletion, missing goal/averages, legacy timing qualifier, service restart/recent-session
+label, deletion invalidation, compact layouts/theme and unchanged matcher/flags. Synthetic data only.
+No tests/build/runtime work performed for this proposal revision.
+
+the owner's clarification confirms result review as the use case. This document is the revised concrete
+v1 scope for approval under main's proposal-first instruction; no implementation/install/push is
+claimed. Figma can use this note; no message to another chat or Figma write was authorized/sent.
+The already-built Cardiac Drift countdown remains separate, local and uninstalled. Existing Room4
+rollback constraints still apply; any migration/install candidate needs its own review and approval.
