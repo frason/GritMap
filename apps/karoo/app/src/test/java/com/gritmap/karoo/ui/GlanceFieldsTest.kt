@@ -49,6 +49,38 @@ class GlanceFieldsTest {
         assertEquals("HIGH",glancePresentation(GlanceField.DRIFT,state.copy(cardiacDriftPct=5.0)).verdict)
         assertEquals("POWER VARYING",glancePresentation(GlanceField.DRIFT,state.copy(cardiacDriftPowerSteady=false)).support)
     }
+    @Test fun `cardiac countdown and blocker labels render at every field size`() {
+        fun baseline(seconds:Int=102,ready:Boolean=false,reason:CardiacReadiness=CardiacReadiness.COLLECTING,
+            restarted:Boolean=false,justReady:Boolean=false)=CardiacBaselineState(seconds,ready,reason,if(restarted)1 else 0,restarted,justReady)
+        val collecting=state.copy(cardiacDriftPct=null,cardiacDriftValidSeconds=78,cardiacBaseline=baseline())
+        val model=glancePresentation(GlanceField.DRIFT,collecting)
+        assertEquals("1:42",model.hero);assertEquals("BASELINE LEFT",model.label);assertEquals("",model.unit)
+        val variable=collecting.copy(cardiacDriftValidSeconds=180,cardiacBaseline=baseline(0,reason=CardiacReadiness.VARIABLE_POWER))
+        assertEquals("POWER VARYING",glancePresentation(GlanceField.DRIFT,variable).verdict)
+        assertEquals("TIME COMPLETE",glancePresentation(GlanceField.DRIFT,variable).label)
+        assertFalse(glancePresentation(GlanceField.DRIFT,variable).support.contains("BASELINE READY"))
+        val changed=state.copy(cardiacDriftPct=null,cardiacBaseline=baseline(0,true,CardiacReadiness.DIFFERENT_EFFORT))
+        assertEquals("DIFFERENT EFFORT",glancePresentation(GlanceField.DRIFT,changed).verdict)
+        assertEquals("BPM",glancePresentation(GlanceField.DRIFT,changed).unit)
+        assertTrue(glancePresentation(GlanceField.DRIFT,changed).support.startsWith("BASELINE READY"))
+        val restarted=collecting.copy(cardiacDriftValidSeconds=0,cardiacBaseline=baseline(180,reason=CardiacReadiness.MORE_SAMPLES,restarted=true))
+        assertEquals("BASELINE RESTARTED",glancePresentation(GlanceField.DRIFT,restarted).verdict)
+        val ready=state.copy(cardiacDriftPct=0.0,cardiacDriftValidSeconds=180,cardiacBaseline=baseline(0,true,CardiacReadiness.READY,justReady=true))
+        assertEquals("BASELINE READY",glancePresentation(GlanceField.DRIFT,ready).verdict)
+        val paused=collecting.copy(cardiacBaseline=baseline(reason=CardiacReadiness.LOW_POWER))
+        assertEquals("COUNTDOWN PAUSED",glancePresentation(GlanceField.DRIFT,paused).shortSupport)
+        val out=File("build/reports/karoo-cardiac-countdown").apply{mkdirs()}
+        val sizes=listOf(Triple(KarooFieldLayout.LARGE,480,620),Triple(KarooFieldLayout.MEDIUM_WIDE,480,200),Triple(KarooFieldLayout.SMALL_WIDE,480,120),Triple(KarooFieldLayout.NARROW,240,620),Triple(KarooFieldLayout.MEDIUM,240,320),Triple(KarooFieldLayout.SMALL,240,120))
+        for((theme,palette)in listOf("dark" to KarooVisualPalette.Dark,"light" to KarooVisualPalette.Light)) {
+            for((name,value)in listOf("countdown" to collecting,"variable" to variable,"changed" to changed,"restarted" to restarted,"ready" to ready,"paused" to paused)) {
+                for((layout,w,h)in sizes) {
+                    val bitmap=GlanceFieldRenderer(GlanceField.DRIFT,palette,context.resources).render(value,w,h,layout)
+                    File(out,"$theme-$name-${layout.name.lowercase()}.png").outputStream().use{bitmap.compress(Bitmap.CompressFormat.PNG,100,it)}
+                }
+            }
+        }
+    }
+
     @Test fun `no plan is never presented as a generated watt target`() {
         val model=glancePresentation(GlanceField.PACING,LiveUiState.Idle)
         assertEquals("NO PLAN",model.verdict);assertEquals("--",model.hero)

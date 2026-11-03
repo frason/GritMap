@@ -33,6 +33,7 @@ data class LiveUiState(
     val cardiacDriftValidSeconds: Int = 0,
     val cardiacDriftPairedPct: Int = 0,
     val cardiacDriftPowerSteady: Boolean = false,
+    val cardiacBaseline: CardiacBaselineState? = null,
     val h10EnhancedAvailable: Boolean = false,
     val h10ConnectionState: String? = null,
     val h10DfaAlpha1: Double? = null,
@@ -70,6 +71,7 @@ data class LiveUiState(
         get() = when {
             currentHeartRateBpm == null -> CardiacPresentationMode.WAITING_FOR_HR
             rollingPowerWatts3s == null && currentPowerWatts == null -> CardiacPresentationMode.HR_RESPONSE
+            cardiacBaseline?.let { it.readiness != CardiacReadiness.READY } == true -> CardiacPresentationMode.HR_RESPONSE
             cardiacDriftPct == null || cardiacDriftValidSeconds < 180 -> CardiacPresentationMode.HR_RESPONSE
             cardiacDriftValidSeconds < 360 -> CardiacPresentationMode.EMERGING_DRIFT
             else -> CardiacPresentationMode.CARDIAC_DRIFT

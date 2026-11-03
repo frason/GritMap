@@ -463,6 +463,7 @@ class LiveSegmentService : Service() {
             cardiacDriftValidSeconds = drift.validSeconds,
             cardiacDriftPairedPct = drift.pairedPct,
             cardiacDriftPowerSteady = drift.powerSteady,
+            cardiacBaseline = drift.baselineState,
             h10ConnectionState = H10ServiceState.bleState.value.connectionState.name,
             h10EnhancedAvailable = h10.enhancedMetricsAllowed,
             h10DfaAlpha1 = h10.dfaAlpha1,

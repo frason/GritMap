@@ -2,6 +2,8 @@ package com.gritmap.karoo.pacing
 
 import com.gritmap.karoo.service.LiveTelemetry
 import com.gritmap.karoo.ui.state.CardiacDriftSample
+import com.gritmap.karoo.ui.state.CardiacBaselineState
+import com.gritmap.karoo.ui.state.CardiacReadiness
 import java.util.ArrayDeque
 import kotlin.math.pow
 
@@ -13,6 +15,7 @@ data class CardiacDriftSnapshot(
     val validSeconds: Int,
     val pairedPct: Int,
     val powerSteady: Boolean,
+    val baselineState: CardiacBaselineState,
 )
 
 /**
@@ -31,6 +34,11 @@ class CardiacDriftTracker(
     private val gapResetMs: Long = 10_000L,
     private val maximumHistorySamples: Int = 180,
 ) {
+    private companion object {
+        const val MAXIMUM_POWER_CV = 0.12
+        const val MAXIMUM_RELATIVE_POWER_CHANGE = 0.15
+    }
+
     private data class PairSample(val timestampMs: Long, val powerWatts: Double, val heartRateBpm: Double)
 
     private val rollingSamples = ArrayDeque<PairSample>()
@@ -49,6 +57,20 @@ class CardiacDriftTracker(
     private var lastPairedTimestampMs: Long? = null
     private var totalSamples = 0
     private var pairedSamples = 0
+    private var inputReadiness: CardiacReadiness? = null
+    private var restartCount = 0
+    private var restartedAtMs: Long? = null
+    private var establishedAtMs: Long? = null
+
+    private fun recordReset(timestampMs: Long) {
+        // The old invalid-input path clears on every tick after ten seconds. Notify once,
+        // only when actual progress/reference is discarded, rather than restarting forever.
+        if (rollingSamples.isNotEmpty() || pairedTimeMs > 0 || baselineEfficiency != null) {
+            restartCount++
+            restartedAtMs = timestampMs
+        }
+        establishedAtMs = null
+    }
 
     fun add(sample: LiveTelemetry, progressFraction: Float): CardiacDriftSnapshot {
         if (lastTimestampMs?.let { sample.timestampMs <= it } == true) return snapshot()
@@ -56,6 +78,7 @@ class CardiacDriftTracker(
         lastTimestampMs = sample.timestampMs
         totalSamples++
         if (previousTimestamp != null && sample.timestampMs - previousTimestamp > gapResetMs) {
+            recordReset(sample.timestampMs)
             rollingSamples.clear(); history.clear()
             firstValidTimestampMs = null; lastHistoryTimestampMs = null
             baselineEfficiency = null; baselinePower = null; baselineHeartRate = null
@@ -68,11 +91,19 @@ class CardiacDriftTracker(
         // meaningless and were the main source of large live spikes.
         val power = sample.powerWatts?.takeIf { it.isFinite() && it >= minimumPowerWatts }
         val heartRate = sample.heartRateBpm?.takeIf { it.isFinite() && it >= minimumHeartRateBpm }
+        inputReadiness = when {
+            sample.powerWatts?.isFinite() != true -> CardiacReadiness.NO_POWER
+            sample.heartRateBpm?.isFinite() != true -> CardiacReadiness.NO_HR
+            power == null -> CardiacReadiness.LOW_POWER
+            heartRate == null -> CardiacReadiness.LOW_HR
+            else -> null
+        }
         val cutoff = sample.timestampMs - rollingWindowMs
         while (rollingSamples.isNotEmpty() && rollingSamples.first().timestampMs < cutoff) rollingSamples.removeFirst()
         if (power == null || heartRate == null) {
             val invalidStart = invalidSinceMs ?: sample.timestampMs.also { invalidSinceMs = it }
             if (sample.timestampMs - invalidStart > gapResetMs) {
+                recordReset(sample.timestampMs)
                 rollingSamples.clear(); history.clear(); firstValidTimestampMs = null
                 baselineEfficiency = null; baselinePower = null; baselineHeartRate = null
                 responsePower = null; responseHeartRate = null; smoothedDriftPct = null
@@ -96,9 +127,10 @@ class CardiacDriftTracker(
 
         // Wait for HR response, then freeze the first complete rolling window as baseline.
         if (baselineEfficiency == null && pairedTimeMs >= baselineDurationMs &&
-            rollingSamples.size >= minimumWindowSamples && powerCoefficientOfVariation(rollingSamples) <= 0.12
+            rollingSamples.size >= minimumWindowSamples && powerCoefficientOfVariation(rollingSamples) <= MAXIMUM_POWER_CV
         ) {
             baselineEfficiency = efficiency(rollingSamples)
+            establishedAtMs = sample.timestampMs
             baselinePower = averagePower(rollingSamples)
             baselineHeartRate = averageHeartRate(rollingSamples)
         }
@@ -110,10 +142,10 @@ class CardiacDriftTracker(
             responseHeartRate = averageHeartRate(rollingSamples)
         }
         val comparablePower = baselinePower?.let {
-            it > 0.0 && kotlin.math.abs(averagePower(rollingSamples) / it - 1.0) <= 0.15
+            it > 0.0 && kotlin.math.abs(averagePower(rollingSamples) / it - 1.0) <= MAXIMUM_RELATIVE_POWER_CHANGE
         } == true
         if (baseline != null && current != null && baseline > 0.0 && comparablePower &&
-            powerCoefficientOfVariation(rollingSamples) <= 0.12) {
+            powerCoefficientOfVariation(rollingSamples) <= MAXIMUM_POWER_CV) {
             val raw = ((baseline - current) / baseline * 100.0).coerceIn(-25.0, 25.0)
             val previous = smoothedDriftPct
             val smoothed = if (previous == null) raw else previous + (1.0 - (1.0 - smoothingAlpha).pow(
@@ -167,7 +199,31 @@ class CardiacDriftTracker(
             driftRatePctPer10Min = rate,
             validSeconds = validSeconds,
             pairedPct = pairedPct,
-            powerSteady = powerCoefficientOfVariation(samples) <= 0.12,
+            powerSteady = powerCoefficientOfVariation(samples) <= MAXIMUM_POWER_CV,
+            baselineState = baselineState(samples),
+        )
+    }
+
+    private fun baselineState(samples: Collection<PairSample>): CardiacBaselineState {
+        val established = baselineEfficiency != null
+        val reason = inputReadiness ?: when {
+            samples.size < minimumWindowSamples -> CardiacReadiness.MORE_SAMPLES
+            powerCoefficientOfVariation(samples) > MAXIMUM_POWER_CV -> CardiacReadiness.VARIABLE_POWER
+            !established -> CardiacReadiness.COLLECTING
+            baselinePower?.let { kotlin.math.abs(averagePower(samples) / it - 1.0) > MAXIMUM_RELATIVE_POWER_CHANGE } == true ->
+                CardiacReadiness.DIFFERENT_EFFORT
+            else -> CardiacReadiness.READY
+        }
+        val now = lastTimestampMs ?: 0L
+        fun recent(timestamp: Long?) = timestamp?.let { now - it in 0 until 5_000L } == true
+        return CardiacBaselineState(
+            remainingSeconds = ((baselineDurationMs - pairedTimeMs).coerceAtLeast(0L)
+                .let { (it + 999L) / 1_000L }).toInt(),
+            established = established,
+            readiness = reason,
+            restartCount = restartCount,
+            justRestarted = recent(restartedAtMs),
+            justEstablished = established && recent(establishedAtMs),
         )
     }
 

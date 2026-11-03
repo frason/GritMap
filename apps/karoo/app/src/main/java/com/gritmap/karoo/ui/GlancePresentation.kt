@@ -75,9 +75,63 @@ internal fun glancePresentation(kind: GlanceField, s: LiveUiState): GlancePresen
             val verdict=when { mode==CardiacPresentationMode.WAITING_FOR_HR -> "NO HR";!visible || drift==null -> "BASELINE";forming -> "DRIFT FORMING";abs(drift)<3 -> "STABLE";abs(drift)<5 -> "DRIFTING";else -> "HIGH" }
             val support=when { !visible -> "COLLECTING BASELINE";forming -> "EARLY TREND";s.cardiacDriftPowerSteady -> "POWER STEADY";else -> "POWER VARYING" }
             val cost=s.cardiacEfficiencyWattsPerBpm?.takeIf { it.isFinite() && it>0 }?.let { (100/it).roundToInt().toString() } ?: "--"
-            GlancePresentation("CARDIAC DRIFT",verdict,when(verdict) { "DRIFT FORMING" -> "FORMING";"DRIFTING" -> "DRIFT";else -> verdict },
+            val driftModel = GlancePresentation("CARDIAC DRIFT",verdict,when(verdict) { "DRIFT FORMING" -> "FORMING";"DRIFTING" -> "DRIFT";else -> verdict },
                 if(visible) "HR DRIFT" else "HR RESPONSE",if(visible) drift?.let { signed(it,1) } ?: "--" else s.currentHeartRateBpm?.toString() ?: "--",if(visible) "%" else "BPM",support,if(!visible) "COLLECTING" else if(s.cardiacDriftPowerSteady) "STEADY" else "VARYING",tone,
                 "HR COST" to cost,"PAIRED" to "${s.cardiacDriftPairedPct}%")
+            val baseline = s.cardiacBaseline
+            if (baseline == null) driftModel else {
+                val collecting = !baseline.established
+                val reason = when (baseline.readiness) {
+                    CardiacReadiness.NO_POWER -> "NO POWER"
+                    CardiacReadiness.NO_HR -> "NO HR"
+                    CardiacReadiness.LOW_POWER -> "POWER TOO LOW"
+                    CardiacReadiness.LOW_HR -> "HR TOO LOW"
+                    CardiacReadiness.MORE_SAMPLES -> "NEED MORE DATA"
+                    CardiacReadiness.VARIABLE_POWER -> "POWER VARYING"
+                    CardiacReadiness.DIFFERENT_EFFORT -> "DIFFERENT EFFORT"
+                    CardiacReadiness.COLLECTING -> "COLLECTING"
+                    CardiacReadiness.READY -> "READY"
+                }
+                val waiting = baseline.readiness != CardiacReadiness.READY
+                if (!collecting && !waiting) {
+                    if (baseline.justEstablished) driftModel.copy(verdict="BASELINE READY", shortVerdict="READY") else driftModel
+                } else {
+                    val title = when {
+                        baseline.justRestarted -> "BASELINE RESTARTED"
+                        baseline.readiness == CardiacReadiness.COLLECTING -> "BASELINE"
+                        else -> reason
+                    }
+                    val note = when {
+                        baseline.justRestarted -> "BASELINE RESTARTED · $reason"
+                        baseline.established -> "BASELINE READY · $reason"
+                        baseline.remainingSeconds == 0 -> "TIME COMPLETE · $reason"
+                        baseline.readiness in listOf(CardiacReadiness.NO_POWER,CardiacReadiness.NO_HR,CardiacReadiness.LOW_POWER,CardiacReadiness.LOW_HR) -> "COUNTDOWN PAUSED · $reason"
+                        else -> "COLLECTING · $reason"
+                    }
+                    driftModel.copy(
+                        verdict=title,
+                        shortVerdict=when(title) {
+                            "BASELINE RESTARTED" -> "RESTARTED"
+                            "DIFFERENT EFFORT" -> "EFFORT CHANGED"
+                            "NEED MORE DATA" -> "MORE DATA"
+                            else -> title
+                        },
+                        label=if(collecting && baseline.remainingSeconds>0) "BASELINE LEFT" else if(collecting) "TIME COMPLETE" else "HR RESPONSE",
+                        hero=if(collecting) glanceClock(baseline.remainingSeconds.toDouble()) else s.currentHeartRateBpm?.toString() ?: "--",
+                        unit=if(collecting) "" else "BPM",
+                        support=if(baseline.readiness==CardiacReadiness.COLLECTING && !baseline.justRestarted) "ELIGIBLE POWER + HR DATA" else note,
+                        shortSupport=when {
+                            baseline.justRestarted -> "BASELINE RESTARTED"
+                            baseline.established -> "BASELINE READY"
+                            baseline.remainingSeconds==0 -> "TIME COMPLETE"
+                            baseline.readiness in listOf(CardiacReadiness.NO_POWER,CardiacReadiness.NO_HR,CardiacReadiness.LOW_POWER,CardiacReadiness.LOW_HR) -> "COUNTDOWN PAUSED"
+                            else -> "ELIGIBLE DATA"
+                        },
+                        leftCard="HR" to (s.currentHeartRateBpm?.let { "$it BPM" } ?: "--"),
+                        tone=if(baseline.readiness in listOf(CardiacReadiness.VARIABLE_POWER,CardiacReadiness.DIFFERENT_EFFORT)) GlanceTone.CAUTION else GlanceTone.NEUTRAL,
+                    )
+                }
+            }
         }
         GlanceField.BALANCE -> {
             val b=s.wPrime

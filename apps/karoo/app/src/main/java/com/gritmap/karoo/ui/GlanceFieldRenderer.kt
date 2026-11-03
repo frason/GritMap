@@ -126,6 +126,16 @@ internal class GlanceFieldRenderer(
     private fun block(c:Canvas,m:GlancePresentation,r:RectF) {
         c.drawRoundRect(r,12f,12f,paint(fill(m.tone)))
         val color=if(m.tone==GlanceTone.NEUTRAL) foreground else Color.BLACK
+        val cardiacStatus=kind==GlanceField.DRIFT &&
+            (m.label.contains("BASELINE") || m.label.contains("HR RESPONSE") || m.label=="TIME COMPLETE")
+        if(cardiacStatus) {
+            // A bare 3:00 would hide the reason/restart notice in the smallest field.
+            val labelBottom=r.top+min(24f,r.height()*.28f)
+            text(c,m.shortVerdict,RectF(r.left+6,r.top+2,r.right-6,labelBottom),20f,color)
+            text(c,m.hero+(if(m.hero=="--" || m.unit.isEmpty()) "" else " "+m.unit),
+                RectF(r.left+6,labelBottom+2,r.right-6,r.bottom-4),80f,color)
+            return
+        }
         val icon=GlanceIcons.get(resources,m.tone)
         val size=min(37f,r.height()*.35f)
         if(icon!=null) c.drawBitmap(icon,null,RectF(r.left+12,r.centerY()-size/2,r.left+12+size,r.centerY()+size/2),Paint(Paint.FILTER_BITMAP_FLAG))
@@ -218,7 +228,7 @@ internal class GlanceFieldRenderer(
                 text(c,"LINE = PLAN",RectF(r.left,bar.bottom+8,r.right,r.bottom),28f,secondary,Paint.Align.LEFT)
             }
             GlanceField.DRIFT -> {
-                if(s.cardiacDriftPct==null || s.cardiacDriftValidSeconds<180 || m.signalMissing) return
+                if(s.cardiacDriftPct==null || s.cardiacDriftValidSeconds<180 || m.signalMissing || s.cardiacBaseline?.readiness?.let { it!=CardiacReadiness.READY }==true) return
                 val history=s.cardiacDriftHistory.filter { it.driftPct.isFinite() }
                 if(history.isEmpty()) return
                 val low=min(-2.0,history.minOf {it.driftPct}).coerceAtLeast(-20.0)

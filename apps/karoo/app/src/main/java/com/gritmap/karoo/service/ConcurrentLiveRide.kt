@@ -195,6 +195,7 @@ internal class ConcurrentLiveRide(
             cardiacDriftRatePctPer10Min = drift.driftRatePctPer10Min,
             cardiacDriftValidSeconds = drift.validSeconds, cardiacDriftPairedPct = drift.pairedPct,
             cardiacDriftPowerSteady = drift.powerSteady,
+            cardiacBaseline = drift.baselineState,
             planAdherencePct = session.planAdherencePct(), powerExecutionHistory = session.powerExecutionSamples(),
             segmentSplitDeltasSeconds = session.recordCompletedSplits(enriched.progressMeters,
                 enriched.elapsedAttemptSeconds ?: 0.0, enriched.totalDistanceMeters, enriched.plannedFinishSeconds)))
