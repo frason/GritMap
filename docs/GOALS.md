@@ -116,6 +116,12 @@ move toward that, not around it:
   contract exists the phone can only show "Last sent" from its own send records. Needs a read-only inventory contract with fixtures on both sides; Codex writes a design note first.
 - Later: completed attempts and live summaries flow back from the Karoo automatically, replacing
   manual FIT import.
+- Later, fallback paths if Bluetooth return transfer proves unreliable (decided 2026-11-02, nothing built; not beta scope): (a) the Karoo
+  drops finished FIT files into the rider's OWN cloud storage (Dropbox or Google Drive, via their OAuth APIs and an app folder; verify
+  whether Hammerhead's dashboard already syncs to Dropbox) and the phone reads them from there. Nothing passes through a GritMap server,
+  but it adds a third-party account, so it needs a privacy review first. iCloud Drive is not usable from the Karoo (no public API for
+  Android). (b) Optional import from Intervals.icu (API/OAuth): its copy is close but not faithful (re-derived speed, different timer
+  and laps, Karoo-only fields dropped), so it is an extra, never the main path. Bluetooth stays the main path.
 - Every payload goes through a versioned shared contract with a fixture tested on both sides.
   No side-channel formats.
 

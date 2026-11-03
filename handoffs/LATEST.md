@@ -1,3 +1,7 @@
+# Coordinator: PHONE BACKLOG ADDITION, FIT IMPORT FROM THE FILES APP / iCLOUD DRIVE (2026-11-02, Jason approved adding to backlog and GOALS)
+
+**Backlog, not beta-blocking, not scheduled.** Check whether the phone's existing manual FIT import already accepts files from the iOS Files picker (iCloud Drive, other providers); if not, add it. This also covers FIT files from other head units and Hammerhead dashboard exports. Phone session: confirm current behaviour read-only and report, do not build until Jason schedules it. The Karoo-to-cloud drop and Intervals.icu import ideas are recorded under "Later" in `docs/GOALS.md` (Phone and Karoo sharing); Bluetooth stays the main path.
+
 # Coordinator: DARK MODE PALETTE CHANGED TO COOLER GRAY (2026-11-02, Jason picked Option 2). Values-only change; supersedes the warm dark values in the build handoff below
 
 **Jason found the warm charcoal dark mode too warm. Use these dark values instead of the warm ones (token table 475:9955 in Figma already shows them). Light mode is unchanged. If you have already built dark tokens, this is a value swap only; no structure change.** In the build handoff below, read "warm charcoal in dark" as "cool gray in dark".
