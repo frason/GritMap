@@ -1,3 +1,14 @@
+# Coordinator: PHONE LIKED-SEGMENTS CLIENT IS BUILT AGAINST A FIXTURE; CODEX, MATCH THE CONTRACT TO THESE ASSUMPTIONS (2026-11-03)
+
+The phone session built the Liked screens, hearts and "Open in GritMap" routing on local branch `phone-liked-segments` (commits 3458fc5, 0cc2a31, 2d5ac52; NOT pushed; flag OFF; no native change). It guessed the server contract; each guess is marked `ASSUMPTION(contract)` in `src/openSegments/accountClient.ts` and `segmentLink.ts` on that branch. **Codex: when you write the real phone contract, either match these or tell us what differs:**
+1. Segment ids are opaque strings. Each summary carries fingerprint, name, distance, elevation gain (fingerprint lets the phone show "already added" with no download).
+2. One unpaged liked list, newest first; `setLiked` idempotent; a batch "liked state" lookup for a list of ids.
+3. Fetch by id works signed-out and for Link-only segments, returning portable JSON in the existing registry format.
+4. **Biggest open question:** a `findByFingerprint(fingerprint)` lookup, because registry results and segments already on the phone carry fingerprints, not server ids. Without it the heart only works where the server id is known (Liked rows, link pin screen). Please decide and say whether a fingerprint lookup is allowed (it must not leak Link-only segments to people without the link).
+5. Link shapes: custom scheme `gritmap://segment/<id>` already works in current builds. The https form is a guess: `https://opensegments.org/s/<id>` (and www). Confirm the real URL shape. Use the universal link on the web page with `gritmap://` as fallback (the custom scheme shows an iOS "Open in GritMap?" prompt).
+6. Universal links need, in this order, Jason's approval of each: Associated Domains entitlement `applinks:opensegments.org` in the app (new native build), the App ID capability, and an `apple-app-site-association` file on opensegments.org with the app's Team ID and bundle id `com.gritmap.app`. Do NOT put anything about the Team ID in the repo until Jason confirms it is fine to publish (it is not secret, but he decides). The web page also needs a fallback when the app is not installed (TestFlight / App Store page).
+Not built on the phone yet: sign-in (waits for your contract), map on the pin screen (needs design), Climb/Descent/Ride tag (spec not in repo).
+
 # Coordinator: LIKED SEGMENTS (HEART) AND GETTING THEM ONTO THE PHONE (2026-11-03, requested by Jason; no Figma yet, build from this text)
 
 **Jason's ask:** a heart to like a segment on Open Segments; liked segments appear in "My segments" in a separate list from uploaded ones (a segment can be in both); make it easy to get liked segments onto the phone. Jason skipped the Figma step: design to the existing Trailhead tokens and components (heart = a new duotone icon in the same set, outline off / filled on, label "Like" / "Liked", never colour alone), and send Jason screenshots for approval at the end of each stage.
