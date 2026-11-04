@@ -58,7 +58,15 @@ internal class RecentSegmentsBitmapRenderer(palette:KarooVisualPalette) {
             c.drawRoundRect(box,12f,12f,paint(surface,0f))
             val model=recentResultPresentation(result,nowMs)
             c.drawRect(box.left,box.top+12,box.left+4,box.bottom-12,paint(accent(model.tone),0f))
-            val inner=RectF(box.left+12,box.top+6,box.right-10,box.bottom-6)
+            val remaining=if(i==0)recentResultHighlightRemainingMs(result.completedAtMs,nowMs) else 0L
+            val highlighted=remaining>0
+            if(highlighted) {
+                val track=RectF(box.left+12,box.bottom-9,box.right-10,box.bottom-4)
+                c.drawRoundRect(track,2.5f,2.5f,paint(secondary,0f).apply{alpha=65})
+                val fill=RectF(track).apply{right=left+width()*remaining/RECENT_RESULT_HIGHLIGHT_MS.toFloat()}
+                c.drawRoundRect(fill,2.5f,2.5f,paint(foreground,0f))
+            }
+            val inner=RectF(box.left+12,box.top+6,box.right-10,box.bottom-if(highlighted)14f else 6f)
             val large=inner.height()>=150
             val nameHeight=if(large)30f else 22f
             val ageWidth=if(large && inner.width()>330)110f else 0f

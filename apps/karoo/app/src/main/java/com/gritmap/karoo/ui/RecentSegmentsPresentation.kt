@@ -37,3 +37,11 @@ internal fun recentRowsForSize(width:Int,height:Int):Int = when {
     height>=540 -> 2
     else -> 1
 }
+
+/** Temporary emphasis only: expiry never removes a saved result or resets when the view opens. */
+internal const val RECENT_RESULT_HIGHLIGHT_MS = 30_000L
+internal fun recentResultHighlightRemainingMs(completedAtMs: Long, nowMs: Long): Long {
+    if (completedAtMs <= 0 || nowMs < completedAtMs) return 0
+    val elapsed = nowMs - completedAtMs
+    return (RECENT_RESULT_HIGHLIGHT_MS - elapsed).coerceIn(0, RECENT_RESULT_HIGHLIGHT_MS)
+}

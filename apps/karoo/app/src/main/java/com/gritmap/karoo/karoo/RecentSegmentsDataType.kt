@@ -13,6 +13,7 @@ import io.hammerhead.karooext.models.ViewConfig
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.*
 
+@OptIn(ExperimentalCoroutinesApi::class)
 class RecentSegmentsDataType(extensionId:String):DataTypeImpl(extensionId,TYPE_ID) {
     override fun startView(context:Context,config:ViewConfig,emitter:ViewEmitter) {
         emitter.onNext(UpdateGraphicConfig(showHeader=false))
@@ -22,10 +23,17 @@ class RecentSegmentsDataType(extensionId:String):DataTypeImpl(extensionId,TYPE_I
             if(!config.preview)LiveServiceStarter.startIfPermitted(context,"recent-results-view")
             val states=if(config.preview)flowOf(RecentResultsState.Ready(recentPreviewResults()))
                 else RecentSegmentResultsRepository(DatabaseProvider.get(context)).observe()
-            // Age text updates coarsely; DB results invalidate immediately on a completion/deletion.
-            val clock=flow {while(currentCoroutineContext().isActive){emit(System.currentTimeMillis());delay(30_000)}}
+            // Tick only the fresh result at 1 Hz; older results retain the coarse age clock.
+            val timedStates=states.flatMapLatest { state -> flow {
+                while(currentCoroutineContext().isActive) {
+                    emit(state)
+                    val first=(state as? RecentResultsState.Ready)?.results?.firstOrNull()
+                    val remaining=first?.let{recentResultHighlightRemainingMs(it.completedAtMs,System.currentTimeMillis())} ?: 0L
+                    delay(if(remaining>0)minOf(1_000L,remaining) else 30_000L)
+                }
+            }}
             var lastEmit:Long?=null
-            states.combine(clock){state,_->state}.conflate().collect { state ->
+            timedStates.conflate().collect { state ->
                 lastEmit?.let{delay((1_000-(android.os.SystemClock.elapsedRealtime()-it)).coerceAtLeast(0))}
                 val now=System.currentTimeMillis()
                 val views=RemoteViews(context.packageName,R.layout.karoo_glance_field)
@@ -43,7 +51,10 @@ internal fun recentResultsDescription(state:RecentResultsState,now:Long,visibleL
     RecentResultsState.Loading -> "Recent segments, loading results"
     RecentResultsState.Unavailable -> "Recent segments, results unavailable, retrying"
     is RecentResultsState.Ready -> if(state.results.isEmpty())"No completed segments yet on this Karoo" else
-        "Recent local Karoo results. "+state.results.take(visibleLimit).joinToString(". "){r->recentResultPresentation(r,now).let{m->
+        "Recent local Karoo results. "+(state.results.firstOrNull()?.let {
+            val remaining=recentResultHighlightRemainingMs(it.completedAtMs,now)
+            if(remaining>0) "Latest result highlight, ${(remaining+999)/1000} seconds remaining. " else ""
+        } ?: "")+state.results.take(visibleLimit).joinToString(". "){r->recentResultPresentation(r,now).let{m->
             "${m.name}, ${if(r.approximate)"approximate " else ""}time ${m.time}, goal ${m.goal}, ${m.comparison}, average power ${m.power}, heart rate ${m.heartRate}, ${m.age}"
         }}
 }
