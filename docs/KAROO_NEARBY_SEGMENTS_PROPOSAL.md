@@ -142,3 +142,45 @@ v1 scope for approval under main's proposal-first instruction; no implementation
 claimed. Figma can use this note; no message to another chat or Figma write was authorized/sent.
 The already-built Cardiac Drift countdown remains separate, local and uninstalled. Existing Room4
 rollback constraints still apply; any migration/install candidate needs its own review and approval.
+
+
+## Implementation approved and verified (2026-11-03)
+
+the owner said **okay lets build it** after reviewing the recent-results use case. Runtime7ca657d
+implements **GM Recent Segments**, typeId recent-segment-results, alongside all ten retained
+fields. No nearest-start field was added: proximity discovery remains separate optional work.
+
+Room5 adds five nullable result-snapshot columns to segment_attempts (elapsed sample duration,
+goal at completion, name/fingerprint snapshot, timing version). Existing rows stay intact and are
+shown with approximate timing/unknown goal. Old plans are never used to invent a historical goal.
+New completions freeze metadata before clearing live UI and persist a full final row with Upsert;
+entry writes IGNORE if already saved, so delayed entry cannot overwrite a completed result.
+Both normal and optional concurrent paths capture completion metadata; experimental flags stay off.
+
+A separate Room-observed repository reads latest20 valid COMPLETED local attempts, newest first
+with id tie-break; repeats are distinct. The field is not cleared by current live state, new attempts,
+GPS loss or page detach. Restart reloads stored summaries. Deleting a segment cascades its attempts
+as before. DB failures display unavailable and retry5s while observed. Rows display TIME/captured
+GOAL, explicit AHEAD/BEHIND/ON GOAL at displayed-second precision, age and average power/HR
+where size permits. Three large/two tall/one compact rows; tiny sizes say ENLARGE FIELD. Theme
+and accessibility descriptions follow the native field design; labels remain present. Age ticks30s,
+render throttle1Hz; no new GPS, BLE or networking. Add GM Recent Segments manually to a riding
+profile after a future approved install. No row tap/detail navigation is promised.
+
+Frozen verification:296 tests, zero failures/errors, debug lint and local debug build pass. Five new
+persistence tests cover migration/reopen, repeated/unfinished/invalid results, a live subscribed
+repository receiving completion, frozen goals/names despite plan replacement, delete invalidation,
+late entry race and concurrent metadata; three new presentation/render tests cover comparisons,
+legacy qualifiers/accessibility/layouts and84 native images plus2 sheets. Existing migration tests
+now validate2/3→5 paths, field registration test preserves original ten and adds the eleventh.
+Initial migration fixture failed on an optional missing index array; loader corrected and targeted
+plus full validation rerun successfully. Schema5 exported, no destructive fallback. Representative
+light/dark/tiny/hour-duration previews inspected; no physical legibility/performance claim.
+
+Artifacts at `LOCAL_ARTIFACT_PATH`. Local debug build uses78 /
+0.10.48-recent-results-preview overrides and is NOT a persistent-beta install candidate. No source
+push, device query/install, tag/release or main/phone edit. Device last-known76/Room4 unchanged.
+A future installed candidate opens Room5: direct return to76/Room4 would then be unsupported.
+Exact newer persistent-beta candidate approval is still required before installing. This build
+also includes the earlier approved countdown source, still uninstalled. No phone-import history,
+full-ride matching/concurrency enablement or precise interpolated crossing times are claimed.

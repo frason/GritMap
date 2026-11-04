@@ -1,3 +1,11 @@
+# GM Recent Segments IMPLEMENTED;296 tests pass, NOT installed (2026-11-03)
+
+the owner approved **okay lets build it** after clarifying review of a just-completed result. Runtime **7ca657d** adds **GM Recent Segments** (recent-segment-results) alongside ten retained fields. Newest COMPLETED local attempts, distinct repeats; TIME, captured attempt GOAL, AHEAD/BEHIND, age/averages where space permits. Remains available after live clear/next attempt/GPS loss; no nearby-radius filtering. Phone history/PR/nearest-start discovery not added.
+
+Room5 adds nullable result snapshot metadata with4→5 migration; new sampled elapsed/goal/name captured at completion, atomic final save + ignored late entry. Legacy times~, goals unknown. Both persistence paths covered, flags still OFF. Independent Room Flow observes latest20;3 large/2 tall/1 compact rows, no tap promise. **296 tests + debug lint + debug build PASS** on frozen source;84 synthetic previews +2 sheets at `LOCAL_ARTIFACT_PATH`. Full evidence `handoffs/archive/2026-11-03-karoo-recent-segments-implemented.md`; implementation notes `docs/KAROO_NEARBY_SEGMENTS_PROPOSAL.md`.
+
+Local commits only, no push/device read/install/beta signing/public release/main or phone edits. Debug78/0.10.48-recent-results-preview is NOT an in-place beta candidate. Last-known device76/Room4 unchanged; a future Room5-opened install cannot directly downgrade to76 or older. Next: preview review, explicit push yes if wanted, then NEW persistent-signed candidate/hash/signer/version + exact install approval. Countdown 6e183d0 included but still uninstalled. Earlier proposal-only notes superseded by this source-work authorization, not deployment authorization.
+
 # Clarified: review RECENTLY COMPLETED segment results during ride (2026-11-03)
 
 the owner confirmed **yes review its result**. Primary proposal is now GM Recent Segments, newest COMPLETED Karoo attempts first and retained regardless of distance/GPS/live-state clearing. Rows: elapsed result, goal captured for that attempt, AHEAD/BEHIND, optional average power/HR. Up to3 full-field rows proposed, smaller fields1–2. Repeated attempts remain separate. A nearest-start-only list would hide completed results; that prior v1 is superseded as primary, Nearby stays separate optional companion.
