@@ -1,3 +1,8 @@
+# Coordinator: NEW TOKEN --color-map-segment-other (2026-11-04, Jason chose #404B5A); values-only note for the Open Segments Codex
+
+Unselected map segments must NOT use border/input (it became the lighter `#667587` in dark with the P1 contrast fix). Add `--color-map-segment-other` to `:root` as `#76796E` (light, the old border/input value, so light looks the same) and to BOTH dark blocks (`prefers-color-scheme` and `:root[data-theme=dark]`) as `#404B5A`, and point the unselected-segment map layer (and any CSS or JS in `mapPalette.ts` that currently uses border/input for those strokes) at it. Contrast on map-bg: light 3.76, dark 1.64 (decorative, passes its 1.5:1 guide); dark vs selected route `#7088FF` is 2.81 so the route stays dominant. Figma: token table 475:9955, developer handoff note 477:10421; rebound strokes include Home dark 498:12725/12727/12729 and Home light 498:12493/12495/12497.
+**Not rebound (Jason's call, ask him):** the create-flow "full ride (not selected)" line on the upload and choose-section maps (for example 470:5614, 471:6030) still uses border/input so it stays the lighter `#667587` in dark; it is the main subject of those screens. Keep it unless Jason says otherwise.
+
 # Coordinator: DARK CONTRAST FIX P1 APPROVED + FINAL LOGO APPLIED IN FIGMA (2026-11-04, Jason picked P1)
 
 **For the Open Segments Codex (values-only; goes on top of the blue/violet palette section below):** put these three values in BOTH dark blocks of `apps/web/src/tokens.css` (the `prefers-color-scheme` block and `:root[data-theme=dark]`):
