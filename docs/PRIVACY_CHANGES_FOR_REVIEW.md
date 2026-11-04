@@ -74,10 +74,10 @@ Cloudflare (hosting and Turnstile bot check), Supabase (authentication and datab
 **Jason's intent:** the iPhone app should treat Open Segments as a separate service the app connects to (like any integration), not as part of a GritMap "company", even though no company exists today. **Not legal advice; the lawyer should confirm what is achievable.**
 
 **What the product can do (and the policy can truthfully say):**
-- Data goes **directly from the phone to Open Segments**; there is no GritMap server in between. GritMap (the app and the project) never receives or stores the sign-in email, likes or published segments. The app holds only a sign-in credential in the iPhone Keychain.
+- Data goes **directly from the phone to Open Segments**; there is no GritMap server in between. No GritMap-operated server receives or stores the sign-in email, likes or published segments. The phone necessarily receives responses from Open Segments in memory, keeps explicitly downloaded segments locally, and holds a sign-in credential in the iPhone Keychain; the policy must not claim the app never holds this data (Open Segments Codex review, 2026-11-04).
 - Separate identity: own name and domain (opensegments.org), own privacy policy, terms, contribution terms and contact address (`help@opensegments.org`), own sign-in (an Open Segments account is not a GritMap account), and separate provider accounts (Cloudflare, Supabase, Resend).
 - In the app: wording such as "Connect to Open Segments, a separate open service"; a first-use screen saying what is sent, that Open Segments' own terms and privacy policy apply, and that GritMap does not receive it; a Settings "Open Segments" section linking to those documents; auto-share opt-in and OFF by default.
-- In the GritMap privacy policy: describe Open Segments as operated separately, link to its policy, and state that GritMap itself holds none of that data.
+- In the GritMap privacy policy: describe Open Segments as operated separately, link to its policy, and state that no GritMap-operated server receives or stores that data (the app itself only holds what it downloads or receives, locally).
 
 **What wording alone cannot change (please advise):**
 - With no legal entity, one person (Jason) is the operator of both. Controller or processor roles and liability follow who decides the purposes and means of processing, not the names. Two brands do not create two parties.
