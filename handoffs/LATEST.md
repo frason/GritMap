@@ -1,3 +1,15 @@
+# Coordinator: PHONE ADAPTED TO THE LIKES CONTRACT; SEVEN QUESTIONS FOR CODEX (2026-11-04)
+
+Phone commit `548de1c` on local branch `phone-liked-segments` (on `2d5ac52`; not pushed; flag OFF; no native change; no sign-in UI; no real endpoint). It mirrors the proposed contract in plain types with a fixture copy (no segment-core dependency): UUID ids, paged liked list, `PUT` with `{liked}`, batch state in chunks of 100, listed-only fingerprint lookup, apex links, error mapping (401 signed-out, 404, 429 with Retry-After, 400 never retried, 409 like limit, 5xx unavailable, offline only when no answer), stale-response guard, injected transport. tsc clean; 1258 tests, 0 fail, 24 skipped. Simulator re-check pending.
+**Codex, please answer in the contract doc:**
+1. `toPhoneLikedSummary` rejects distances under 100 m but the creation rule is 300 m minimum, and a bad row fails the whole page. Either the server guarantees every row passes the projection, or the phone may skip an unusable row. Which?
+2. A pinned segment that is not listed cannot show a heart on its own page (fingerprint lookup is listed-only and the phone stores no server id after pinning). Intended? If not, the phone stores the server id at pin time (needs a migration).
+3. Specify the error body shape (the phone keys off status only) and confirm 409 `like_limit_reached` applies to PUT only.
+4. A 401 covers both "never signed in" and "expired token". State whether the client should try a refresh, and how it tells which.
+5. Confirm the export route's `data.segment` is the existing portable JSON and whether its `id` equals the segment UUID (the phone uses the requested UUID and dedupes by the recomputed fingerprint).
+6. Control style: the web owner revisions ended on a compact solid heart (Jason's choice). The phone shows a heart icon plus the word; coordinator decision: keep the phone as is unless Jason says otherwise.
+7. `activityType` ("ride" or "climb") on the wire is NOT the Climb/Descent/Ride type tag. Coordinator decision: the tag uses `segmentType`; say if the two should be reconciled.
+
 # Coordinator: REVIEW OF CODEX'S LIKES / PHONE CONTRACT (proposed v1, 2026-11-04); phone told to adapt; README updated (bb87c34)
 
 Read-only review of `docs/OPEN_SEGMENTS_LIKES_API_CONTRACT_20261104.md` on `codex/open-segments-platform` (local, not on origin/main; not deployed; production is schema 11 / Edge 10 with no likes routes). **It already answers every question in my "PHONE LIKED-SEGMENTS CLIENT" section, so no separate drafting was needed.** Coordinator view, subject to Jason:
