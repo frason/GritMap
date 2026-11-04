@@ -36,4 +36,3 @@ Recent result review supports live Karoo execution and progress feedback; liked-
 ## Next safe action
 
 For liked segments: audit the current web/backend owner and fixture client, then define the shared API contract and fixtures before connecting the phone UI. Resolve fingerprint visibility and account linking, verify current auth documentation, and report differences. Keep other sessions' branches untouched. Current user requested handoff review, not deployment or native capability changes.
-
