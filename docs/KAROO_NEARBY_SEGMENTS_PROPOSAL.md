@@ -184,3 +184,8 @@ A future installed candidate opens Room5: direct return to76/Room4 would then be
 Exact newer persistent-beta candidate approval is still required before installing. This build
 also includes the earlier approved countdown source, still uninstalled. No phone-import history,
 full-ride matching/concurrency enablement or precise interpolated crossing times are claimed.
+
+
+## Recent-result highlight visual, 2026-11-04
+
+the owner confirmed the bar represents temporary result-highlight time. Runtime 6c5d472 adds a 30-second default from completion, a horizontal shrinking bar on the newest row in all supported sizes, 1 Hz updates while fresh, and normal persistent-list display after expiry. No result deletion or view-open timer reset. See handoffs/archive/2026-11-04-karoo-recent-highlight-verified.md for actual verification and device state.
