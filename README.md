@@ -6,13 +6,39 @@ Hammerhead Karoo, and review what happened afterward on an iPhone.
 The project is preparing for a small public beta. Segments are intended to stay open and
 shareable; live pacing and ride data remain local to the rider's devices.
 
-## What the beta includes
+## What you need
 
-- Create or import a directed segment on iPhone.
-- Set a finish goal and generate or import a section-by-section pacing plan.
-- Send the segment and plan to a Karoo over local Wi-Fi.
-- Follow live target power, pacing progress, finish projection, and optional physiology fields.
-- Import the completed FIT file on iPhone and compare the effort with the plan and prior rides.
+GritMap is built for riders with a **power meter and a heart-rate monitor**. Pacing plans are power
+targets, and the live guidance, energy budget and cardiac fields depend on both. Without a power
+meter GritMap can still match segments and show progress, but it cannot do what it is for.
+It also needs a **Hammerhead Karoo 3** and an **iPhone** for this beta. Karoo 2, iPad and Android
+phones are not supported yet.
+
+## How it works
+
+1. **Get a segment.** Import a FIT file on the iPhone and define a segment, or pull one from
+   [Open Segments](https://opensegments.org), the open catalogue of climbs and segments. Segments are
+   public lines on a map; your rides and plans stay on your own devices.
+2. **Set a goal and get a pacing plan.** The iPhone turns your goal finish time into a
+   section-by-section power plan, or imports one from a coach.
+3. **Send it to the Karoo over Bluetooth.** The plan and segment go phone to Karoo directly: no
+   server, no IP address to type, and it works with no signal. A local network route remains as a
+   fallback.
+4. **Ride it.** The Karoo extension matches the segment, follows the plan live and shows target
+   power, progress and a finish projection in its data fields.
+5. **Review it.** Import the finished ride's FIT file on the iPhone and compare the effort with the
+   plan and with your earlier attempts on the same segment.
+
+Automatic sync of finished rides from the Karoo to the phone is planned; manual FIT import is
+what the beta uses.
+
+## Open Segments
+
+[opensegments.org](https://opensegments.org) is a free, open catalogue of segments. Anyone can browse and
+open one in a map view. Segments you publish are listed publicly by default, with an optional link-only
+mode for sharing with friends. Accounts use an emailed code and a generated rider name, never your real
+name. Connecting the iPhone app to Open Segments (searching, pinning and publishing from the app) is in
+development.
 
 ## Karoo 3 extension
 
@@ -41,17 +67,27 @@ app so the Karoo retains locally stored segments, plans, settings, and diagnosti
 
 ## Live data fields
 
-The images below are placeholders. Real Karoo screenshots will replace them before the public
-beta announcement.
+Images are **development previews rendered from synthetic test data**, in dark mode. They are not
+photographs of a Karoo, and the released APK may look slightly different.
 
 | Field | What it answers | Preview |
 |---|---|---|
-| **GM Pacing Profile** | Where am I relative to the planned pacer, and what effort comes next? | ![GM Pacing Profile](assets/Pacing_profile.png) | 
-| **GM Pacing Coach** | What is the current section target, and how did nearby sections go? | ![GM Pacing Coach](assets/Pacing_coach.png) |
-| **GM Segment Performance** | What is my projected finish and where am I gaining or losing time? | ![GM Segment Performance](assets/Segment_performance.png) |
-| **GM Power Balance** | Am I spending modeled reserve faster or slower than planned? | ![GM Power Balance](assets/Power_balance.png) |
-| **GM Cardiac / H10 Cardiac** | Is power-to-heart-rate efficiency changing, and is clean H10 RR context available? | ![GM Cardiac fields](assets/Cardiac_drift.png) |
-| **Additional data fieldsc** | Target power to match plan, Difference between target power and current power and estimated completion time | ![Misc. data fields](assets/Additional_data_fields.png)
+| **GM Pacing Profile / Pacing Coach** | What is my target power now, how do I compare, and what effort comes next? | ![GM Pacing](assets/karoo/pacing-dark.png) |
+| **GM Segment Performance** | What is my projected finish and where am I gaining or losing time? | ![GM Segment Performance](assets/karoo/performance-dark.png) |
+| **GM Power Balance** | Am I spending modeled reserve faster or slower than planned? | ![GM Power Balance](assets/karoo/balance-dark.png) |
+| **GM Cardiac Drift** | Is power-to-heart-rate efficiency changing? | ![GM Cardiac Drift](assets/karoo/drift-dark.png) |
+| **H10 Cardiac** (optional, experimental) | Is clean Polar H10 RR context available, and how is it trending? | ![H10 Cardiac](assets/karoo/h10-dark.png) |
+
+Also available as text-only fields: target power, difference between target and current power, and
+estimated completion time.
+
+**In development, not in the public beta yet:**
+
+| Field | What it answers | Preview |
+|---|---|---|
+| **GM Recent Segments** | How did my latest completed segments go against their goals? The newest result gets a short shrinking highlight. | ![GM Recent Segments](assets/karoo/recent-three-dark.png) |
+| **Cardiac baseline countdown** | How much more steady riding does Cardiac Drift need, and what is it waiting for? | ![Cardiac baseline countdown](assets/karoo/drift-countdown-dark.png) |
+
 These are advisory training displays, not medical measurements or guarantees of performance.
 
 ## Join the iPhone TestFlight beta
@@ -72,7 +108,7 @@ Beta testers should be willing to:
 
 ## Development
 
-- Product direction: [docs/GOALS.md](docs/GOALS.md)
+- Product direction and current status: [docs/GOALS.md](docs/GOALS.md)
 - Karoo build and test setup: [apps/karoo/README.md](apps/karoo/README.md)
 - TestFlight preparation: [docs/BETA_TESTFLIGHT.md](docs/BETA_TESTFLIGHT.md)
 - Privacy policy draft: [docs/PRIVACY.md](docs/PRIVACY.md)
