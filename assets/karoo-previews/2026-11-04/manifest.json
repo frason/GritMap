@@ -1,0 +1,872 @@
+{
+  "runtimeSource": "6c5d472",
+  "base": "4cceb1d",
+  "synthetic": true,
+  "deviceCapture": false,
+  "images": [
+    {
+      "file": "pacing-dark-480x620.png",
+      "field": "pacing",
+      "theme": "dark",
+      "width": 480,
+      "height": 620,
+      "sha256": "29a890bee8db80652c59f86aef6951dae13e5728bd18480e766380eb03e8b025"
+    },
+    {
+      "file": "performance-dark-480x620.png",
+      "field": "performance",
+      "theme": "dark",
+      "width": 480,
+      "height": 620,
+      "sha256": "125abbe0a71b8d4929634018f34aa82d2eee5b48af9dde9ef5a2b88c8b414320"
+    },
+    {
+      "file": "balance-dark-480x620.png",
+      "field": "balance",
+      "theme": "dark",
+      "width": 480,
+      "height": 620,
+      "sha256": "32929791ea52ace4259c17298d1c42154f1936e041a4c9356059ee778703f791"
+    },
+    {
+      "file": "drift-dark-480x620.png",
+      "field": "drift",
+      "theme": "dark",
+      "width": 480,
+      "height": 620,
+      "sha256": "239d2469722ead73a7d6dc4e4c4b975fe00ff436843fc8bdb643e213c3ae1c2b"
+    },
+    {
+      "file": "recent-highlight-full-dark-480x620.png",
+      "field": "recent",
+      "theme": "dark",
+      "width": 480,
+      "height": 620,
+      "sha256": "3c6ad7bf4aa503d94c5db0c565c62bd08cd81f8e92877e5c6c2058eda94e34f3"
+    },
+    {
+      "file": "recent-highlight-half-dark-480x620.png",
+      "field": "recent",
+      "theme": "dark",
+      "width": 480,
+      "height": 620,
+      "sha256": "285d6c3274e4ad30bbeb5b1a24c0d3372deb5873068018d82ecc70264db3f065"
+    },
+    {
+      "file": "recent-three-dark-480x620.png",
+      "field": "recent",
+      "theme": "dark",
+      "width": 480,
+      "height": 620,
+      "sha256": "d6d1c842fccf56e2841972a55bdb8753f650ebd474fdc45e04462d165dc7d609"
+    },
+    {
+      "file": "drift-countdown-dark-480x620.png",
+      "field": "drift-countdown",
+      "theme": "dark",
+      "width": 480,
+      "height": 620,
+      "sha256": "071624ce034f5e2792880697eca12b51131dc4f5b524797b53c3c3889459a71b"
+    },
+    {
+      "file": "h10-dark-480x620.png",
+      "field": "h10",
+      "theme": "dark",
+      "width": 480,
+      "height": 620,
+      "sha256": "8e38a4b34614830996b273c24254c7b6aa65f54903a5ca177472dfba0e8fa86e"
+    },
+    {
+      "file": "pacing-dark-240x620.png",
+      "field": "pacing",
+      "theme": "dark",
+      "width": 240,
+      "height": 620,
+      "sha256": "011824e6079fbd08541ed493a12fdd1bb17f325fe8c4cbbe98657556883959fc"
+    },
+    {
+      "file": "performance-dark-240x620.png",
+      "field": "performance",
+      "theme": "dark",
+      "width": 240,
+      "height": 620,
+      "sha256": "9bf5a56041dd8c655c2591c4883d7ad419c512d0669c95b0ae04cf92ff1ab6f3"
+    },
+    {
+      "file": "balance-dark-240x620.png",
+      "field": "balance",
+      "theme": "dark",
+      "width": 240,
+      "height": 620,
+      "sha256": "af4a8555d9fa03f93b17b0fdfbf133b94dd6ad722e3007802d1ba27696498900"
+    },
+    {
+      "file": "drift-dark-240x620.png",
+      "field": "drift",
+      "theme": "dark",
+      "width": 240,
+      "height": 620,
+      "sha256": "9444cbac1f7b5e4cb70c06ccca338bdd34a65f0946bb8b7b488ba70fea382cb6"
+    },
+    {
+      "file": "recent-highlight-full-dark-240x620.png",
+      "field": "recent",
+      "theme": "dark",
+      "width": 240,
+      "height": 620,
+      "sha256": "310e93a0391fccd81404ab2afd2652242d4eb3d5f649562f08d28b83d670752b"
+    },
+    {
+      "file": "recent-highlight-half-dark-240x620.png",
+      "field": "recent",
+      "theme": "dark",
+      "width": 240,
+      "height": 620,
+      "sha256": "21380287e7ec370b2cd66c63ffc7a521b684646f95e8e8f7adc5393964ce0ab6"
+    },
+    {
+      "file": "recent-three-dark-240x620.png",
+      "field": "recent",
+      "theme": "dark",
+      "width": 240,
+      "height": 620,
+      "sha256": "e2b3b9cd468329da505007aec3610c8f9f53f764eda4cb321e02b28d0ffbd601"
+    },
+    {
+      "file": "drift-countdown-dark-240x620.png",
+      "field": "drift-countdown",
+      "theme": "dark",
+      "width": 240,
+      "height": 620,
+      "sha256": "90511795d3483f885bdcf2bf8b44853aed5cc4a3d3bfa235ad421bbb723f51cc"
+    },
+    {
+      "file": "h10-dark-240x620.png",
+      "field": "h10",
+      "theme": "dark",
+      "width": 240,
+      "height": 620,
+      "sha256": "ae45805a97f2558b2524dc583a97042a8bf7daf8c80e80795e3bf75a14331f9e"
+    },
+    {
+      "file": "pacing-dark-480x200.png",
+      "field": "pacing",
+      "theme": "dark",
+      "width": 480,
+      "height": 200,
+      "sha256": "31a1ddead57b65b3c3cf61668233e8ecc549eb9b6111137f0109a9d97e5c287a"
+    },
+    {
+      "file": "performance-dark-480x200.png",
+      "field": "performance",
+      "theme": "dark",
+      "width": 480,
+      "height": 200,
+      "sha256": "48966bf832097f980c3ef0261f242d65c9a02940c0e1312f4fa918544b6a6eb5"
+    },
+    {
+      "file": "balance-dark-480x200.png",
+      "field": "balance",
+      "theme": "dark",
+      "width": 480,
+      "height": 200,
+      "sha256": "d781ad5a63315257b0aea12647ec7de6dbe0b90cc2f94fc8c54f86ee22c4534f"
+    },
+    {
+      "file": "drift-dark-480x200.png",
+      "field": "drift",
+      "theme": "dark",
+      "width": 480,
+      "height": 200,
+      "sha256": "0f76c983c0ed00f986cf7e3a9888df92debf81622d2a97d2139c6e6fb0d8e155"
+    },
+    {
+      "file": "recent-highlight-full-dark-480x200.png",
+      "field": "recent",
+      "theme": "dark",
+      "width": 480,
+      "height": 200,
+      "sha256": "fa6e3a8fc5b2fae30bbaf420c2c9e78318d8da02330d600b6acd4634b099e039"
+    },
+    {
+      "file": "recent-highlight-half-dark-480x200.png",
+      "field": "recent",
+      "theme": "dark",
+      "width": 480,
+      "height": 200,
+      "sha256": "361aa3d013a4ec954d8beec800a528e54c49fe43e1155833b2c106f7445098e0"
+    },
+    {
+      "file": "recent-three-dark-480x200.png",
+      "field": "recent",
+      "theme": "dark",
+      "width": 480,
+      "height": 200,
+      "sha256": "65b355a200c10d848c721eaba122bfb00b281f8632b709bb0cdded6a13250227"
+    },
+    {
+      "file": "drift-countdown-dark-480x200.png",
+      "field": "drift-countdown",
+      "theme": "dark",
+      "width": 480,
+      "height": 200,
+      "sha256": "2d54e5a74338974e2cc5e2b97cbe45484876a724d57dc645608d69e5e780b016"
+    },
+    {
+      "file": "h10-dark-480x200.png",
+      "field": "h10",
+      "theme": "dark",
+      "width": 480,
+      "height": 200,
+      "sha256": "23886dc23e6a76bb821ff96fd6805887c6b5a9c178e961ab21d7d3bb71a6fd04"
+    },
+    {
+      "file": "pacing-dark-240x320.png",
+      "field": "pacing",
+      "theme": "dark",
+      "width": 240,
+      "height": 320,
+      "sha256": "bcf08dafff342fdbeb104154a2628a4fc089d1fd5365ef4b19a0bcd3e844f441"
+    },
+    {
+      "file": "performance-dark-240x320.png",
+      "field": "performance",
+      "theme": "dark",
+      "width": 240,
+      "height": 320,
+      "sha256": "177fb176abd3615e3fecb250011839f8aebeeefdb99620184d8b3201cb3a5506"
+    },
+    {
+      "file": "balance-dark-240x320.png",
+      "field": "balance",
+      "theme": "dark",
+      "width": 240,
+      "height": 320,
+      "sha256": "b1de9e6a31568d9ea566b7f99c0ca69866a899ae3b71df9af7638381e95f1786"
+    },
+    {
+      "file": "drift-dark-240x320.png",
+      "field": "drift",
+      "theme": "dark",
+      "width": 240,
+      "height": 320,
+      "sha256": "87195cc3d35b992aabe1fe1eaa5c175246c5afad62db8af75bec1d6c6fb12310"
+    },
+    {
+      "file": "recent-highlight-full-dark-240x320.png",
+      "field": "recent",
+      "theme": "dark",
+      "width": 240,
+      "height": 320,
+      "sha256": "c975023395e6b2f3a0163a1831d9b6bec412c6bfe374f9b1d141299ce2890632"
+    },
+    {
+      "file": "recent-highlight-half-dark-240x320.png",
+      "field": "recent",
+      "theme": "dark",
+      "width": 240,
+      "height": 320,
+      "sha256": "c6170123e2d0a651677284f4f05ece4c83b0ea88928798b8db4526d6bb44a1c1"
+    },
+    {
+      "file": "recent-three-dark-240x320.png",
+      "field": "recent",
+      "theme": "dark",
+      "width": 240,
+      "height": 320,
+      "sha256": "ce5225ef84e9e9877ca2618403559feeb36666c2ad8892168199fc7cf16683b9"
+    },
+    {
+      "file": "drift-countdown-dark-240x320.png",
+      "field": "drift-countdown",
+      "theme": "dark",
+      "width": 240,
+      "height": 320,
+      "sha256": "a4d3b491bae51f504e2cb443f4b6ccd31fc39f281a41af098811631aec843d48"
+    },
+    {
+      "file": "h10-dark-240x320.png",
+      "field": "h10",
+      "theme": "dark",
+      "width": 240,
+      "height": 320,
+      "sha256": "15666c1fde1929bded9b5bfcdbda608d177bbd1127dcf87e4637480755bef68d"
+    },
+    {
+      "file": "pacing-dark-480x120.png",
+      "field": "pacing",
+      "theme": "dark",
+      "width": 480,
+      "height": 120,
+      "sha256": "fab608f2e2185bca4cfae42664d8312ce5ac2c7d39ae5a4c3fdc7574a8cb7fed"
+    },
+    {
+      "file": "performance-dark-480x120.png",
+      "field": "performance",
+      "theme": "dark",
+      "width": 480,
+      "height": 120,
+      "sha256": "df011b186d3b29fda528ecde1481a7d085fffdd030a295e3d9fb3adb025bfa98"
+    },
+    {
+      "file": "balance-dark-480x120.png",
+      "field": "balance",
+      "theme": "dark",
+      "width": 480,
+      "height": 120,
+      "sha256": "e237cb8ed818758be056df79916c4e1be036b7d19bc7c2b13d4e97156a0c1dd9"
+    },
+    {
+      "file": "drift-dark-480x120.png",
+      "field": "drift",
+      "theme": "dark",
+      "width": 480,
+      "height": 120,
+      "sha256": "f2cbc9ad6247f7bd09dfeafd2aacdba18468db01fbf6c7c0ca9fae3c0fb7e0cb"
+    },
+    {
+      "file": "recent-highlight-full-dark-480x120.png",
+      "field": "recent",
+      "theme": "dark",
+      "width": 480,
+      "height": 120,
+      "sha256": "ed8c47fa7cddc24cf300bbf34795e1902ed923005083b473768a91a5076a9304"
+    },
+    {
+      "file": "recent-highlight-half-dark-480x120.png",
+      "field": "recent",
+      "theme": "dark",
+      "width": 480,
+      "height": 120,
+      "sha256": "1b6defcc3426633bc29e10ac40c302ac4a042d0938ced44433fed69853e6d4b4"
+    },
+    {
+      "file": "recent-three-dark-480x120.png",
+      "field": "recent",
+      "theme": "dark",
+      "width": 480,
+      "height": 120,
+      "sha256": "ccd9b8fcd77d6fb99283447a03c8d451834f1b23f22d811fa6cf0711bb1d0574"
+    },
+    {
+      "file": "drift-countdown-dark-480x120.png",
+      "field": "drift-countdown",
+      "theme": "dark",
+      "width": 480,
+      "height": 120,
+      "sha256": "e8c2fa0e29423b916e8b33c01a7b2b71670bb02402622090c7d8f6204705f05b"
+    },
+    {
+      "file": "h10-dark-480x120.png",
+      "field": "h10",
+      "theme": "dark",
+      "width": 480,
+      "height": 120,
+      "sha256": "fdee1cf1dbdca406e6b3a1c42691f5b434e48e2bb00525d83f1bda6c03a483d1"
+    },
+    {
+      "file": "pacing-dark-240x120.png",
+      "field": "pacing",
+      "theme": "dark",
+      "width": 240,
+      "height": 120,
+      "sha256": "ce4f600caa2e71cb95a44ec07261677ca977bf8cc138aead69cd0000a6c1a859"
+    },
+    {
+      "file": "performance-dark-240x120.png",
+      "field": "performance",
+      "theme": "dark",
+      "width": 240,
+      "height": 120,
+      "sha256": "e3780369b7cc39bdcadd8df7d14fc3806eeaa6001c753b136ae224c7eeb70ad4"
+    },
+    {
+      "file": "balance-dark-240x120.png",
+      "field": "balance",
+      "theme": "dark",
+      "width": 240,
+      "height": 120,
+      "sha256": "adcee6295206f965a4da77b776c10dd0bcc2e5ac33c40629d56488a97fc56ebd"
+    },
+    {
+      "file": "drift-dark-240x120.png",
+      "field": "drift",
+      "theme": "dark",
+      "width": 240,
+      "height": 120,
+      "sha256": "f18e0079a231cba72737d1e29e5776b3236bf7af0245a039764f5b605b299cb6"
+    },
+    {
+      "file": "recent-highlight-full-dark-240x120.png",
+      "field": "recent",
+      "theme": "dark",
+      "width": 240,
+      "height": 120,
+      "sha256": "bc3c0b98a4d52bdd33f683f2d875f46f819585046b0e6f949e486d1a91d1a1bc"
+    },
+    {
+      "file": "recent-highlight-half-dark-240x120.png",
+      "field": "recent",
+      "theme": "dark",
+      "width": 240,
+      "height": 120,
+      "sha256": "6acbf5e565d1385131b19d5475d95851c37264575032388834b755dc30bf5185"
+    },
+    {
+      "file": "recent-three-dark-240x120.png",
+      "field": "recent",
+      "theme": "dark",
+      "width": 240,
+      "height": 120,
+      "sha256": "54a389620d8158758bbee861e418eb38bcf863854b09f9850962598c1205951b"
+    },
+    {
+      "file": "drift-countdown-dark-240x120.png",
+      "field": "drift-countdown",
+      "theme": "dark",
+      "width": 240,
+      "height": 120,
+      "sha256": "50a250805d8bf64ca5a6c3bd1f9a058f7ab6e4596bf243cd3f3cbc2bea2a3444"
+    },
+    {
+      "file": "h10-dark-240x120.png",
+      "field": "h10",
+      "theme": "dark",
+      "width": 240,
+      "height": 120,
+      "sha256": "cf4ffe3f718c3433a890aa393ead7d072eca51e8b445f815a2522196b4df3137"
+    },
+    {
+      "file": "pacing-light-480x620.png",
+      "field": "pacing",
+      "theme": "light",
+      "width": 480,
+      "height": 620,
+      "sha256": "24c4302bab5421255d4f730fd71f1e6a6a3a9d781772ce4eb036ca19e6caaf04"
+    },
+    {
+      "file": "performance-light-480x620.png",
+      "field": "performance",
+      "theme": "light",
+      "width": 480,
+      "height": 620,
+      "sha256": "89e914c2e282686d4a506eccb1885a3f4ccefc2a42f56aa55145db7c00bb87fe"
+    },
+    {
+      "file": "balance-light-480x620.png",
+      "field": "balance",
+      "theme": "light",
+      "width": 480,
+      "height": 620,
+      "sha256": "8955f67ec1397d8443cdcefebc7179ff0c484f9fbcfafcdd6e0e4eaa29ded81c"
+    },
+    {
+      "file": "drift-light-480x620.png",
+      "field": "drift",
+      "theme": "light",
+      "width": 480,
+      "height": 620,
+      "sha256": "7a3ff9c5cd5778ee5d3aa09a2003d13134c4dcd4017547782f4ca284a13f9ac2"
+    },
+    {
+      "file": "recent-highlight-full-light-480x620.png",
+      "field": "recent",
+      "theme": "light",
+      "width": 480,
+      "height": 620,
+      "sha256": "0aedeb25c218b31f02656635d4a1a7f4a232e46c5d4305c440f73d96e45958ae"
+    },
+    {
+      "file": "recent-highlight-half-light-480x620.png",
+      "field": "recent",
+      "theme": "light",
+      "width": 480,
+      "height": 620,
+      "sha256": "00ba90255e22e9ad1009c84cbf5536b068eaee69f37cb03b7d07dfa639de5ee3"
+    },
+    {
+      "file": "recent-three-light-480x620.png",
+      "field": "recent",
+      "theme": "light",
+      "width": 480,
+      "height": 620,
+      "sha256": "2746d31eb6bce946f95c5c5bd6bb87d04a7fccd7f06651c1b11c3a8475828cdc"
+    },
+    {
+      "file": "drift-countdown-light-480x620.png",
+      "field": "drift-countdown",
+      "theme": "light",
+      "width": 480,
+      "height": 620,
+      "sha256": "91160e2259e10b2bf416e5d4e8ad3e5ecd02f20bc58c1e1b33918de73a17c40d"
+    },
+    {
+      "file": "h10-light-480x620.png",
+      "field": "h10",
+      "theme": "light",
+      "width": 480,
+      "height": 620,
+      "sha256": "e9f4ca5548faf251438e6d9585dca9744feea4ab295ce2d946522d7c56e3abd3"
+    },
+    {
+      "file": "pacing-light-240x620.png",
+      "field": "pacing",
+      "theme": "light",
+      "width": 240,
+      "height": 620,
+      "sha256": "52c6679fc7f667f174f11e390306bf36f005391da582081bab42a2e7eee21034"
+    },
+    {
+      "file": "performance-light-240x620.png",
+      "field": "performance",
+      "theme": "light",
+      "width": 240,
+      "height": 620,
+      "sha256": "a0095b303d0a61998ed5066fe0a3c332db1ef96adf28ceffa7d5db614de88f5f"
+    },
+    {
+      "file": "balance-light-240x620.png",
+      "field": "balance",
+      "theme": "light",
+      "width": 240,
+      "height": 620,
+      "sha256": "cb3c9662110ef1a9e8b96535779aec06b1b34c34365fdfbd4e32e46e7e052489"
+    },
+    {
+      "file": "drift-light-240x620.png",
+      "field": "drift",
+      "theme": "light",
+      "width": 240,
+      "height": 620,
+      "sha256": "593592a528f9f8a19f6bde4e0467d1e28bb820cc6483fca3cc117cfd941a39b8"
+    },
+    {
+      "file": "recent-highlight-full-light-240x620.png",
+      "field": "recent",
+      "theme": "light",
+      "width": 240,
+      "height": 620,
+      "sha256": "45f120c3942e68714012746a0424460d7ceb7a23f655b4a6864336fee3bc0d6d"
+    },
+    {
+      "file": "recent-highlight-half-light-240x620.png",
+      "field": "recent",
+      "theme": "light",
+      "width": 240,
+      "height": 620,
+      "sha256": "6ac69de27b502556bdab508d48e9480049c5ae9e28fc2f43572106b7a32c0fb9"
+    },
+    {
+      "file": "recent-three-light-240x620.png",
+      "field": "recent",
+      "theme": "light",
+      "width": 240,
+      "height": 620,
+      "sha256": "527442fcd06909b6ded873bbbd91ab37f5a60c49582a7c9e54f3aaf95a57e1b8"
+    },
+    {
+      "file": "drift-countdown-light-240x620.png",
+      "field": "drift-countdown",
+      "theme": "light",
+      "width": 240,
+      "height": 620,
+      "sha256": "01ff3d6184baec12fd25af7afe6569f75956af20eceb7d856da4c60ae2d3150c"
+    },
+    {
+      "file": "h10-light-240x620.png",
+      "field": "h10",
+      "theme": "light",
+      "width": 240,
+      "height": 620,
+      "sha256": "8817542d37f19007acaece2c34b1302c5521885f93c111b87168461fc682c637"
+    },
+    {
+      "file": "pacing-light-480x200.png",
+      "field": "pacing",
+      "theme": "light",
+      "width": 480,
+      "height": 200,
+      "sha256": "49e0c2e416759e9d6ccbc10b79c9a0c1e3af1b5482c3f9b5b1b7da61a7497d1b"
+    },
+    {
+      "file": "performance-light-480x200.png",
+      "field": "performance",
+      "theme": "light",
+      "width": 480,
+      "height": 200,
+      "sha256": "972fad48691c3439729de4599bc07edcce1a6ccf48a9f2f2deaff7192ed7fccd"
+    },
+    {
+      "file": "balance-light-480x200.png",
+      "field": "balance",
+      "theme": "light",
+      "width": 480,
+      "height": 200,
+      "sha256": "2a255b551d03d6ee32e0f713dd875014e9974bb7427069235124a8a0662bfa54"
+    },
+    {
+      "file": "drift-light-480x200.png",
+      "field": "drift",
+      "theme": "light",
+      "width": 480,
+      "height": 200,
+      "sha256": "313208789d316c3f3990c4700e383e998f7f9b438e41643c2848d41e814f6375"
+    },
+    {
+      "file": "recent-highlight-full-light-480x200.png",
+      "field": "recent",
+      "theme": "light",
+      "width": 480,
+      "height": 200,
+      "sha256": "5a42ca6009b40a3510483a1c44ae17b55eaff935e791f5ed6af996a25b93efee"
+    },
+    {
+      "file": "recent-highlight-half-light-480x200.png",
+      "field": "recent",
+      "theme": "light",
+      "width": 480,
+      "height": 200,
+      "sha256": "a3764f80ba717a4e4a2c98d6fe0089c6bdedeb8b48ce6b95719439a3dc1e51bf"
+    },
+    {
+      "file": "recent-three-light-480x200.png",
+      "field": "recent",
+      "theme": "light",
+      "width": 480,
+      "height": 200,
+      "sha256": "1d1785776c8be7a414aff11adeee8a1e4b8915c38bd37cae813c31f4e0d21c0d"
+    },
+    {
+      "file": "drift-countdown-light-480x200.png",
+      "field": "drift-countdown",
+      "theme": "light",
+      "width": 480,
+      "height": 200,
+      "sha256": "65d8844828251dc97301042d68f842d51fa0382b5cc8405e68643de1e2f76694"
+    },
+    {
+      "file": "h10-light-480x200.png",
+      "field": "h10",
+      "theme": "light",
+      "width": 480,
+      "height": 200,
+      "sha256": "855c4e91397c7e4fcacafd84a9d0a09663deed86ce4c1027d0906646c94455a4"
+    },
+    {
+      "file": "pacing-light-240x320.png",
+      "field": "pacing",
+      "theme": "light",
+      "width": 240,
+      "height": 320,
+      "sha256": "e7efc5f9ba35bbb4ec7c001d4f119bd8acb6b95850232d9579362f06fe6dc297"
+    },
+    {
+      "file": "performance-light-240x320.png",
+      "field": "performance",
+      "theme": "light",
+      "width": 240,
+      "height": 320,
+      "sha256": "a11a2ccddb6a28e66cff494bf96769e4ad56ec079083e5849b75f7236aee45be"
+    },
+    {
+      "file": "balance-light-240x320.png",
+      "field": "balance",
+      "theme": "light",
+      "width": 240,
+      "height": 320,
+      "sha256": "db58c7f1595f06f44fc935ac0ddb2fca7b290564f647c13d10d8c66a07e8549c"
+    },
+    {
+      "file": "drift-light-240x320.png",
+      "field": "drift",
+      "theme": "light",
+      "width": 240,
+      "height": 320,
+      "sha256": "3f93f85efaed76fccaff88ba67008d5bb4f5393bcc1251653bd5deac180e0139"
+    },
+    {
+      "file": "recent-highlight-full-light-240x320.png",
+      "field": "recent",
+      "theme": "light",
+      "width": 240,
+      "height": 320,
+      "sha256": "eb408f2a94b8bdb467f905ff65b3fdfccc6882be99694cfa17954815f6f47530"
+    },
+    {
+      "file": "recent-highlight-half-light-240x320.png",
+      "field": "recent",
+      "theme": "light",
+      "width": 240,
+      "height": 320,
+      "sha256": "424355b63484b2b373e93ddf4898d82b7fd0a206b16319ac9de4331876f98d75"
+    },
+    {
+      "file": "recent-three-light-240x320.png",
+      "field": "recent",
+      "theme": "light",
+      "width": 240,
+      "height": 320,
+      "sha256": "98dc0dde5d373ee6a58edbb39d7ca76df812793c67da3b241dd388ad0ba79164"
+    },
+    {
+      "file": "drift-countdown-light-240x320.png",
+      "field": "drift-countdown",
+      "theme": "light",
+      "width": 240,
+      "height": 320,
+      "sha256": "99ddc7b5f3ae2c750d6785680496462919581a78109682c5404dcfe516fa3b06"
+    },
+    {
+      "file": "h10-light-240x320.png",
+      "field": "h10",
+      "theme": "light",
+      "width": 240,
+      "height": 320,
+      "sha256": "a2698134a6ec874bc83ce4d01b5479aa9f314cff26684def1f02f4fa2fb2e00f"
+    },
+    {
+      "file": "pacing-light-480x120.png",
+      "field": "pacing",
+      "theme": "light",
+      "width": 480,
+      "height": 120,
+      "sha256": "44501bc57f35fcb8e56d4fe4eda4e8e453aa849f13ebd5df6ba8ab8efe67175e"
+    },
+    {
+      "file": "performance-light-480x120.png",
+      "field": "performance",
+      "theme": "light",
+      "width": 480,
+      "height": 120,
+      "sha256": "68b92ea21d84e856376daf1d3eb4c0275b0ec0d334e75f1ed9f12a36813e40d3"
+    },
+    {
+      "file": "balance-light-480x120.png",
+      "field": "balance",
+      "theme": "light",
+      "width": 480,
+      "height": 120,
+      "sha256": "6613ab4f5a422765fbb7e7d97368e120ac1edf11d862d6087e24702cbf7437ee"
+    },
+    {
+      "file": "drift-light-480x120.png",
+      "field": "drift",
+      "theme": "light",
+      "width": 480,
+      "height": 120,
+      "sha256": "9a091c612c2810d7c5ac3c8b14b7a5d342e21f14c89d4f8861724f630613bd56"
+    },
+    {
+      "file": "recent-highlight-full-light-480x120.png",
+      "field": "recent",
+      "theme": "light",
+      "width": 480,
+      "height": 120,
+      "sha256": "0d07db39c8cbf9fa131599a9be8074ae06d3e1348febd6a582ff5fd713a17fe0"
+    },
+    {
+      "file": "recent-highlight-half-light-480x120.png",
+      "field": "recent",
+      "theme": "light",
+      "width": 480,
+      "height": 120,
+      "sha256": "a382d67b6a9c0438a8ab06970068bab7a0004f2026c91d09e54ea0f8df6044a0"
+    },
+    {
+      "file": "recent-three-light-480x120.png",
+      "field": "recent",
+      "theme": "light",
+      "width": 480,
+      "height": 120,
+      "sha256": "9351bc94abdfe79756b9255e7852e5728d1df6edb05dfeb331a06ec3b94e72e4"
+    },
+    {
+      "file": "drift-countdown-light-480x120.png",
+      "field": "drift-countdown",
+      "theme": "light",
+      "width": 480,
+      "height": 120,
+      "sha256": "90d7eb1b8f1c29c9a3aab6fdd714669ac54612c882e1fb44c01129cee533bf28"
+    },
+    {
+      "file": "h10-light-480x120.png",
+      "field": "h10",
+      "theme": "light",
+      "width": 480,
+      "height": 120,
+      "sha256": "4e166712b32735ab68f7f6ad1ed698511e4561ca1d031e0f1f9db4997b9bcd69"
+    },
+    {
+      "file": "pacing-light-240x120.png",
+      "field": "pacing",
+      "theme": "light",
+      "width": 240,
+      "height": 120,
+      "sha256": "5569364daa70255a9d406cc359ad6052e8d3360e0feddd9b8360443368ee3b88"
+    },
+    {
+      "file": "performance-light-240x120.png",
+      "field": "performance",
+      "theme": "light",
+      "width": 240,
+      "height": 120,
+      "sha256": "bdd9de6a6f803227f9dd403baba355d3c10538c749722d4f025dfdc67048b2b3"
+    },
+    {
+      "file": "balance-light-240x120.png",
+      "field": "balance",
+      "theme": "light",
+      "width": 240,
+      "height": 120,
+      "sha256": "37bf9bc8198939cc02cc5aa3fd22b0b9733775633d2ba9ba39f9d509d5e137f8"
+    },
+    {
+      "file": "drift-light-240x120.png",
+      "field": "drift",
+      "theme": "light",
+      "width": 240,
+      "height": 120,
+      "sha256": "5ac31180d879dfd5262adef0e570071ce9fc4bd390a6f3e124a0a2c8e986842b"
+    },
+    {
+      "file": "recent-highlight-full-light-240x120.png",
+      "field": "recent",
+      "theme": "light",
+      "width": 240,
+      "height": 120,
+      "sha256": "e54cfd00aa35f8d62d154138a2c125b27148121b97f4d88257f2f60871a0c076"
+    },
+    {
+      "file": "recent-highlight-half-light-240x120.png",
+      "field": "recent",
+      "theme": "light",
+      "width": 240,
+      "height": 120,
+      "sha256": "7b5a014427e87957c29df139b4431037bf2073289d816d549b5e103f4157d264"
+    },
+    {
+      "file": "recent-three-light-240x120.png",
+      "field": "recent",
+      "theme": "light",
+      "width": 240,
+      "height": 120,
+      "sha256": "ec003b98e2370e83fab436a21a1b35813ce1b4b8beadd946a03393141cc2d3be"
+    },
+    {
+      "file": "drift-countdown-light-240x120.png",
+      "field": "drift-countdown",
+      "theme": "light",
+      "width": 240,
+      "height": 120,
+      "sha256": "26628f5ef4b4600652136447020327bff2fb63a82165d3e6f9f2ba7e4f963f67"
+    },
+    {
+      "file": "h10-light-240x120.png",
+      "field": "h10",
+      "theme": "light",
+      "width": 240,
+      "height": 120,
+      "sha256": "c966d5ef2fe15d72d1e6c8cb4a9db3cc6a850fa83821aa53118faab91f66587f"
+    }
+  ]
+}

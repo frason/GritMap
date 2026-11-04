@@ -24,5 +24,17 @@ class H10CardiacBitmapRendererTest {
         assertEquals(240, compact.width)
         assertEquals(150, compact.height)
         assertNotEquals(dashboard.getPixel(0, 0), dashboard.getPixel(240, 90))
+        // Export the same dashboard/compact choices used by H10CardiacDataType.
+        val out = java.io.File("build/reports/karoo-h10").apply { mkdirs() }
+        for ((theme, palette) in listOf("dark" to KarooVisualPalette.Dark, "light" to KarooVisualPalette.Light)) {
+            for ((w, h) in listOf(480 to 620, 240 to 620, 480 to 200, 240 to 320, 480 to 120, 240 to 120)) {
+                val native = H10CardiacBitmapRenderer(palette)
+                val bitmap = if (h == 620) native.renderDashboard(KarooPreviewState, w, h)
+                    else native.renderCompact(KarooPreviewState, w, h)
+                java.io.File(out, "$theme-${w}x$h.png").outputStream().use {
+                    bitmap.compress(android.graphics.Bitmap.CompressFormat.PNG, 100, it)
+                }
+            }
+        }
     }
 }
