@@ -69,6 +69,30 @@ Cloudflare (hosting and Turnstile bot check), Supabase (authentication and datab
 
 **"Contact":** replace the personal Gmail takedown address with a dedicated address (the website already uses `help@opensegments.org`). **Jason to decide and create it.**
 
+## 4a. Separation: Open Segments as an independent service, not part of "GritMap"
+
+**Jason's intent:** the iPhone app should treat Open Segments as a separate service the app connects to (like any integration), not as part of a GritMap "company", even though no company exists today. **Not legal advice; the lawyer should confirm what is achievable.**
+
+**What the product can do (and the policy can truthfully say):**
+- Data goes **directly from the phone to Open Segments**; there is no GritMap server in between. GritMap (the app and the project) never receives or stores the sign-in email, likes or published segments. The app holds only a sign-in credential in the iPhone Keychain.
+- Separate identity: own name and domain (opensegments.org), own privacy policy, terms, contribution terms and contact address (`help@opensegments.org`), own sign-in (an Open Segments account is not a GritMap account), and separate provider accounts (Cloudflare, Supabase, Resend).
+- In the app: wording such as "Connect to Open Segments, a separate open service"; a first-use screen saying what is sent, that Open Segments' own terms and privacy policy apply, and that GritMap does not receive it; a Settings "Open Segments" section linking to those documents; auto-share opt-in and OFF by default.
+- In the GritMap privacy policy: describe Open Segments as operated separately, link to its policy, and state that GritMap itself holds none of that data.
+
+**What wording alone cannot change (please advise):**
+- With no legal entity, one person (Jason) is the operator of both. Controller or processor roles and liability follow who decides the purposes and means of processing, not the names. Two brands do not create two parties.
+- Apple's App Store privacy answers cover data collected through the app, including by a service the app calls, so email and user content must still be disclosed.
+
+**Structure options to compare:** (1) keep as is, one person operating both with clear disclosures; (2) a separate entity (for example an LLC) that owns the Open Segments domain, provider accounts, terms and licence, limiting personal liability; (3) a fiscal host or nonprofit steward for independent governance. Costs, annual obligations and what each changes for liability, privacy roles and licensing.
+
+**Questions for the lawyer:**
+1. Who is the **licensor** under the ODbL 1.0 grant in the contribution terms? An unincorporated project has no clear holder to receive the grant, so who should the terms name?
+2. Who owns the domain, the "Open Segments" and "GritMap" names, the logos and the content licences, and should they sit with different owners?
+3. Who is the **controller**, and who are the **processors** (Supabase, Cloudflare, Resend), for Open Segments account data? Does a separate legal entity change the answer for GritMap, which holds none of it?
+4. Does the GritMap privacy policy need to be the same document as Open Segments' or can it simply link to it?
+5. At what point (accounts, public launch, donations or sponsorship, paid features) should a legal entity be formed?
+6. Does presenting Open Segments as separate in the app reduce any obligation, or must the app's own privacy answers and policy cover it anyway?
+
 ## 5. Other documents that must change at the same time
 
 - `docs/GOALS.md`: remove or qualify "nothing leaves the phone" wording for accounts, publishing and likes; keep "ride GPS, plans and times never go to a server."
