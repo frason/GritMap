@@ -1,3 +1,23 @@
+# Coordinator: LIKED SEGMENTS (HEART) AND GETTING THEM ONTO THE PHONE (2026-11-03, requested by Jason; no Figma yet, build from this text)
+
+**Jason's ask:** a heart to like a segment on Open Segments; liked segments appear in "My segments" in a separate list from uploaded ones (a segment can be in both); make it easy to get liked segments onto the phone. Jason skipped the Figma step: design to the existing Trailhead tokens and components (heart = a new duotone icon in the same set, outline off / filled on, label "Like" / "Liked", never colour alone), and send Jason screenshots for approval at the end of each stage.
+**Defaults used until Jason says otherwise (TO CONFIRM):** likes are PRIVATE to the account (no public counts, no "most liked" ranking, no one else can see who liked what); a like made on the web or the phone shows on both (stored on the account).
+
+**Web (fold into stage 3, account and My segments):**
+1. Heart on the Segment card and the Segment page. Signed-out tap opens the same sign-in prompt as the creation flow, then completes the like. Optimistic toggle with an undo-safe failure state; keyboard and screen-reader label ("Like segment" / "Remove from liked").
+2. "My segments" gets two tabs: **Uploaded** and **Liked**. A segment the rider uploaded and also liked shows in both. Empty states for each. A liked segment that later becomes Hidden or is removed drops out of Liked without leaking why.
+3. Segment page: **"Open in GritMap"** button (universal link / deep link that opens the app on that segment's pin sheet, with an install fallback to the TestFlight/App Store page) and a **QR code** of the same link for desktop visitors. Works without an account.
+**Data and privacy:** store a like as (account id, segment id, created at) only. Unliking deletes the row; deleting the account deletes all likes; likes never appear in public APIs, listings or logs. This is new personal data on the server: add it to the privacy page text and flag it for Jason's lawyer review. Rate-limit like toggles per account. Contract and fixtures shared with the phone through `segment-core`/the phone client contract.
+
+**Phone (follows the Open Segments contract; flag-gated; do NOT build before the contract exists and Jason schedules it):**
+1. When signed in with the Open Segments account, show **Liked** (from the account) with an "Add to my segments" action per item (pins and downloads the line locally) and "Add all" for first use; already-pinned items show as added. Heart toggle on Open Segments results and segment detail, synced with the account.
+2. Handle the "Open in GritMap" link: open the segment's pin sheet; unsigned users can pin without an account.
+3. Pinned segments behave like any other segment, including send to Karoo.
+
+**Account linking question (Codex must decide and report):** Sign in with Apple "Hide My Email" gives the app a private relay address, so the same person signing in with Apple on the phone and by emailed code on the web could end up with two accounts and two separate sets of uploads and likes. Propose how accounts are linked or merged (for example, link sign-in methods under one account after a verified email code) or how the app warns the rider. Account name stays server-generated and read-only. Verify current Apple/Google sign-in rules (Apple requires Sign in with Apple when a third-party login is offered) and Supabase support in current docs.
+
+**Confirm list additions:** like storage and deletion; linking rule; deep-link domain and association files (apple-app-site-association) without Jason's secrets; QR generation client-side with no tracking; how unsigned "Open in GritMap" behaves when the segment is Link only (should still open for anyone with the link).
+
 # Coordinator: KAROO ASK, SEGMENTS AND PACE MARKER ON THE KAROO MAP (2026-11-03, requested by Jason). Design/feasibility first, no device install
 
 **Jason's ask:** track segments on the Karoo map: show each segment as a coloured line on the map, plus the pace marker on the map. Fits `docs/GOALS.md` (Karoo owns live execution and "the map pacer"); not a conflict.
