@@ -151,8 +151,15 @@ move toward that, not around it:
 **Karoo (Kotlin, `apps/karoo/`; mostly Codex)**
 - Live execution: segment detection/matching, attempt state, pacer, finish projection, safety.
   Deterministic and authoritative while riding.
-- Live data fields (pacing coach, segment performance, cardiac drift, H10 cardiac) and the map
-  pacer.
+- Live data fields (pacing coach, segment performance, cardiac drift, H10 cardiac, Recent Segments) and the map
+  pacer. Status as of 2026-11-04 (from the Karoo Codex handoff on its local branch `codex/karoo-screen-redesign`, not yet on
+  main, not independently verified): the approved screen redesign (merged responsive Pacing field) is installed on the device as
+  version 76 (Room 4). Built and tested but NOT installed: a Cardiac Drift baseline countdown that shows the real blocker instead
+  of staying on "collecting baseline" (fixes the indefinite-calibrating report), and GM Recent Segments (newest completed attempts
+  with time, goal and ahead/behind, plus a 30 second shrinking highlight for the latest result; needs a Room 5 database migration, so
+  the device cannot be downgraded to 76 afterwards). Designed, not built: Nearby Segments (starts within about 2 km, up to 4 rows).
+  Queued reviews: segments and pace marker on the Karoo map (the existing map pacer shows only during an active attempt), and
+  Karoo-to-phone Bluetooth sync. Installing anything needs Jason's exact approval and a ride check.
 - Sensor capture, including H10 RR artifacts.
 - Receives segments and plans; does not author plans.
 
