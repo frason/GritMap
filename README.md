@@ -40,6 +40,21 @@ mode for sharing with friends. Accounts use an emailed code and a generated ride
 name. Connecting the iPhone app to Open Segments (searching, pinning and publishing from the app) is in
 development.
 
+## The iPhone app
+
+Screens from the TestFlight build in dark mode, using synthetic sample rides and segments (the routes are
+generated, not real rides).
+
+<p>
+  <img src="assets/phone/home-dark.png" width="23%" alt="Home: latest ride with map, personal best, pinned segment and goal">
+  <img src="assets/phone/rides-dark.png" width="23%" alt="Rides list with map previews and segment results">
+  <img src="assets/phone/ride-review-dark.png" width="23%" alt="Ride review: map, stats and the segments found in the ride">
+  <img src="assets/phone/send-to-karoo-dark.png" width="23%" alt="Send to Karoo over Bluetooth, with steps">
+</p>
+
+Home and Rides show your latest rides and results; a ride lists the segments found in it; Send to Karoo
+moves a segment and its plan to the Karoo over Bluetooth.
+
 ## Karoo 3 extension
 
 The current extension requires a **Hammerhead Karoo 3**. Karoo 2 is not supported by this beta.
