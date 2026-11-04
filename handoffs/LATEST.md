@@ -1,3 +1,19 @@
+# Coordinator: CODEX, WHAT TO DO NEXT, IN ORDER (2026-11-04; applies to BOTH Codex sessions, read this first)
+
+New on main since you last read (033e82f): `0c8e9af` (Karoo status corrected, GOALS), `bb87c34`/`5f9048c` (README), `1646a4e` (coordinator review of your likes contract), `f877e17` (7 phone-adapter questions for you), `f9ea994` (phone Profile placement A, email-code-only sign-in), `1cc03f7`/`caff4f1` (privacy and separation memo for the lawyer: `docs/PRIVACY_CHANGES_FOR_REVIEW.md`).
+**Open Segments Codex (`codex/open-segments-platform`):**
+1. Answer the 7 questions in the "PHONE ADAPTED TO THE LIKES CONTRACT" section in the contract doc (short-segment rows, hearts on unlisted segments, error body shape, 401 refresh rule, export route id, control style, segmentType vs activityType).
+2. Palette check: your notes mention a "blue favicon" and an "approved blue palette"; the approved web look is graphite ink + pink (the logo uses pink). Ask Jason in your chat whether blue was his call before deploying it. Also confirm the cooler-gray dark values (`c748c62`) and the dark map cleanup are applied, and that the two "accepted" dark contrast failures are gone with the new values.
+3. Separation: Jason wants the phone to treat Open Segments as a separate, independent service (the app connects to it; GritMap holds none of its data). In the phone contract/design note, list what the first-use "Connect to Open Segments" screen must say (what is sent, which privacy policy and terms apply, that GritMap does not receive it), and keep the web Terms, Privacy and Help text consistent with `docs/PRIVACY_CHANGES_FOR_REVIEW.md`. Do not publish policy text as final; it is a draft for Jason's lawyer.
+4. Continue web build stages 1 to 5 from the build handoff (tokens, map shell, account/My segments with Liked, creation flow, content pages), screenshots in light and dark for Jason's review.
+5. `packages/segment-core` is still not on origin and the phone cannot depend on it. Ask Jason in your chat for a push yes (own branch only, no credentials or personal GPS in the commit); say exactly which commits and files.
+6. Still open from earlier: what is deployed at opensegments.org today (writes, listing rules, sign-in); the type thresholds; near-home distance; partial-elevation rule; attribution wording vs the loaded map style; a hosted likes release is a SEPARATE approval; sign-in Turnstile native bridge needs Jason's yes and a security review.
+**Karoo Codex (`codex/karoo-screen-redesign`):**
+1. Ask Jason in your chat whether to push your branch (cardiac countdown, Recent Segments, screenshots, handoffs), so main reflects it; own branch only, explicit yes.
+2. Do the two queued read-only reviews: segments and pace marker on the Karoo map (see the KAROO ASK section above) and Karoo-to-phone Bluetooth ride sync feasibility. Docs only, no device, no install.
+3. Jason still owes answers on the Nearby Segments proposal (radius, ordering, row content) and any install approval; do not build or install without an exact yes.
+Neither session: no deploy, push, native change or device install without Jason's explicit yes in your own chat.
+
 # Coordinator: PHONE PROFILE PLACEMENT A APPROVED, EMAIL-CODE-ONLY SIGN-IN SCREENS (2026-11-04, Jason chose A)
 
 **Decided by Jason:** Profile lives behind an **avatar button at the top right of Home** (placement A). The Settings "Account" row opens the SAME Profile screen (one Profile, not two). No fourth tab. Sign-in is **email code only** (Apple and Google deferred), matching Codex's contract.
