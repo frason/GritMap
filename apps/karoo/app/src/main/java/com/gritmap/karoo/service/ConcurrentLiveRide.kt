@@ -32,6 +32,8 @@ internal data class ConcurrentAttemptRecord(
     val heartRate: Double?,
     val cadence: Double?,
     val speed: Double?,
+    val fingerprint: String? = null,
+    val initialProgressMeters: Double = 0.0,
 )
 
 internal interface ConcurrentAttemptPersistence {
@@ -110,7 +112,7 @@ internal class ConcurrentLiveRide(
             val meta = segments.getValue(event.state.input.definition.fingerprint)
             val session = ActiveAttemptSession(event.state.attemptId, meta.definition.id,
                 event.state.firstObservedAtMs, state(meta, 0.0, sensors), meta.ftpWatts, meta.planId,
-                enableWPrime = false)
+                enableWPrime = false, segmentFingerprint = meta.definition.fingerprint)
             sessions[session.attemptId] = session
             checkpoints[session.attemptId] = sample.timestampMs
             outbox.addLast(Write.Enter(record(session, sample.timestampMs)))
@@ -216,5 +218,5 @@ internal class ConcurrentLiveRide(
     private fun record(session: ActiveAttemptSession, timestampMs: Long) = ConcurrentAttemptRecord(session.attemptId,
         session.segmentId, session.startedAtMs, timestampMs, session.uiState, session.pacingPlanId,
         session.maxDeviationMeters, session.averagePowerWatts, session.averageHeartRateBpm,
-        session.averageCadenceRpm, session.averageSpeedMetersPerSecond)
+        session.averageCadenceRpm, session.averageSpeedMetersPerSecond, session.segmentFingerprint, session.initialProgressMeters)
 }

@@ -13,7 +13,17 @@ object DatabaseProvider {
             context.applicationContext,
             KarooDatabase::class.java,
             "gritmap-karoo.db",
-        ).addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4).build().also { instance = it }
+        ).addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5).build().also { instance = it }
+    }
+
+    val MIGRATION_4_5 = object : Migration(4, 5) {
+        override fun migrate(db: SupportSQLiteDatabase) {
+            db.execSQL("ALTER TABLE segment_attempts ADD COLUMN sampledElapsedSeconds REAL")
+            db.execSQL("ALTER TABLE segment_attempts ADD COLUMN goalFinishSecondsAtCompletion INTEGER")
+            db.execSQL("ALTER TABLE segment_attempts ADD COLUMN completedSegmentName TEXT")
+            db.execSQL("ALTER TABLE segment_attempts ADD COLUMN completedSegmentFingerprint TEXT")
+            db.execSQL("ALTER TABLE segment_attempts ADD COLUMN resultTimingVersion INTEGER")
+        }
     }
 
     val MIGRATION_3_4 = object : Migration(3, 4) {

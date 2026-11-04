@@ -69,6 +69,7 @@ class ActiveAttemptSession(
     val pacingPlanId: String? = null,
     private val retentionMs: Long = 120_000L,
     enableWPrime: Boolean = true,
+    val segmentFingerprint: String? = null,
 ) {
     private val samples = ArrayDeque<LiveTelemetry>()
     var uiState: LiveUiState = initialUiState
@@ -100,6 +101,22 @@ class ActiveAttemptSession(
         WPrimeEngine(WPrimeParameters.estimatedFromFtp(it))
     }
     private var lastRecordedTimestampMs: Long? = null
+    internal val initialProgressMeters = initialUiState.progressMeters
+    internal var completionSnapshot: AttemptResultSnapshot? = null
+        private set
+
+    /** Freeze before the async completion write/live-state clear; never consult a later plan. */
+    internal fun freezeResult(): AttemptResultSnapshot {
+        completionSnapshot?.let { return it }
+        return AttemptResultSnapshot(
+            endedAtMs = lastRecordedTimestampMs,
+            elapsedSeconds = lastRecordedTimestampMs?.let { (it - startedAtMs) / 1000.0 }?.takeIf { it > 0 },
+            goalSeconds = uiState.plannedFinishSeconds?.takeIf { it > 0 },
+            segmentName = uiState.segmentName,
+            segmentFingerprint = segmentFingerprint,
+        ).also { completionSnapshot = it }
+    }
+
     private val segmentSplitDeltasSeconds = ArrayDeque<Int>()
     private var nextSplitBoundaryMeters = QUARTER_MILE_METERS
     private var previousSplitElapsedSeconds = 0.0
@@ -232,6 +249,14 @@ class ActiveAttemptSession(
         private const val QUARTER_MILE_METERS = 402.336
     }
 }
+
+internal data class AttemptResultSnapshot(
+    val endedAtMs: Long?,
+    val elapsedSeconds: Double?,
+    val goalSeconds: Int?,
+    val segmentName: String,
+    val segmentFingerprint: String?,
+)
 
 interface AttemptEventSink {
     suspend fun onSegmentEntry(session: ActiveAttemptSession)

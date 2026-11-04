@@ -7,6 +7,8 @@ import androidx.room.OnConflictStrategy
 import androidx.room.Query
 import androidx.room.RoomDatabase
 import androidx.room.Transaction
+import androidx.room.Upsert
+import kotlinx.coroutines.flow.Flow
 
 data class SegmentLibraryRow(
     val id: String,
@@ -77,6 +79,24 @@ interface SegmentDao {
 
 @Dao
 interface AttemptDao {
+    @Upsert
+    suspend fun saveFinalAttempt(attempt: SegmentAttemptEntity)
+
+    @Query("""
+        SELECT a.id AS attemptId, a.segmentId,
+               COALESCE(a.completedSegmentName, s.name) AS segmentName,
+               a.endedAtMs AS completedAtMs,
+               CASE WHEN a.resultTimingVersion = 1 AND a.sampledElapsedSeconds > 0
+                    THEN a.sampledElapsedSeconds ELSE (a.endedAtMs - a.startedAtMs) / 1000.0 END AS durationSeconds,
+               CASE WHEN a.resultTimingVersion = 1 THEN a.goalFinishSecondsAtCompletion ELSE NULL END AS goalSeconds,
+               CASE WHEN a.resultTimingVersion = 1 AND a.sampledElapsedSeconds > 0 THEN 0 ELSE 1 END AS approximate,
+               a.averagePowerWatts, a.averageHeartRateBpm
+        FROM segment_attempts a JOIN segments s ON s.id = a.segmentId
+        WHERE a.outcome = 'COMPLETED' AND a.endedAtMs > a.startedAtMs
+        ORDER BY a.endedAtMs DESC, a.id DESC LIMIT :limit
+    """)
+    fun recentCompleted(limit: Int = 20): Flow<List<RecentSegmentResult>>
+
     @Insert(onConflict = OnConflictStrategy.ABORT)
     suspend fun insertAttempt(attempt: SegmentAttemptEntity)
 
@@ -181,7 +201,7 @@ interface SegmentRecordDao {
         PacingZoneEntity::class, SegmentAttemptEntity::class, AttemptCheckpointEntity::class,
         RiderProfileEntity::class, TrainingLoadEntity::class, HistoricalAttemptSampleEntity::class,
         SegmentRecordOwnerEntity::class, SegmentRecordEntity::class],
-    version = 4,
+    version = 5,
     exportSchema = true,
 )
 abstract class KarooDatabase : RoomDatabase() {

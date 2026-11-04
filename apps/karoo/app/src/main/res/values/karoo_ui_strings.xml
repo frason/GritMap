@@ -23,4 +23,6 @@
     <string name="karoo_cardiac_drift_description">Live power-to-heart-rate efficiency trend over segment progress</string>
     <string name="karoo_h10_cardiac_name">GM H10 Cardiac (Experimental)</string>
     <string name="karoo_h10_cardiac_description">Optional Polar H10 beat-to-beat cardiac stability and RR quality</string>
+    <string name="karoo_recent_segments_name">GM Recent Segments</string>
+    <string name="karoo_recent_segments_description">Recent completed Karoo attempts: time, captured goal, result and average power/HR</string>
 </resources>

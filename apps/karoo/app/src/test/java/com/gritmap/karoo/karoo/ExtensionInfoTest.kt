@@ -17,7 +17,8 @@ class ExtensionInfoTest {
             nodes.item(index).attributes.getNamedItem("typeId").nodeValue
         }.toSet()
 
-        assertEquals(10, typeIds.size)
+        assertEquals(11, typeIds.size)
+        assertTrue(RecentSegmentsDataType.TYPE_ID in typeIds)
         assertTrue(H10CardiacDataType.TYPE_ID in typeIds)
         assertTrue(CardiacDriftDataType.TYPE_ID in typeIds)
         assertTrue(PacingCoachDataType.TYPE_ID in typeIds)

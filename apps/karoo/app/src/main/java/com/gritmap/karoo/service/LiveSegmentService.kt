@@ -296,6 +296,7 @@ class LiveSegmentService : Service() {
             com.gritmap.karoo.ui.state.MatchStatus.ABANDONED
         }
         session.updateUiState(session.uiState.copy(matchStatus = finalStatus))
+        session.freezeResult()
         if (reason == "completed") {
             val alertSent = karooSystem.dispatch(segmentCompletionAlert(session, telemetry.timestampMs))
             LiveDiagnostics.record(

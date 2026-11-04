@@ -92,6 +92,11 @@ data class SegmentAttemptEntity(
     val averageHeartRateBpm: Double?,
     val averageCadenceRpm: Double?,
     val averageSpeedMetersPerSecond: Double?,
+    val sampledElapsedSeconds: Double? = null,
+    val goalFinishSecondsAtCompletion: Int? = null,
+    val completedSegmentName: String? = null,
+    val completedSegmentFingerprint: String? = null,
+    val resultTimingVersion: Int? = null,
 )
 
 @Entity(tableName = "attempt_checkpoints", foreignKeys = [ForeignKey(

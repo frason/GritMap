@@ -8,7 +8,7 @@ import com.gritmap.karoo.matching.LIVE_MATCHER_VERSION
 /** Persists only macro events. Ordinary 1 Hz telemetry never calls this class. */
 class RoomAttemptEventSink(private val database: KarooDatabase) : AttemptEventSink {
     override suspend fun onSegmentEntry(session: ActiveAttemptSession) {
-        database.attemptDao().insertAttempt(
+        database.attemptDao().insertConcurrentAttemptIfAbsent(
             SegmentAttemptEntity(
                 id = session.attemptId,
                 segmentId = session.segmentId,
@@ -36,18 +36,32 @@ class RoomAttemptEventSink(private val database: KarooDatabase) : AttemptEventSi
 
     override suspend fun onSegmentExit(session: ActiveAttemptSession, reason: String) {
         val completed = session.uiState.matchStatus.name == "COMPLETE"
-        database.attemptDao().finalizeAttempt(
-            attemptId = session.attemptId,
-            endedAtMs = System.currentTimeMillis(),
-            progress = session.uiState.progressMeters,
-            coverage = session.uiState.progressFraction.toDouble(),
-            maxDeviation = session.maxDeviationMeters,
-            outcome = if (completed) "COMPLETED" else "ABANDONED",
-            reason = if (completed) null else reason,
-            power = session.averagePowerWatts,
-            heartRate = session.averageHeartRateBpm,
-            cadence = session.averageCadenceRpm,
-            speed = session.averageSpeedMetersPerSecond,
+        val result = session.completionSnapshot ?: session.freezeResult()
+        // Upsert a full final row atomically: a delayed entry write is IGNORE and cannot replace it.
+        database.attemptDao().saveFinalAttempt(
+            SegmentAttemptEntity(
+                id = session.attemptId,
+                segmentId = session.segmentId,
+                startedAtMs = session.startedAtMs,
+                endedAtMs = result.endedAtMs ?: System.currentTimeMillis(),
+                startProgressMeters = session.initialProgressMeters,
+                endProgressMeters = session.uiState.progressMeters,
+                coveragePct = session.uiState.progressFraction.toDouble(),
+                maxDeviationMeters = session.maxDeviationMeters,
+                outcome = if (completed) "COMPLETED" else "ABANDONED",
+                outcomeReason = if (completed) null else reason,
+                matcherVersion = LIVE_MATCHER_VERSION,
+                pacingPlanId = session.pacingPlanId,
+                averagePowerWatts = session.averagePowerWatts,
+                averageHeartRateBpm = session.averageHeartRateBpm,
+                averageCadenceRpm = session.averageCadenceRpm,
+                averageSpeedMetersPerSecond = session.averageSpeedMetersPerSecond,
+                sampledElapsedSeconds = result.elapsedSeconds,
+                goalFinishSecondsAtCompletion = result.goalSeconds,
+                completedSegmentName = result.segmentName,
+                completedSegmentFingerprint = result.segmentFingerprint,
+                resultTimingVersion = 1,
+            ),
         )
     }
 

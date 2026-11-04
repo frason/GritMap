@@ -218,6 +218,7 @@ class LiveSegmentCoordinator(
         initialUiState = uiState(candidate, 0.0, sensors, 0.0),
         ftpWatts = candidate.ftpWatts,
         pacingPlanId = candidate.pacingPlanId,
+        segmentFingerprint = candidate.definition.fingerprint,
     )
 
     private fun uiState(

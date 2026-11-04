@@ -50,9 +50,17 @@ internal class RoomConcurrentAttemptPersistence(private val database: KarooDatab
             record.state.progressMeters, record.state.progressFraction.toDouble(), record.maxDeviation, record.planId))
     }
     override suspend fun finish(record: ConcurrentAttemptRecord, reason: String) {
-        database.attemptDao().finalizeAttempt(record.attemptId, record.timestampMs, record.state.progressMeters,
-            record.state.progressFraction.toDouble(), record.maxDeviation,
-            if (reason == "completed") "COMPLETED" else "ABANDONED", if (reason == "completed") null else reason,
-            record.power, record.heartRate, record.cadence, record.speed)
+        database.attemptDao().saveFinalAttempt(SegmentAttemptEntity(
+            record.attemptId, record.segmentId, record.startedAtMs, record.timestampMs,
+            record.initialProgressMeters, record.state.progressMeters, record.state.progressFraction.toDouble(),
+            record.maxDeviation, if (reason == "completed") "COMPLETED" else "ABANDONED",
+            if (reason == "completed") null else reason, LIVE_MATCHER_VERSION, record.planId,
+            record.power, record.heartRate, record.cadence, record.speed,
+            sampledElapsedSeconds = ((record.timestampMs - record.startedAtMs) / 1000.0).takeIf { it > 0 },
+            goalFinishSecondsAtCompletion = record.state.plannedFinishSeconds?.takeIf { it > 0 },
+            completedSegmentName = record.state.segmentName,
+            completedSegmentFingerprint = record.fingerprint,
+            resultTimingVersion = 1,
+        ))
     }
 }

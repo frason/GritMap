@@ -68,7 +68,7 @@ class ReplanStorageTest {
         helper.writableDatabase
         helper.close()
         val db=Room.databaseBuilder(context,KarooDatabase::class.java,name).allowMainThreadQueries()
-            .addMigrations(DatabaseProvider.MIGRATION_2_3, DatabaseProvider.MIGRATION_3_4).build()
+            .addMigrations(DatabaseProvider.MIGRATION_2_3, DatabaseProvider.MIGRATION_3_4, DatabaseProvider.MIGRATION_4_5).build()
         try {
             assertEquals("Preserved",db.segmentDao().segment("s")!!.name)
             val plan=db.pacingDao().baseline("s")!!
@@ -94,7 +94,7 @@ class ReplanStorageTest {
                 override fun onUpgrade(db: SupportSQLiteDatabase,oldVersion:Int,newVersion:Int) = Unit
             }).build())
         helper.writableDatabase;helper.close()
-        val db=Room.databaseBuilder(context,KarooDatabase::class.java,name).allowMainThreadQueries().addMigrations(DatabaseProvider.MIGRATION_3_4).build()
+        val db=Room.databaseBuilder(context,KarooDatabase::class.java,name).allowMainThreadQueries().addMigrations(DatabaseProvider.MIGRATION_3_4, DatabaseProvider.MIGRATION_4_5).build()
         try {
             assertEquals("retained-metadata",db.pacingDao().baseline("s")!!.replanMetadataJson)
             assertNull(db.segmentRecordDao().owner())

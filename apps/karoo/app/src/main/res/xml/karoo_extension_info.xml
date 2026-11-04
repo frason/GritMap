@@ -66,4 +66,10 @@
         description="@string/karoo_h10_cardiac_description"
         graphical="true"
         icon="@drawable/karoo_ic_extension" />
+    <DataType
+        typeId="recent-segment-results"
+        displayName="@string/karoo_recent_segments_name"
+        description="@string/karoo_recent_segments_description"
+        graphical="true"
+        icon="@drawable/karoo_ic_extension" />
 </ExtensionInfo>
