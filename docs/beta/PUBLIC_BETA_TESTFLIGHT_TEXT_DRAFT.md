@@ -27,7 +27,7 @@ Not in this build: sign-in, Liked segments, publishing from the app. Those are o
 Tell us: your iPhone model and iOS version, the app build number, the Karoo software version and extension version, and what you were doing. Please do not post private emails or Apple IDs publicly.
 
 ## Feedback email (App Store Connect field)
-[dedicated support address, to be created]
+help@opensegments.org
 
 ## Beta App Review notes (for Apple)
 No sign-in or account is required; the Open Segments account feature is switched off in this build. The app reads ride files the user chooses (FIT/GPX) and keeps them on the device. Bluetooth is used only to send a segment and plan to the user's own Hammerhead Karoo. To exercise the app without a Karoo or power meter: import the sample ride file in the repository (`docs/beta-review-sample-ride.gpx`) and follow the walkthrough. No demo account is needed.

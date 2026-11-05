@@ -116,6 +116,6 @@ update this page and the "Last updated" date before the change reaches you. Mate
 
 ## Contact
 
-Questions, or a request to take down a shared segment: [jfrasier@gmail.com](mailto:jfrasier@gmail.com)
+Questions, or a request to take down a shared segment: [help@opensegments.org](mailto:help@opensegments.org)
 
 *This is a plain-language description of how the app works. It is not legal advice.*
