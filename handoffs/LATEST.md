@@ -1,3 +1,15 @@
+# Coordinator: PHONE BUILD 19 CUT FROM 540cd1f (2026-11-04; Jason ran it, flag OFF)
+
+**Correction:** the build is iOS build **19**, not 18 (autoIncrement skipped 18; cause not checked, possibly an earlier started or failed build around the Apple agreement error). Build 17 was `86bae63f` (b841177).
+- EAS build id `54a5bd6e-057b-407e-92e5-42f1130a1c97`, version 1.0.0, profile production, SDK 57.0.0, started 2026-11-04 4:05:35 PM by Jason. EAS records commit `540cd1f7d049af90c891f115c7d4e6faee833a2e` (branch `phone-build18`, = `548de1c` + one comment-only scrub commit).
+- **Status when the phone session last read it: "in progress."** Jason says it is submitted; not independently confirmed. Still unknown: build finished, TestFlight upload processed, added to the internal group. Check App Store Connect (TestFlight) before calling it shipped.
+- Contents: Open Segments account flag OFF, so no sign-in, no Liked, no publishing; only dormant client code. Map previews follow light/dark, segment cards show maps, power meter + HR requirement line.
+- Known issue to tell testers: Rides/Segments lists can rarely stop responding to taps; restarting the app fixes it. Cause unproven, tap fix deferred.
+- Pre-build checks (phone session, fresh worktrees at that exact commit): clean tree, no `image` key in eas.json, Podfile.lock identical to c96ff10, plutil OK, flag false, no native/config diff vs build 17, tsc clean, npm test 1234 pass / 0 fail / 24 skipped, Swift script 128 ok, identity scan 11 hits all the handle lines and zero others (planted-hit sanity test passed). Nothing rerun after the build started.
+- Git: `phone-build18` (540cd1f), `phone-liked-segments` (84d43b5, includes a1cd7b8; NOT in the build) and `phone-build13` are local only, none pushed. Phone repo has nothing uncommitted.
+- **Archive copy deferred** until the build finishes and the TestFlight state is confirmed (archived handoffs are immutable).
+- Next: Jason checks build 19 on his iPhone; phone work after this (sign-in, Liked) waits on the Open Segments Codex items in the to-do list below (hosted likes release, native sign-in plan and security review, safe publish test mode).
+
 # Coordinator: CODEX CURRENT TO-DO, ONE LIST (2026-11-04, supersedes the ordered list in "CODEX, WHAT TO DO NEXT" below; read this first)
 
 You last read main at `60af75b`. NEW since then: `bc4a6dc` (palette is blue/violet, your tokens are the source of truth; thanks for confirming), `25607d6` (tester push gate), `d0a5de7` (phone publishing scope), `05a4254` (dark contrast P1 values + final logo), `7f49589` (segment-other token), `9c57bb4` (privacy memo wording tightened per your review). Phone build 18 is being cut from `548de1c` with the account flag OFF: it contains NO sign-in and NO publishing, only dormant Open Segments client code.
