@@ -1,3 +1,22 @@
+# Coordinator: LIKED SEGMENTS ON THE PHONE (OPTION B) AND WHAT IT MEANS FOR KAROO (2026-11-05, Jason chose B; scope only, nothing approved to build)
+
+Decision (Jason): the phone signs in to Open Segments itself and pulls the Liked list. NO "Open in GritMap" button or any GritMap-specific link on the Open Segments web: Open Segments stays unaware of GritMap and GritMap is just one client (see `docs/PRIVACY_CHANGES_FOR_REVIEW.md` 4a). Production likes are live and smoke-tested.
+**Smallest useful phone release (build 20 candidate), in this order:**
+1. Native sign-in: same emailed 8-digit code as the web, via the Turnstile WebView bridge, refresh credential in Keychain, one serialized refresh then one retry on 401 (Codex draft `docs/OPEN_SEGMENTS_NATIVE_SIGNIN_SECURITY_DRAFT_20261104.md`; needs Jason's approval and a security review before any build).
+2. Flag on for the account client only: Profile entry, sign out, Liked screen, hearts on segment cards/detail (already written on `phone-liked-segments` against the contract; re-check against the LIVE API, not the fixture).
+3. Liked list: "Add to my segments" saves the segment locally keeping its Open Segments UUID and fingerprint, then the EXISTING send-to-Karoo flow pushes it. No new Karoo transfer path.
+4. In-app account deletion and a report-a-concern path (Apple requires both once accounts and community content exist); verify current guideline wording.
+5. Out of the first release: publishing from the phone, Apple/Google sign-in, universal links, type tag unless trivial.
+Needs from Open Segments Codex: native sign-in plan finalized for review, a safe test account/mode so phone testing never writes to the live catalog, confirmation that the live likes endpoints match the contract. Phone session: re-verify the client against live (read-only calls), then propose the build plan; Jason approves each build and each TestFlight step himself.
+**For the KAROO CODEX (scope and read-only review; docs only, no device, no install, no build):** liked segments reach the Karoo as ordinary sent segments, so no new protocol is expected, but answer these in a doc on your branch:
+1. Volume: how many segments can the Karoo app hold and match (Room storage, startup load, Nearby/Recent Segments matching) if a rider adds dozens or a few hundred? What is the cost per segment and a sensible cap or warning?
+2. Identity: does the received segment keep the Open Segments UUID/fingerprint so the Karoo can dedupe, show the source, and accept an updated copy? If not, what is the smallest contract change (shared contract: segment JSON, `gritmap-transfer`; phone must agree)?
+3. Removal: when a rider unlikes or deletes a segment on the phone, should the Karoo copy go too? Propose behaviour (manual only is acceptable); no silent deletes of ride-time data.
+4. Type tag: the segment `segmentType` (climb, descent, ride) now comes from the API. Can the Karoo show it on segment rows and the Nearby proposal?
+5. Interaction with the queued work: Nearby Segments (liked/added segments as the pool), Recent Segments Room 5 migration, and the tester APK candidate. Which of these is affected if the segment list gets large or arrives in batches?
+6. Sending several at once: is multi-segment send over Bluetooth safe (size, ordering, partial failure, resend)? Read-only review of the transfer code and tests.
+Report findings and a recommended minimum Karoo change (possibly none). The Karoo app does not need a build for this release unless answers 1, 2 or 6 show a gap. Karoo Codex still waits on Jason for Nearby Segments decisions.
+
 # Coordinator: PRODUCTION LIKES LIVE, SMOKE TEST PASSED (2026-11-05, Jason)
 
 Open Segments Codex deployed the private likes release to opensegments.org on 2026-11-05 (its receipts: branch `codex/open-segments-platform`, `fcd810c`/`d87cdcf`, archive `handoffs/archive/2026-11-05-0755-codex-open-segments-likes-live.md`, local only, not pushed): likes migration applied, Edge function version 11, Worker version `aebcaa1e`, with the reviewed visual/FAQ updates (FAQ draft labels visible). Jason ran the signed-in smoke test on production (like, reload Liked, unlike, reload) and it PASSED. Codex should record that result. Open: the three FAQ wording mismatches Codex flagged (Anonymous vs Anonymous rider; five per UTC day wording; About map-credit sentence vs inline credit links) are not confirmed fixed. Phone account flag is still OFF in build 19; native sign-in not approved; safe publish test mode not delivered.
