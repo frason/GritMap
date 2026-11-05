@@ -62,6 +62,8 @@ Status words: DONE (evidence in repo), VERIFY (believed true, check), OPEN (work
 ## Decision log (2026-11-05, Jason)
 - External TestFlight: done. Tap bug: no blockers. Karoo beta APK: ship version 76. Support address: help@opensegments.org.
 
+## Karoo version 76 release: PUBLISHED 2026-11-05 as option A (tag `karoo-v76-screen-preview`, commit efaf5f6, exact APK pulled from Jason's Karoo, checksum f172fc88... matched; public latest-download link verified). Remaining: Companion share-link install check on a Karoo, tester message. Plan as written (kept for the record):
+
 ## Karoo version 76 release plan (needs Jason's yes in the Karoo session chat; no build, tag or release has been run)
 Facts from the Karoo Codex archive `2026-10-31-karoo-glance-signed76-awaiting-install.md`: version 76 is source `efaf5f6` (runtime `e7a7c45`), versionCode 76, versionName `0.10.46-screen-preview`, built with CLI version overrides and the persistent beta signing identity (certificate SHA-256 `eac4c309...f5f6`), APK SHA-256 `f172fc88c941d7739ff43e02318ee393274510248b538be65b64cd0630b69c92`, direct BLE on, experimental flags off. Public latest is `karoo-beta-0.10.45` (code 73, Room 3). Version 76 uses Room 4; once opened, returning to 73 is unsupported (never clear data or uninstall to downgrade; testers must be told).
 The Karoo branch head is LATER than 76: it also holds the cardiac countdown and Recent Segments (Room 5), built but not installed. Do NOT tag the branch head. Two ways, pick one:

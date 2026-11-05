@@ -85,6 +85,10 @@ adb install -r gritmap-karoo.apk
 Every beta APK is signed with the same GritMap beta identity. Install updates over the existing
 app so the Karoo retains locally stored segments, plans, settings, and diagnostics.
 
+**Current release: 0.10.46 (version code 76, screen preview beta, Karoo 3 only).** It updates the extension's
+on-device database, so once it has run you cannot go back to 0.10.45. Never uninstall or clear data to downgrade.
+The download checksum is in the release's `SHA256SUMS.txt`.
+
 ## Live data fields
 
 Images are **development previews rendered from synthetic test data**, in dark mode. They are not

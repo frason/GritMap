@@ -37,6 +37,10 @@ Hammerhead documents both URL and APK-file workflows in its
 For an update, repeat these steps with the same stable link. Do not uninstall the previous beta first:
 installing the signed update over it preserves your GritMap segments and settings.
 
+**Version 0.10.46 (code 76) updates the extension's database.** After it has run once you cannot return to
+0.10.45 or earlier. Never uninstall GritMap or clear its data to "go back": that deletes your saved segments and
+plans. If something is wrong, report it (help@opensegments.org or a GitHub issue without personal data) rather than downgrading.
+
 ### If Companion cannot install the APK
 
 If the Karoo displays a UUID filename and stays on **Loading**, waiting longer will not repair that
