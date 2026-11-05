@@ -27,8 +27,8 @@ Segment data is open under ODbL 1.0: anyone may use, copy and build on it, inclu
 **Can I edit or delete a segment after publishing?** **[LAWYER]**
 Published route content and credit cannot be edited. You can ask us to remove a segment (see Help: reports and removal requests), but copies people already downloaded cannot be recalled. Deleting your account detaches it from your segments; it does not remove their public credit or licensed data.
 
-**Is there a way to get all the segments?** **[OPEN, LAWYER]**
-We intend to publish bulk downloads of the open catalog, because the data is open. This is not available yet and the terms for it need review before we promise a format or schedule. Until then, individual segments can be downloaded one at a time.
+**Is there a way to get all the segments?** **[LAWYER]**
+Not yet. Right now each segment can be downloaded one at a time. We are looking into bulk downloads of the open catalog and will decide based on demand. If you would use one, tell us through the Help page. We are not promising a format or a date.
 
 **What does credit look like, and does it show my email?**
 Credit is optional. If you choose "Credit me", the segment shows your account name (a generated name like rider-12345678, which you cannot yet change). Otherwise it shows Anonymous. Your sign-in email is never used as public credit.
