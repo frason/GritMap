@@ -32,7 +32,7 @@ Status words: DONE (evidence in repo), VERIFY (believed true, check), OPEN (work
 
 ## 5. Legal and trust (biggest gap)
 - [ ] [Jason] Send `docs/PRIVACY_CHANGES_FOR_REVIEW.md` to the lawyer (draft, not legal advice; 10 questions). Beta can run before answers if wording stays honest and labelled draft.
-- [ ] [Jason] Create a dedicated support/takedown address and replace the personal Gmail in `docs/PRIVACY.md` and anywhere else it appears (public repo). Needs Jason's approval for the address; I will make the doc edits once it exists.
+- [ ] Support/takedown address is `help@opensegments.org` (Jason, 2026-11-05). DONE in docs: `docs/PRIVACY.md` and the beta drafts. VERIFY [Jason]: the mailbox exists and replies work before testers see it. Note it ties GritMap's contact to the Open Segments domain; fine for the beta, revisit with the lawyer's separation advice (docs/PRIVACY_CHANGES_FOR_REVIEW.md 4a). The Open Segments site Help/Terms/Privacy still need the same address (batched for Codex).
 - [ ] [Jason] Trademark search for GritMap and Open Segments.
 - [ ] `docs/PRIVACY.md` (last updated Oct 12) says no accounts and nothing sent to us: still accurate for build 19 (account flag off). It MUST be updated before build 20 (sign-in, deletion, report).
 - [ ] Apple: app privacy answers match the policy; privacy policy URL points at a public page (confirm the URL).
@@ -55,6 +55,16 @@ Status words: DONE (evidence in repo), VERIFY (believed true, check), OPEN (work
 ## Suggested order for the next 4 days (no Codex)
 1. Jason: external TestFlight status, fresh-install walk, decide the tap bug (section 1, 2).
 2. Jason: Karoo APK decision; Karoo session prepares the tag; Jason approves and rides it (section 3).
-3. Jason: lawyer email, support address, trademark search (section 5). I update docs when the address exists.
+3. Jason: confirm help@opensegments.org receives mail; lawyer email; trademark search (section 5).
 4. Coordinator: README/install guide updates, tester guide, GOALS update once decisions land.
 5. When Codex returns: Open Segments edits batch, hosted deploy proposal, sign-in work for build 20.
+
+## Decision log (2026-11-05, Jason)
+- External TestFlight: done. Tap bug: no blockers. Karoo beta APK: ship version 76. Support address: help@opensegments.org.
+
+## Karoo version 76 release plan (needs Jason's yes in the Karoo session chat; no build, tag or release has been run)
+Facts from the Karoo Codex archive `2026-10-31-karoo-glance-signed76-awaiting-install.md`: version 76 is source `efaf5f6` (runtime `e7a7c45`), versionCode 76, versionName `0.10.46-screen-preview`, built with CLI version overrides and the persistent beta signing identity (certificate SHA-256 `eac4c309...f5f6`), APK SHA-256 `f172fc88c941d7739ff43e02318ee393274510248b538be65b64cd0630b69c92`, direct BLE on, experimental flags off. Public latest is `karoo-beta-0.10.45` (code 73, Room 3). Version 76 uses Room 4; once opened, returning to 73 is unsupported (never clear data or uninstall to downgrade; testers must be told).
+The Karoo branch head is LATER than 76: it also holds the cardiac countdown and Recent Segments (Room 5), built but not installed. Do NOT tag the branch head. Two ways, pick one:
+- A. Publish the exact APK Jason already rides: check the file still exists (it was at `/tmp/gritmap-glance-beta76-efaf5f6/gritmap-karoo.apk`; /tmp may have been cleared) and its hash matches the line above, then create a GitHub release with the asset named `gritmap-karoo.apk` plus `SHA256SUMS.txt`, marked as the repository's Latest release so `/releases/latest/download/gritmap-karoo.apk` serves it (README install path depends on that). Faithful to what was ridden; bypasses the CI release workflow; versionName stays `0.10.46-screen-preview` (cosmetic).
+- B. Rebuild through the CI workflow: needs a new commit from `efaf5f6` setting versionCode/versionName defaults (the workflow checks the tag matches versionName, e.g. tag `karoo-beta-0.10.46`), pushed to a branch, then the tag. Cleaner version name, but a different APK from the one ridden; ride it once before announcing. Needs a Karoo Codex or equivalent session; Codex is out of usage until about 2026-11-09.
+After publishing: update `README.md` and `docs/BETA_KAROO_INSTALL.md` (versions, Room 4 note, "install over the existing app, never uninstall"), add 0.10.46 notes (redesigned screens), and verify the Companion share-link install on a Karoo.
