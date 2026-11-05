@@ -1,3 +1,7 @@
+# Coordinator: PUBLISHING FROM THE PHONE IS A LATER BUILD (2026-11-05, Jason decided)
+
+The next phone release (build 20 candidate) is sign-in + Profile + Liked + hearts + Add to My segments + existing Send to Karoo + in-app account deletion + report-a-concern. Publishing a segment to Open Segments from the phone (including older saved ones) is NOT in it; plan it as a later build after sign-in works on a real iPhone. Nothing to build now beyond keeping the sign-in test target reusable for publishing. For the Open Segments Codex: the publishing deliverables (wire shapes, safe test mode, report path, phone consent text) stay on your list but are not blocking build 20; do them after the sign-in security review and isolated test target. The scope section "SCOPE, PUBLISHING FROM THE PHONE APP" below still applies.
+
 # Coordinator: EXPLORE MAP SHOULD SHOW ALL SEGMENT LINES, NO DEFAULT SELECTION (2026-11-05, Jason; for the Open Segments Codex; design first, no deploy)
 
 Jason's ask: on Explore, do NOT auto-select a segment. Show every segment drawn as a line on the road, including when zoomed out, not just numbered clusters ("tallies"). Clicking a list card or a line selects that segment; clicking empty map clears the selection and returns to all lines. The earlier default selection made sense when Home was the segment showcase; Home no longer is.
