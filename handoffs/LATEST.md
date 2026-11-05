@@ -2,7 +2,7 @@
 
 **Correction:** the build is iOS build **19**, not 18 (autoIncrement skipped 18; cause not checked, possibly an earlier started or failed build around the Apple agreement error). Build 17 was `86bae63f` (b841177).
 - EAS build id `54a5bd6e-057b-407e-92e5-42f1130a1c97`, version 1.0.0, profile production, SDK 57.0.0, started 2026-11-04 4:05:35 PM by Jason. EAS records commit `540cd1f7d049af90c891f115c7d4e6faee833a2e` (branch `phone-build18`, = `548de1c` + one comment-only scrub commit).
-- **Status when the phone session last read it: "in progress."** Jason says it is submitted; not independently confirmed. Still unknown: build finished, TestFlight upload processed, added to the internal group. Check App Store Connect (TestFlight) before calling it shipped.
+- **UPDATE: build 19 is in TestFlight and installed (Jason confirmed).** Archive copy written; see `handoffs/archive/` file ending `claude-phone-build19-testflight.md`.
 - Contents: Open Segments account flag OFF, so no sign-in, no Liked, no publishing; only dormant client code. Map previews follow light/dark, segment cards show maps, power meter + HR requirement line.
 - Known issue to tell testers: Rides/Segments lists can rarely stop responding to taps; restarting the app fixes it. Cause unproven, tap fix deferred.
 - Pre-build checks (phone session, fresh worktrees at that exact commit): clean tree, no `image` key in eas.json, Podfile.lock identical to c96ff10, plutil OK, flag false, no native/config diff vs build 17, tsc clean, npm test 1234 pass / 0 fail / 24 skipped, Swift script 128 ok, identity scan 11 hits all the handle lines and zero others (planted-hit sanity test passed). Nothing rerun after the build started.
